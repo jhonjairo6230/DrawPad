@@ -53,13 +53,27 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         TARGETED_DEVICE_FAMILY: "2"
 
+  DrawPadUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: DrawPadUITests
+    dependencies:
+      - target: DrawPad
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "2"
+
 schemes:
   DrawPad:
     build:
       targets:
         DrawPad: all
         DrawPadTests: [test]
+        DrawPadUITests: [test]
     test:
       config: Debug
       targets:
         - DrawPadTests
+        - DrawPadUITests

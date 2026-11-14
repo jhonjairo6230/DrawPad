@@ -38,7 +38,7 @@ jobs:
       - name: Generar DrawPad.xcodeproj
         run: xcodegen generate
 
-      - name: Pruebas unitarias (simulador de iPad)
+      - name: Pruebas unitarias y de interfaz (simulador de iPad)
         run: |
           UDID=$(xcrun simctl list devices available -j | python3 scripts/pick_ipad_simulator.py)
           echo "Simulador: $UDID"
@@ -48,6 +48,17 @@ jobs:
             -destination "id=$UDID" \
             -derivedDataPath build/tests \
             CODE_SIGNING_ALLOWED=NO
+
+      - name: Informes de cierre de la app (si las pruebas fallan)
+        if: failure()
+        run: |
+          # Si la app se cerró sola, macOS deja aquí el motivo y la pila de llamadas.
+          shopt -s nullglob
+          for report in ~/Library/Logs/DiagnosticReports/DrawPad*.ips; do
+            echo "::group::$report"
+            head -c 20000 "$report"
+            echo "::endgroup::"
+          done
 
       - name: Compilar para iPad (sin firmar)
         run: |
