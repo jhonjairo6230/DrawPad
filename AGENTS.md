@@ -12,6 +12,9 @@ Documentación en `docs/`; decisiones en `docs/adr/`.
 - PencilKit solo se toca en `PencilKitCanvas.swift` y `PencilCanvasView.swift`.
   El ViewModel usa el protocolo `DrawingCanvas`.
 - Las implementaciones concretas solo se crean en `App/AppContainer.swift`.
+- No crees vistas de UIKit (`PKCanvasView`…) en `DrawPadApp.init()`: aún no
+  existe `UIApplication` y la app se cierra al tocar. En `AppContainer` todo
+  es `lazy`.
 - `Data` convierte sus errores a `DrawingError`.
 - Cada tipo lleva un comentario `///` que explica su papel (el porqué).
 - Interfaz, comentarios y documentación en español; identificadores en inglés.

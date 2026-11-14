@@ -104,6 +104,9 @@ DrawPadTests/
 ├── Domain/UseCasesTests.swift
 ├── Data/FileDrawingRepositoryTests.swift
 └── Presentation/CanvasViewModelTests.swift
+
+DrawPadUITests/
+└── CanvasUITests.swift             Toca la app real en el simulador
 ```
 
 ## 4. Tipos y relaciones
@@ -202,7 +205,9 @@ sequenceDiagram
     participant K as PencilKitCanvas
 
     iOS->>App: lanza la app
-    App->>C: crea el contenedor
+    App->>C: crea el contenedor (vacío, todo es lazy)
+    Note over iOS,App: arranca UIApplication y se crea la escena
+    App->>C: pide lienzo y ViewModel
     C->>K: crea el lienzo
     C->>VM: crea el ViewModel con lienzo y casos de uso
     App->>V: muestra la pantalla
@@ -342,6 +347,13 @@ valida y delega en `ImageLibrary`.
 **Inyección de dependencias manual.** Con una pantalla no hace falta una
 librería: `AppContainer` crea todo y lo pasa por los `init`.
 
+**El contenedor crea todo de forma diferida (`lazy`).** `DrawPadApp.init()`
+se ejecuta antes de que exista `UIApplication`. Un `PKCanvasView` creado en
+ese momento deja sus reconocedores de gestos mal inicializados y la app se
+cierra al primer toque con el dedo (el Apple Pencil no lo provocaba). Por eso
+las vistas de UIKit se crean cuando la escena ya está en marcha. Las pruebas
+de interfaz (`DrawPadUITests`) vigilan que no vuelva a pasar.
+
 **Concurrencia.** El ViewModel y el lienzo son `@MainActor` (todo lo que toca
 la interfaz va en el hilo principal). El temporizador de autoguardado es una
 `Task` que se cancela y se vuelve a crear con cada cambio.
@@ -354,8 +366,11 @@ la interfaz va en el hilo principal). El temporizador de autoguardado es una
 | Repositorio de archivos | `Data/FileDrawingRepositoryTests.swift` | Carpeta temporal real. |
 | ViewModel | `Presentation/CanvasViewModelTests.swift` | Lienzo falso; el autoguardado se prueba con un retardo de milisegundos. |
 
+| Pantalla real | `DrawPadUITests/CanvasUITests.swift` | Lanza la app en el simulador y toca el lienzo y los botones con el "dedo". |
+
 `PencilKitCanvas`, `PhotoLibraryImageExporter` y las vistas no tienen pruebas
-unitarias: son adaptadores finos sobre frameworks de Apple y se comprueban a
+unitarias: son adaptadores finos sobre frameworks de Apple. Las pruebas de
+interfaz comprueban que no se cierran; el Apple Pencil y Fotos se verifican a
 mano en el iPad.
 
 ## 8. Cómo añadir una funcionalidad

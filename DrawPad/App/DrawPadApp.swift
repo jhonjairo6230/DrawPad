@@ -2,22 +2,15 @@ import SwiftUI
 
 /// Punto de entrada de la app.
 ///
-/// Crea el ``AppContainer`` una sola vez y entrega a la pantalla sus
-/// dependencias ya construidas.
+/// Guarda el ``AppContainer`` (que al crearse no construye nada) y, cuando la
+/// escena se muestra, le pide a la pantalla sus dependencias.
 @main
 struct DrawPadApp: App {
-    @State private var viewModel: CanvasViewModel
-    private let canvas: PencilKitCanvas
-
-    init() {
-        let container = AppContainer()
-        canvas = container.canvas
-        _viewModel = State(initialValue: container.makeCanvasViewModel())
-    }
+    private let container = AppContainer()
 
     var body: some Scene {
         WindowGroup {
-            CanvasScreen(viewModel: viewModel, canvas: canvas)
+            CanvasScreen(viewModel: container.canvasViewModel, canvas: container.canvas)
                 .preferredColorScheme(.light)
         }
     }

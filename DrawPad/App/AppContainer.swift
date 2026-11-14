@@ -5,19 +5,22 @@ import Foundation
 ///
 /// El resto del código solo conoce protocolos. Para cambiar, por ejemplo, el
 /// almacenamiento a iCloud, bastaría con cambiar una línea aquí.
+///
+/// **Todo es `lazy` a propósito.** `DrawPadApp.init()` se ejecuta antes de que
+/// exista `UIApplication`; un `PKCanvasView` creado tan pronto deja sus gestos
+/// mal inicializados y la app se cierra al primer toque con el dedo. Al ser
+/// `lazy`, el lienzo se crea cuando la escena pide la pantalla por primera vez.
 @MainActor
 final class AppContainer {
-    let canvas = PencilKitCanvas()
+    private(set) lazy var canvas = PencilKitCanvas()
 
-    private let drawingRepository: DrawingRepository = FileDrawingRepository.live()
-    private let imageLibrary: ImageLibrary = PhotoLibraryImageExporter()
+    private(set) lazy var canvasViewModel = CanvasViewModel(
+        canvas: canvas,
+        loadDrawing: LoadDrawingUseCase(repository: drawingRepository),
+        saveDrawing: SaveDrawingUseCase(repository: drawingRepository),
+        exportDrawing: ExportDrawingUseCase(library: imageLibrary)
+    )
 
-    func makeCanvasViewModel() -> CanvasViewModel {
-        CanvasViewModel(
-            canvas: canvas,
-            loadDrawing: LoadDrawingUseCase(repository: drawingRepository),
-            saveDrawing: SaveDrawingUseCase(repository: drawingRepository),
-            exportDrawing: ExportDrawingUseCase(library: imageLibrary)
-        )
-    }
+    private lazy var drawingRepository: DrawingRepository = FileDrawingRepository.live()
+    private lazy var imageLibrary: ImageLibrary = PhotoLibraryImageExporter()
 }
