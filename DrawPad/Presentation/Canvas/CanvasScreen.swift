@@ -1,6 +1,8 @@
 import SwiftUI
 
-/// Pantalla principal: el lienzo a pantalla completa y una barra de acciones.
+/// Pantalla de un dibujo: el lienzo a pantalla completa y una barra de acciones.
+///
+/// Se muestra dentro del `NavigationStack` de ``GalleryScreen``.
 ///
 /// La vista no toma decisiones: traduce toques en llamadas al
 /// ``CanvasViewModel`` y pinta su estado.
@@ -12,34 +14,36 @@ struct CanvasScreen: View {
     @State private var isConfirmingClear = false
 
     var body: some View {
-        NavigationStack {
-            PencilCanvasView(canvas: canvas)
-                .ignoresSafeArea(edges: .bottom)
-                .navigationTitle("DrawPad")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar { toolbarContent }
-        }
-        .onAppear { viewModel.onAppear() }
-        .onChange(of: scenePhase) { _, phase in
-            // Al salir de la app (o al cerrarla) no se pierde lo último dibujado.
-            if phase != .active { viewModel.flushPendingSave() }
-        }
-        .confirmationDialog(
-            "¿Borrar todo el dibujo?",
-            isPresented: $isConfirmingClear,
-            titleVisibility: .visible
-        ) {
-            Button("Borrar todo", role: .destructive) { viewModel.clear() }
-        }
-        .alert(
-            viewModel.alert?.title ?? "",
-            isPresented: isShowingAlert,
-            presenting: viewModel.alert
-        ) { _ in
-            Button("Aceptar", role: .cancel) {}
-        } message: { alert in
-            Text(alert.message)
-        }
+        canvasView
+            .onAppear { viewModel.onAppear() }
+            .onChange(of: scenePhase) { _, phase in
+                // Al salir de la app (o al cerrarla) no se pierde lo último dibujado.
+                if phase != .active { viewModel.flushPendingSave() }
+            }
+            .confirmationDialog(
+                "¿Borrar todo el dibujo?",
+                isPresented: $isConfirmingClear,
+                titleVisibility: .visible
+            ) {
+                Button("Borrar todo", role: .destructive) { viewModel.clear() }
+            }
+            .alert(
+                viewModel.alert?.title ?? "",
+                isPresented: isShowingAlert,
+                presenting: viewModel.alert
+            ) { _ in
+                Button("Aceptar", role: .cancel) {}
+            } message: { alert in
+                Text(alert.message)
+            }
+    }
+
+    private var canvasView: some View {
+        PencilCanvasView(canvas: canvas)
+            .ignoresSafeArea(edges: .bottom)
+            .navigationTitle(viewModel.title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { toolbarContent }
     }
 
     /// Adapta `alert: AlertMessage?` al `Bool` que pide `.alert`.
@@ -52,7 +56,7 @@ struct CanvasScreen: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        ToolbarItemGroup(placement: .topBarLeading) {
+        ToolbarItemGroup(placement: .topBarTrailing) {
             Button { viewModel.undo() } label: {
                 Label("Deshacer", systemImage: "arrow.uturn.backward")
             }

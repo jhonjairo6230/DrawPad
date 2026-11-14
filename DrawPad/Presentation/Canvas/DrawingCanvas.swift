@@ -15,6 +15,7 @@ protocol DrawingCanvas: AnyObject {
     /// Trazos actuales serializados (ver ``Drawing/strokesData``).
     func currentData() -> Data
     /// Reemplaza el contenido del lienzo por unos trazos guardados.
+    /// Unos datos vacíos dejan el lienzo en blanco.
     func load(_ strokesData: Data) throws
     func clear()
     func undo()
@@ -23,4 +24,6 @@ protocol DrawingCanvas: AnyObject {
     func setFingerDrawingEnabled(_ enabled: Bool)
     /// El dibujo como PNG con fondo blanco, o `nil` si está vacío.
     func renderPNG() -> Data?
+    /// Versión pequeña del dibujo para la galería, o `nil` si está vacío.
+    func renderThumbnail() -> Data?
 }

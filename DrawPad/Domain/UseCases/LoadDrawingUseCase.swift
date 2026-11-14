@@ -1,6 +1,6 @@
 import Foundation
 
-/// Recupera el dibujo con el que el usuario estaba trabajando.
+/// Recupera un dibujo completo para abrirlo en el lienzo.
 struct LoadDrawingUseCase {
     private let repository: DrawingRepository
 
@@ -8,8 +8,11 @@ struct LoadDrawingUseCase {
         self.repository = repository
     }
 
-    /// - Returns: el último dibujo guardado, o `nil` si es la primera vez.
-    func execute() throws -> Drawing? {
-        try repository.load()
+    /// - Throws: ``DrawingError/drawingNotFound`` si el dibujo no existe.
+    func execute(id: UUID) throws -> Drawing {
+        guard let drawing = try repository.find(id: id) else {
+            throw DrawingError.drawingNotFound
+        }
+        return drawing
     }
 }
