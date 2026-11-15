@@ -15,7 +15,8 @@ Un buen recorrido de lectura:
 
 1. `DrawPad/App/DrawPadApp.swift` y `AppContainer.swift` — cómo se monta todo.
 2. `DrawPad/Domain/` — las reglas, sin frameworks.
-3. `DrawPad/Presentation/Canvas/CanvasViewModel.swift` — la lógica de pantalla.
+3. `DrawPad/Presentation/Gallery/GalleryViewModel.swift` y
+   `DrawPad/Presentation/Canvas/CanvasViewModel.swift` — la lógica de pantalla.
 4. `DrawPad/Presentation/Canvas/PencilKitCanvas.swift` — PencilKit.
-5. `DrawPad/Data/` — archivo y Fotos.
+5. `DrawPad/Data/` — base de datos (SwiftData) y Fotos.
 6. `DrawPadTests/` — cómo se prueba cada capa con dobles.

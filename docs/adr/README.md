@@ -13,6 +13,7 @@ entienda **por qué** el código es como es.
 | [0004](0004-compilar-sin-mac.md) | Compilar sin Mac: GitHub Actions, XcodeGen e IPA sin firmar | Aceptada |
 | [0005](0005-pencilkit.md) | PencilKit como motor de dibujo | Aceptada |
 | [0006](0006-documentacion.md) | Documentar con Markdown + Mermaid y comentarios DocC | Aceptada |
+| [0007](0007-swiftdata.md) | SwiftData como base de datos local | Aceptada |
 
 ## Cómo añadir un ADR
 
