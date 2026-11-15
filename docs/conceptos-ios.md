@@ -36,6 +36,7 @@ Glosario para estudiar el código. Cada entrada dice qué es y dónde verlo.
 | `PKDrawing` | El dibujo como dato: una lista de trazos (`strokes`). Se serializa con `dataRepresentation()` y se convierte en imagen con `image(from:scale:)`. |
 | `PKToolPicker` | La paleta flotante de herramientas (lápiz, rotulador, borrador, regla, colores). |
 | `PKCanvasViewDelegate` | Avisa de cambios; DrawPad usa `canvasViewDrawingDidChange`. |
+| Zoom | `PKCanvasView` es un `UIScrollView`: con `minimumZoomScale`, `maximumZoomScale` y `contentSize` ya amplía y se desplaza. |
 | `drawingPolicy` | `.pencilOnly` (solo el Pencil dibuja) o `.anyInput` (también el dedo). |
 
 Todo esto vive en un solo archivo: `Presentation/Canvas/PencilKitCanvas.swift`.

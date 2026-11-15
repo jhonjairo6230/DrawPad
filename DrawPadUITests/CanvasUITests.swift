@@ -125,6 +125,23 @@ final class CanvasUITests: XCTestCase {
         assertAppIsRunning()
     }
 
+    // MARK: - Zoom
+
+    func testZoomingScrollingAndDrawingDoesNotCrash() {
+        openNewDrawing()
+        let window = app.windows.firstMatch
+
+        window.pinch(withScale: 2.5, velocity: 2)
+        dragOnCanvas() // Sin "dibujar con el dedo", un dedo desplaza la hoja.
+        chooseBackground("Cuadrícula")
+        app.buttons["Dibujar con el dedo"].tap()
+        dragOnCanvas()
+        window.pinch(withScale: 0.4, velocity: -2)
+        tapCanvas()
+
+        assertAppIsRunning()
+    }
+
     // MARK: - Compartir
 
     func testSharingAnEmptyCanvasShowsAnAlert() {

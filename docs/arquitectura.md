@@ -125,6 +125,7 @@ DrawPad/
 │   │   ├── CanvasModule.swift      ViewModel + lienzo de un dibujo abierto
 │   │   ├── DrawingCanvas.swift     Puerto: lo que el ViewModel pide al lienzo
 │   │   ├── PencilKitCanvas.swift   Adaptador de PencilKit
+│   │   ├── CanvasGeometry.swift    Cuentas del zoom: tamaño de hoja y posición del papel
 │   │   ├── CanvasBackgroundPattern.swift        Dibuja la baldosa de cada papel
 │   │   ├── CanvasBackground+Presentation.swift  Título e icono de cada papel
 │   │   └── PencilCanvasView.swift  Puente SwiftUI ↔ UIKit
@@ -613,6 +614,13 @@ el `PKCanvasView` transparente. Cambiar de papel no toca el dibujo, y al
 exportar se pinta primero el papel y luego los trazos. Las miniaturas van
 sobre papel liso: el patrón reducido las ensucia.
 
+**Zoom y desplazamiento son cosa del adaptador.** `PKCanvasView` es un
+`UIScrollView`: basta con darle límites de zoom y un tamaño de contenido.
+Ni el dominio ni el ViewModel saben que existe el zoom, y no se guarda. Las
+cuentas (tamaño de la hoja, dónde va el papel para acompañar a los trazos)
+están en `CanvasGeometry`, sin UIKit, para poder probarlas
+(ver [ADR 0009](adr/0009-zoom-y-tamano-de-hoja.md)).
+
 **El aspecto del lienzo lo decide el papel, no el sistema.** La app sigue el
 modo claro u oscuro del iPad, pero cada lienzo usa el tema de su dibujo
 (`overrideUserInterfaceStyle`). PencilKit adapta la tinta al aspecto: sobre
@@ -653,6 +661,7 @@ la interfaz va en el hilo principal). El temporizador de autoguardado es una
 | Archivos para compartir | `Data/TemporaryExportFileStoreTests.swift` | Carpeta temporal real. |
 | Importador del archivo antiguo | `Data/LegacyDrawingFileImporterTests.swift` | Archivo temporal real. |
 | ViewModel del lienzo | `Presentation/CanvasViewModelTests.swift` | Lienzo falso; el autoguardado se prueba con un retardo de milisegundos. |
+| Cuentas del zoom | `Presentation/CanvasGeometryTests.swift` | Funciones puras, sin vistas. |
 | ViewModel de la galería | `Presentation/GalleryViewModelTests.swift` | Repositorio en memoria. |
 
 | Pantallas reales | `DrawPadUITests/CanvasUITests.swift` | Lanza la app en el simulador (con `-uiTesting`: base de datos vacía en memoria), crea dibujos, navega y toca el lienzo con el "dedo". |
