@@ -22,8 +22,11 @@ protocol DrawingCanvas: AnyObject {
     func redo()
     /// `false`: solo dibuja el Apple Pencil (el dedo no deja trazo).
     func setFingerDrawingEnabled(_ enabled: Bool)
-    /// El dibujo como PNG con fondo blanco, o `nil` si está vacío.
+    /// Cambia el papel de fondo. No afecta a los trazos.
+    func setBackground(_ background: CanvasBackground)
+    /// El dibujo como PNG sobre su papel de fondo, o `nil` si está vacío.
     func renderPNG() -> Data?
-    /// Versión pequeña del dibujo para la galería, o `nil` si está vacío.
+    /// Versión pequeña del dibujo para la galería, siempre sobre blanco
+    /// (el patrón en pequeño ensucia la miniatura); `nil` si está vacío.
     func renderThumbnail() -> Data?
 }

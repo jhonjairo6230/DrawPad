@@ -19,6 +19,7 @@ import Observation
 final class CanvasViewModel {
     private(set) var title = ""
     private(set) var isFingerDrawingEnabled = false
+    private(set) var background = CanvasBackground.blank
     private(set) var isExporting = false
     var alert: AlertMessage?
 
@@ -26,6 +27,7 @@ final class CanvasViewModel {
     private let canvas: DrawingCanvas
     private let loadDrawing: LoadDrawingUseCase
     private let saveDrawing: SaveDrawingUseCase
+    private let changeBackground: ChangeBackgroundUseCase
     private let exportDrawing: ExportDrawingUseCase
     private let autosaveDelay: Duration
 
@@ -38,6 +40,7 @@ final class CanvasViewModel {
         canvas: DrawingCanvas,
         loadDrawing: LoadDrawingUseCase,
         saveDrawing: SaveDrawingUseCase,
+        changeBackground: ChangeBackgroundUseCase,
         exportDrawing: ExportDrawingUseCase,
         autosaveDelay: Duration = .seconds(1)
     ) {
@@ -45,6 +48,7 @@ final class CanvasViewModel {
         self.canvas = canvas
         self.loadDrawing = loadDrawing
         self.saveDrawing = saveDrawing
+        self.changeBackground = changeBackground
         self.exportDrawing = exportDrawing
         self.autosaveDelay = autosaveDelay
         canvas.onDrawingChanged = { [weak self] in
@@ -65,6 +69,8 @@ final class CanvasViewModel {
         do {
             let drawing = try loadDrawing.execute(id: drawingID)
             title = drawing.title
+            background = drawing.background
+            canvas.setBackground(background)
             // Al cargar, el lienzo avisa de un "cambio" que no hay que guardar.
             isRestoring = true
             defer { isRestoring = false }
@@ -89,6 +95,18 @@ final class CanvasViewModel {
     func toggleFingerDrawing() {
         isFingerDrawingEnabled.toggle()
         canvas.setFingerDrawingEnabled(isFingerDrawingEnabled)
+    }
+
+    /// Cambia el papel de fondo y lo guarda al momento (no espera al autoguardado).
+    func setBackground(_ newBackground: CanvasBackground) {
+        guard newBackground != background else { return }
+        do {
+            try changeBackground.execute(id: drawingID, background: newBackground)
+            background = newBackground
+            canvas.setBackground(newBackground)
+        } catch {
+            alert = AlertMessage(error: error)
+        }
     }
 
     func clear() {

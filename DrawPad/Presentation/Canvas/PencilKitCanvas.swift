@@ -8,8 +8,12 @@ import UIKit
 /// paleta de herramientas del Apple Pencil (ver docs/adr/0005-pencilkit.md).
 @MainActor
 final class PencilKitCanvas: NSObject, DrawingCanvas {
-    /// La vista que SwiftUI muestra a través de ``PencilCanvasView``.
-    let canvasView = PKCanvasView()
+    /// La vista que SwiftUI muestra a través de ``PencilCanvasView``: el papel
+    /// de fondo y, encima, el lienzo transparente de PencilKit.
+    let view = UIView()
+    private let paperView = UIView()
+    private let canvasView = PKCanvasView()
+    private var background = CanvasBackground.blank
     private let toolPicker = PKToolPicker()
 
     var onDrawingChanged: (() -> Void)?
@@ -22,9 +26,17 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
         // Lienzo siempre claro: en modo oscuro PencilKit invierte los colores
         // al mostrarlos y la imagen exportada no coincidiría con lo que se ve.
         canvasView.overrideUserInterfaceStyle = .light
-        canvasView.backgroundColor = .white
-        canvasView.isOpaque = true
+        // Transparente, para que se vea el papel que hay debajo.
+        canvasView.backgroundColor = .clear
+        canvasView.isOpaque = false
         toolPicker.colorUserInterfaceStyle = .light
+
+        paperView.backgroundColor = CanvasBackgroundPattern.color(for: background)
+        for subview in [paperView, canvasView] {
+            subview.frame = view.bounds
+            subview.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            view.addSubview(subview)
+        }
     }
 
     /// Muestra la paleta flotante de herramientas. Debe llamarse cuando el
@@ -64,15 +76,20 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
         canvasView.drawingPolicy = enabled ? .anyInput : .pencilOnly
     }
 
+    func setBackground(_ background: CanvasBackground) {
+        self.background = background
+        paperView.backgroundColor = CanvasBackgroundPattern.color(for: background)
+    }
+
     func renderPNG() -> Data? {
-        renderImage(scale: canvasView.traitCollection.displayScale)?.pngData()
+        renderImage(scale: canvasView.traitCollection.displayScale, paper: background)?.pngData()
     }
 
     func renderThumbnail() -> Data? {
         let longestSide = max(renderRect.width, renderRect.height)
         guard longestSide > 0 else { return nil }
         // Como mucho `thumbnailMaxSide` píxeles en el lado más largo.
-        return renderImage(scale: min(1, Self.thumbnailMaxSide / longestSide))?.pngData()
+        return renderImage(scale: min(1, Self.thumbnailMaxSide / longestSide), paper: .blank)?.pngData()
     }
 
     // MARK: - Renderizado
@@ -84,8 +101,8 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
         canvasView.bounds.union(canvasView.drawing.bounds)
     }
 
-    /// El dibujo sobre fondo blanco. `scale` = píxeles por punto.
-    private func renderImage(scale: CGFloat) -> UIImage? {
+    /// El dibujo sobre el papel indicado. `scale` = píxeles por punto.
+    private func renderImage(scale: CGFloat, paper: CanvasBackground) -> UIImage? {
         let drawing = canvasView.drawing
         let rect = renderRect
         guard !drawing.strokes.isEmpty, rect.width > 0, rect.height > 0 else { return nil }
@@ -95,7 +112,7 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
         format.opaque = true
 
         return UIGraphicsImageRenderer(bounds: rect, format: format).image { context in
-            UIColor.white.setFill()
+            CanvasBackgroundPattern.color(for: paper).setFill()
             context.fill(rect)
             drawing.image(from: rect, scale: scale).draw(in: rect)
         }

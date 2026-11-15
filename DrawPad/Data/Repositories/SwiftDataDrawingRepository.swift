@@ -46,7 +46,9 @@ final class SwiftDataDrawingRepository: DrawingRepository {
                     strokesData: $0.strokesData,
                     thumbnailData: $0.thumbnailData,
                     createdAt: $0.createdAt,
-                    updatedAt: $0.updatedAt
+                    updatedAt: $0.updatedAt,
+                    // Sin valor (dibujo anterior a los fondos) o valor desconocido: blanco.
+                    background: $0.backgroundRaw.flatMap(CanvasBackground.init(rawValue:)) ?? .blank
                 )
             }
         }
@@ -59,6 +61,7 @@ final class SwiftDataDrawingRepository: DrawingRepository {
                 existing.strokesData = drawing.strokesData
                 existing.thumbnailData = drawing.thumbnailData
                 existing.updatedAt = drawing.updatedAt
+                existing.backgroundRaw = drawing.background.rawValue
             } else {
                 context.insert(DrawingRecord(
                     id: drawing.id,
@@ -66,7 +69,8 @@ final class SwiftDataDrawingRepository: DrawingRepository {
                     strokesData: drawing.strokesData,
                     thumbnailData: drawing.thumbnailData,
                     createdAt: drawing.createdAt,
-                    updatedAt: drawing.updatedAt
+                    updatedAt: drawing.updatedAt,
+                    backgroundRaw: drawing.background.rawValue
                 ))
             }
             try context.save()

@@ -23,7 +23,7 @@ final class SwiftDataDrawingRepositoryTests: XCTestCase {
     }
 
     func testSaveThenFindReturnsTheSameDrawing() throws {
-        let drawing = Drawing.sample(title: "Gato", strokes: "trazos", thumbnail: "mini")
+        let drawing = Drawing.sample(title: "Gato", strokes: "trazos", thumbnail: "mini", background: .dots)
 
         try repository.save(drawing)
 
@@ -37,6 +37,7 @@ final class SwiftDataDrawingRepositoryTests: XCTestCase {
         drawing.title = "Nuevo"
         drawing.strokesData = Data("nuevo".utf8)
         drawing.updatedAt = Date(timeIntervalSince1970: 200)
+        drawing.background = .lines
         try repository.save(drawing)
 
         XCTAssertEqual(try repository.list().count, 1)
@@ -50,6 +51,31 @@ final class SwiftDataDrawingRepositoryTests: XCTestCase {
         try repository.save(new)
 
         XCTAssertEqual(try repository.list(), [new.summary, old.summary])
+    }
+
+    func testARecordWithoutBackgroundIsReadAsBlank() throws {
+        // Así quedan los dibujos guardados antes de que existieran los fondos.
+        let id = UUID()
+        let context = ModelContext(container)
+        context.insert(DrawingRecord(
+            id: id, title: "Antiguo", strokesData: Data(), thumbnailData: nil,
+            createdAt: Date(), updatedAt: Date(), backgroundRaw: nil
+        ))
+        try context.save()
+
+        XCTAssertEqual(try repository.find(id: id)?.background, .blank)
+    }
+
+    func testAnUnknownBackgroundIsReadAsBlank() throws {
+        let id = UUID()
+        let context = ModelContext(container)
+        context.insert(DrawingRecord(
+            id: id, title: "Raro", strokesData: Data(), thumbnailData: nil,
+            createdAt: Date(), updatedAt: Date(), backgroundRaw: "hexagonos"
+        ))
+        try context.save()
+
+        XCTAssertEqual(try repository.find(id: id)?.background, .blank)
     }
 
     func testDeleteRemovesOnlyThatDrawing() throws {

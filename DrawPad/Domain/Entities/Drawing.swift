@@ -16,4 +16,6 @@ struct Drawing: Equatable, Identifiable {
     let createdAt: Date
     /// Momento del último cambio en los trazos.
     var updatedAt: Date
+    /// Papel de fondo. No forma parte de los trazos: se puede cambiar sin tocarlos.
+    var background: CanvasBackground = .blank
 }

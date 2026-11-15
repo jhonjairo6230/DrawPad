@@ -81,7 +81,44 @@ final class CanvasUITests: XCTestCase {
         assertAppIsRunning()
     }
 
+    func testChangingTheBackgroundSurvivesReopeningTheDrawing() {
+        openNewDrawing()
+
+        chooseBackground("Cuadrícula")
+        app.buttons["Dibujar con el dedo"].tap()
+        dragOnCanvas()
+        goBackToGallery()
+        app.buttons["Dibujo 1"].tap()
+        XCTAssertTrue(app.buttons["Fondo"].waitForExistence(timeout: 5))
+
+        // El menú marca como seleccionado el fondo guardado.
+        app.buttons["Fondo"].tap()
+        let grid = app.buttons["Cuadrícula"]
+        XCTAssertTrue(grid.waitForExistence(timeout: 5))
+        XCTAssertTrue(grid.isSelected)
+        grid.tap()
+        assertAppIsRunning()
+    }
+
+    func testEveryBackgroundCanBeChosenWithoutCrashing() {
+        openNewDrawing()
+
+        for title in ["Cuadrícula", "Líneas", "Puntos", "Blanco"] {
+            chooseBackground(title)
+        }
+        tapCanvas()
+
+        assertAppIsRunning()
+    }
+
     // MARK: - Utilidades
+
+    private func chooseBackground(_ title: String) {
+        app.buttons["Fondo"].tap()
+        let option = app.buttons[title]
+        XCTAssertTrue(option.waitForExistence(timeout: 5))
+        option.tap()
+    }
 
     private func openNewDrawing() {
         let newDrawing = app.buttons["Nuevo dibujo"]

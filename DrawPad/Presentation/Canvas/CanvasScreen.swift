@@ -73,6 +73,20 @@ struct CanvasScreen: View {
             }
             .toggleStyle(.button)
 
+            Menu {
+                Picker("Fondo", selection: Binding(
+                    get: { viewModel.background },
+                    set: { viewModel.setBackground($0) }
+                )) {
+                    ForEach(CanvasBackground.allCases, id: \.self) { background in
+                        Label(background.title, systemImage: background.symbolName)
+                            .tag(background)
+                    }
+                }
+            } label: {
+                Label("Fondo", systemImage: "square.grid.3x3")
+            }
+
             Button(role: .destructive) { isConfirmingClear = true } label: {
                 Label("Borrar todo", systemImage: "trash")
             }
