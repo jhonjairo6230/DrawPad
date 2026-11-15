@@ -13,6 +13,7 @@ desde Windows. No está pensada para publicarse en el App Store.
 - **Galería de dibujos**: crear, abrir, renombrar y eliminar, con miniaturas.
 - **Base de datos local** (SwiftData): todo se guarda en el iPad, con
   autoguardado mientras dibujas.
+- **Papel de fondo** por dibujo: blanco, cuadrícula, líneas o puntos.
 - Deshacer y rehacer.
 - **Dibujar con el dedo** (opcional; por defecto solo dibuja el Pencil).
 - Borrar todo, con confirmación.

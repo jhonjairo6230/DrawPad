@@ -13,6 +13,9 @@ Glosario para estudiar el código. Cada entrada dice qué es y dónde verlo.
 | `@Bindable` | Permite crear enlaces de escritura (`$viewModel.x`) a un objeto `@Observable`. | `CanvasScreen` |
 | `@Environment(\.scenePhase)` | Estado de la app: activa, inactiva o en segundo plano. | `CanvasScreen` |
 | `UIViewRepresentable` | Protocolo para usar una vista de UIKit dentro de SwiftUI. | `PencilCanvasView.swift` |
+| `Menu` + `Picker` | Menú desplegable con una opción marcada. | Menú "Fondo" en `CanvasScreen` |
+| `UIColor(patternImage:)` | Un "color" que en realidad es una imagen pequeña repetida. | `CanvasBackgroundPattern.swift` |
+| `UIGraphicsImageRenderer` | Dibuja en una imagen con Core Graphics. | Baldosas de fondo y exportación |
 | `protocol` | Contrato sin implementación. Base de la inversión de dependencias. | `DrawingRepository`, `ImageLibrary`, `DrawingCanvas` |
 | `async` / `await` | Código asíncrono que se lee como secuencial. | `export()` en el ViewModel |
 | `Task` | Unidad de trabajo asíncrono; se puede cancelar. | Autoguardado en `CanvasViewModel` |

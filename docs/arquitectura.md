@@ -23,8 +23,8 @@ flowchart TB
         P4["PencilKitCanvas<br/>PencilCanvasView"]
     end
     subgraph DOM["Domain — Swift puro"]
-        D1["Casos de uso<br/>List / Create / Load / Save<br/>Rename / Delete / Export"]
-        D2["Drawing · DrawingSummary<br/>DrawingError"]
+        D1["Casos de uso<br/>List / Create / Load / Save<br/>Rename / Delete / ChangeBackground / Export"]
+        D2["Drawing · DrawingSummary<br/>CanvasBackground · DrawingError"]
         D3["DrawingRepository<br/>ImageLibrary<br/>(protocolos)"]
     end
     subgraph DATA["Data — detalles técnicos"]
@@ -83,7 +83,8 @@ DrawPad/
 │   └── AppContainer.swift          Crea y conecta las dependencias
 ├── Domain/
 │   ├── Entities/
-│   │   ├── Drawing.swift           El dibujo completo: título, trazos, miniatura, fechas
+│   │   ├── Drawing.swift           El dibujo completo: título, trazos, miniatura, fondo, fechas
+│   │   ├── CanvasBackground.swift  Papel de fondo: blanco, cuadrícula, líneas, puntos
 │   │   └── DrawingSummary.swift    Lo justo para la galería (sin trazos)
 │   ├── Errors/DrawingError.swift   Errores con mensaje para el usuario
 │   ├── Repositories/               Puertos (protocolos)
@@ -96,6 +97,7 @@ DrawPad/
 │       ├── SaveDrawingUseCase.swift
 │       ├── RenameDrawingUseCase.swift
 │       ├── DeleteDrawingUseCase.swift
+│       ├── ChangeBackgroundUseCase.swift
 │       └── ExportDrawingUseCase.swift
 ├── Data/
 │   ├── Persistence/
@@ -114,6 +116,8 @@ DrawPad/
 │   │   ├── CanvasModule.swift      ViewModel + lienzo de un dibujo abierto
 │   │   ├── DrawingCanvas.swift     Puerto: lo que el ViewModel pide al lienzo
 │   │   ├── PencilKitCanvas.swift   Adaptador de PencilKit
+│   │   ├── CanvasBackgroundPattern.swift        Dibuja la baldosa de cada papel
+│   │   ├── CanvasBackground+Presentation.swift  Título e icono de cada papel
 │   │   └── PencilCanvasView.swift  Puente SwiftUI ↔ UIKit
 │   └── Common/AlertMessage.swift
 └── Resources/Assets.xcassets       Icono de la app
@@ -162,12 +166,14 @@ classDiagram
         <<Observable>>
         +title String
         +isFingerDrawingEnabled Bool
+        +background CanvasBackground
         +isExporting Bool
         +alert AlertMessage?
         +onAppear()
         +undo()
         +redo()
         +toggleFingerDrawing()
+        +setBackground(CanvasBackground)
         +clear()
         +export()
         +flushPendingSave()
@@ -182,11 +188,12 @@ classDiagram
         +undo()
         +redo()
         +setFingerDrawingEnabled(Bool)
+        +setBackground(CanvasBackground)
         +renderPNG() Data?
         +renderThumbnail() Data?
     }
     class PencilKitCanvas {
-        +canvasView PKCanvasView
+        +view UIView
         +showToolPicker()
     }
     class UseCases {
@@ -197,6 +204,7 @@ classDiagram
         SaveDrawing
         RenameDrawing
         DeleteDrawing
+        ChangeBackground
         ExportDrawing
     }
     class DrawingRepository {
@@ -218,6 +226,7 @@ classDiagram
         +thumbnailData Data?
         +createdAt Date
         +updatedAt Date
+        +background CanvasBackground
     }
     class DrawingSummary {
         <<struct>>
@@ -319,6 +328,7 @@ sequenceDiagram
     VM->>R: LoadDrawingUseCase.execute(id)
     alt el dibujo existe
         R-->>VM: Drawing
+        VM->>K: setBackground(fondo guardado)
         VM->>K: load(strokesData)
         Note over VM,K: isRestoring evita que esta carga<br/>dispare un autoguardado
     else ya no existe o falla la lectura
@@ -422,7 +432,38 @@ sequenceDiagram
     end
 ```
 
-### 5.6 Guardar en Fotos
+### 5.6 Cambiar el papel de fondo
+
+El fondo se guarda **al momento**, sin esperar al autoguardado: es un cambio
+puntual, no una ráfaga como los trazos.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Usuario
+    participant V as CanvasScreen
+    participant VM as CanvasViewModel
+    participant UC as ChangeBackgroundUseCase
+    participant R as DrawingRepository
+    participant K as PencilKitCanvas
+
+    U->>V: menú "Fondo", elige "Cuadrícula"
+    V->>VM: setBackground(.grid)
+    VM->>UC: execute(id, .grid)
+    UC->>R: find(id) y save(con el fondo nuevo)
+    alt se guardó
+        VM->>VM: background = .grid
+        VM->>K: setBackground(.grid)
+        K->>K: pinta el papel bajo el lienzo transparente
+        VM-->>V: el menú marca "Cuadrícula"
+    else falla el guardado
+        R-->>UC: lanza storageFailed
+        UC-->>VM: lanza storageFailed
+        VM-->>V: alerta, el fondo anterior se mantiene
+    end
+```
+
+### 5.7 Guardar en Fotos
 
 ```mermaid
 sequenceDiagram
@@ -442,7 +483,7 @@ sequenceDiagram
         K-->>VM: nil
         VM-->>V: alert = "El lienzo está vacío…"
     else hay trazos
-        K-->>VM: PNG con fondo blanco
+        K-->>VM: PNG sobre el papel de fondo elegido
         VM->>VM: isExporting = true
         VM->>UC: execute(pngData)
         UC->>X: addPNG(pngData)
@@ -486,6 +527,17 @@ librería: `AppContainer` crea todo y lo pasa por los `init`.
 `@Model` que SwiftData sabe guardar. El repositorio convierte entre ambos.
 Cuesta unas líneas de mapeo y evita que SwiftData se cuele en el dominio y en
 las vistas (ver [ADR 0007](adr/0007-swiftdata.md)).
+
+**El papel de fondo no es parte de los trazos.** `PencilKitCanvas` muestra
+dos vistas apiladas: abajo el papel (un color con patrón repetido) y arriba
+el `PKCanvasView` transparente. Cambiar de papel no toca el dibujo, y al
+exportar se pinta primero el papel y luego los trazos. Las miniaturas van
+siempre sobre blanco: el patrón reducido las ensucia.
+
+**La columna del fondo es opcional en la base de datos.** `DrawingRecord`
+guarda `backgroundRaw: String?`. Al ser opcional, SwiftData la añade sola a
+las bases de datos ya instaladas (migración ligera); los dibujos antiguos la
+tienen vacía y se leen como "blanco".
 
 **`DrawingSummary` para listar.** La galería no necesita los trazos, solo
 título, fecha y miniatura. Así abrir la galería no carga todos los dibujos.
