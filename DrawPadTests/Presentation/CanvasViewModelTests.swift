@@ -260,6 +260,33 @@ final class CanvasViewModelTests: XCTestCase {
         XCTAssertEqual(canvas.redoCount, 2)
     }
 
+    // MARK: - Suavizar
+
+    func testSmoothStrokesSmoothsTheCanvasAndSavesTheResult() {
+        let viewModel = makeViewModel()
+        viewModel.onAppear()
+        canvas.simulateStroke(Data("tembloroso".utf8))
+        viewModel.flushPendingSave()
+        let savesBefore = repository.saveCount
+
+        viewModel.smoothStrokes()
+        XCTAssertTrue(viewModel.hasPendingChanges)
+        viewModel.flushPendingSave()
+
+        XCTAssertEqual(canvas.smoothCount, 1)
+        XCTAssertEqual(repository.saveCount, savesBefore + 1)
+    }
+
+    func testSmoothStrokesDoesNothingOnAnEmptyPage() {
+        let viewModel = makeViewModel()
+        viewModel.onAppear()
+
+        viewModel.smoothStrokes()
+
+        XCTAssertEqual(canvas.smoothCount, 0)
+        XCTAssertFalse(viewModel.hasPendingChanges)
+    }
+
     // MARK: - Exportar
 
     func testExportSendsThePNGToTheLibraryAndConfirms() async {

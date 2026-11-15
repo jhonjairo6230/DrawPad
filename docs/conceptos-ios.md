@@ -34,6 +34,9 @@ Glosario para estudiar el código. Cada entrada dice qué es y dónde verlo.
 | ---- | ------ |
 | `PKCanvasView` | La vista donde se dibuja. Captura el Apple Pencil con baja latencia, presión e inclinación. |
 | `PKDrawing` | El dibujo como dato: una lista de trazos (`strokes`). Se serializa con `dataRepresentation()` y se convierte en imagen con `image(from:scale:)`. |
+| `PKStroke` | Un trazo: tinta (`ink`), recorrido (`path`), transformación y máscara (lo que el borrador le quitó). |
+| `PKStrokePath` | El recorrido de un trazo: una curva definida por puntos de control (`PKStrokePoint`), cada uno con posición, grosor, opacidad y presión. |
+| `UndoManager` | El historial de deshacer. PencilKit apunta solo lo que dibuja el usuario; los cambios hechos por código hay que registrarlos con `registerUndo`. |
 | `PKToolPicker` | La paleta flotante de herramientas (lápiz, rotulador, borrador, regla, colores). |
 | `PKCanvasViewDelegate` | Avisa de cambios; DrawPad usa `canvasViewDrawingDidChange`. |
 | Zoom | `PKCanvasView` es un `UIScrollView`: con `minimumZoomScale`, `maximumZoomScale` y `contentSize` ya amplía y se desplaza. |

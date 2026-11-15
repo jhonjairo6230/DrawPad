@@ -143,6 +143,7 @@ DrawPad/
 │   │   ├── DrawingCanvas.swift     Puerto: lo que el ViewModel pide al lienzo
 │   │   ├── PencilKitCanvas.swift   Adaptador de PencilKit
 │   │   ├── CanvasGeometry.swift    Cuentas del zoom: tamaño de hoja y posición del papel
+│   │   ├── StrokeSmoother.swift    Suavizado de trazos (media móvil sobre puntos)
 │   │   ├── CanvasBackgroundPattern.swift        Dibuja la baldosa de cada papel
 │   │   ├── CanvasBackground+Presentation.swift  Título e icono de cada papel
 │   │   └── PencilCanvasView.swift  Puente SwiftUI ↔ UIKit
@@ -162,7 +163,8 @@ DrawPadTests/
     ├── GalleryViewModelTests.swift
     ├── NotebookViewModelTests.swift
     ├── CanvasViewModelTests.swift
-    └── CanvasGeometryTests.swift
+    ├── CanvasGeometryTests.swift
+    └── StrokeSmootherTests.swift
 
 DrawPadUITests/
 └── CanvasUITests.swift             Toca la app real en el simulador
@@ -232,6 +234,7 @@ classDiagram
         +onAppear()
         +undo()
         +redo()
+        +smoothStrokes()
         +toggleFingerDrawing()
         +setBackground(CanvasBackground)
         +setTheme(CanvasTheme)
@@ -254,6 +257,7 @@ classDiagram
         +clear()
         +undo()
         +redo()
+        +smoothStrokes()
         +setFingerDrawingEnabled(Bool)
         +setBackground(CanvasBackground, CanvasTheme)
         +renderPNG() Data?
@@ -675,6 +679,42 @@ sequenceDiagram
     end
 ```
 
+### 5.9 Suavizar trazos
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Usuario
+    participant V as CanvasScreen
+    participant VM as CanvasViewModel
+    participant K as PencilKitCanvas
+    participant S as StrokeSmoother
+    participant UM as Historial de deshacer
+
+    U->>V: menú "Más", "Suavizar trazos"
+    V->>VM: smoothStrokes()
+    alt hoja vacía
+        Note over VM: no hace nada
+    else hay trazos
+        VM->>K: smoothStrokes()
+        loop cada trazo
+            K->>S: smooth(posiciones de sus puntos de control)
+            S-->>K: posiciones suavizadas, extremos intactos
+            K->>K: reconstruye el trazo con la misma tinta y presión
+        end
+        K->>UM: registra "volver al dibujo anterior"
+        K->>K: reemplaza el dibujo
+        K->>VM: onDrawingChanged()
+        Note over VM: el autoguardado lo guarda<br/>como cualquier otro cambio
+    end
+    opt se arrepiente
+        U->>V: "Deshacer"
+        V->>VM: undo()
+        VM->>K: undo()
+        K->>UM: recupera el dibujo anterior (y registra el rehacer)
+    end
+```
+
 ## 6. Decisiones de diseño que conviene entender
 
 **El dominio no conoce PencilKit.** `Drawing.strokesData` es `Data` opaco.
@@ -715,6 +755,15 @@ dos vistas apiladas: abajo el papel (un color con patrón repetido) y arriba
 el `PKCanvasView` transparente. Cambiar de papel no toca el dibujo, y al
 exportar se pinta primero el papel y luego los trazos. Las miniaturas van
 sobre papel liso: el patrón reducido las ensucia.
+
+**Suavizar es una operación del lienzo, con el algoritmo aparte.** El
+ViewModel solo pide `smoothStrokes()`; cómo se recorre y reconstruye cada
+trazo es asunto de PencilKit y vive en el adaptador. La matemática (una
+media móvil sobre puntos) está en `StrokeSmoother`, sin PencilKit, con
+pruebas numéricas. Reemplazar el dibujo a mano no se puede deshacer por
+defecto, así que el adaptador lo registra él mismo en el historial; "Borrar
+todo" usa el mismo camino y también se puede deshacer
+(ver [ADR 0011](adr/0011-suavizar-trazos.md)).
 
 **Zoom y desplazamiento son cosa del adaptador.** `PKCanvasView` es un
 `UIScrollView`: basta con darle límites de zoom y un tamaño de contenido.
@@ -790,6 +839,7 @@ la interfaz va en el hilo principal). El temporizador de autoguardado es una
 | Archivos para compartir | `Data/TemporaryExportFileStoreTests.swift` | Carpeta temporal real. |
 | ViewModel del lienzo | `Presentation/CanvasViewModelTests.swift` | Lienzo falso; el autoguardado se prueba con un retardo de milisegundos. |
 | Cuentas del zoom | `Presentation/CanvasGeometryTests.swift` | Funciones puras, sin vistas. |
+| Suavizado | `Presentation/StrokeSmootherTests.swift` | Líneas de ejemplo: una recta no cambia, un zigzag se aplana, los extremos no se mueven. |
 | ViewModel de la galería | `Presentation/GalleryViewModelTests.swift` | Biblioteca en memoria. |
 | ViewModel del cuaderno | `Presentation/NotebookViewModelTests.swift` | Biblioteca en memoria y hojas abiertas falsas. |
 

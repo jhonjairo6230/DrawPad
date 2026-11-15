@@ -17,9 +17,12 @@ protocol DrawingCanvas: AnyObject {
     /// Reemplaza el contenido del lienzo por unos trazos guardados.
     /// Unos datos vacíos dejan el lienzo en blanco.
     func load(_ strokesData: Data) throws
+    /// Borra todos los trazos. Se puede deshacer.
     func clear()
     func undo()
     func redo()
+    /// Reduce el temblor de todos los trazos. Se puede deshacer.
+    func smoothStrokes()
     /// `false`: solo dibuja el Apple Pencil (el dedo no deja trazo).
     func setFingerDrawingEnabled(_ enabled: Bool)
     /// Cambia el papel: su patrón y si es claro u oscuro. No modifica los

@@ -120,7 +120,7 @@ final class CanvasUITests: XCTestCase {
 
         app.buttons["Deshacer"].tap()
         app.buttons["Rehacer"].tap()
-        app.buttons["Borrar todo"].tap()
+        chooseMoreAction("Borrar todo")
         app.buttons["Borrar todo"].firstMatch.tap()
         tapCanvas()
 
@@ -167,6 +167,35 @@ final class CanvasUITests: XCTestCase {
         app.buttons["Cuaderno 1"].tap()
         XCTAssertTrue(app.buttons["Fondo"].waitForExistence(timeout: 5))
         chooseBackground("Papel oscuro")
+
+        assertAppIsRunning()
+    }
+
+    // MARK: - Suavizar
+
+    func testSmoothingStrokesCanBeRepeatedAndUndone() {
+        openNewNotebook()
+        app.buttons["Dibujar con el dedo"].tap()
+        dragOnCanvas()
+        canvasPoint(0.3, 0.7).press(forDuration: 0.1, thenDragTo: canvasPoint(0.6, 0.3))
+
+        chooseMoreAction("Suavizar trazos")
+        chooseMoreAction("Suavizar trazos")
+        app.buttons["Deshacer"].tap()
+        app.buttons["Rehacer"].tap()
+        dragOnCanvas()
+
+        goBackToGallery()
+        app.buttons["Cuaderno 1"].tap()
+        XCTAssertTrue(app.buttons["Compartir"].waitForExistence(timeout: 5))
+        assertAppIsRunning()
+    }
+
+    func testSmoothingAnEmptyPageDoesNotCrash() {
+        openNewNotebook()
+
+        chooseMoreAction("Suavizar trazos")
+        tapCanvas()
 
         assertAppIsRunning()
     }
@@ -244,6 +273,14 @@ final class CanvasUITests: XCTestCase {
     private func goBackToGallery() {
         app.navigationBars.buttons["Cuadernos"].tap()
         XCTAssertTrue(app.buttons["Nuevo cuaderno"].waitForExistence(timeout: 5))
+    }
+
+    /// Abre el menú "Más" del lienzo y elige una acción.
+    private func chooseMoreAction(_ title: String) {
+        app.buttons["Más"].tap()
+        let action = app.buttons[title]
+        XCTAssertTrue(action.waitForExistence(timeout: 5))
+        action.tap()
     }
 
     /// Abre el menú de hojas (el título de la barra) y elige una acción.

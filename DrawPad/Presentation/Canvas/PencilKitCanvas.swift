@@ -77,8 +77,12 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
     }
 
     func clear() {
-        canvasView.drawing = PKDrawing()
-        updatePageSize()
+        replaceDrawing(with: PKDrawing())
+    }
+
+    func smoothStrokes() {
+        let smoothed = canvasView.drawing.strokes.map(Self.smoothed)
+        replaceDrawing(with: PKDrawing(strokes: smoothed))
     }
 
     func undo() {
@@ -143,6 +147,48 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
     /// depende del zoom ni de qué parte se esté viendo.
     private var renderRect: CGRect {
         CGRect(origin: .zero, size: pageSize)
+    }
+
+    // MARK: - Suavizado
+
+    /// El mismo trazo (tinta, grosor, presión) con el recorrido suavizado.
+    ///
+    /// Un trazo de PencilKit es una curva definida por puntos de control;
+    /// se suavizan sus posiciones con ``StrokeSmoother`` y se reconstruye.
+    private static func smoothed(_ stroke: PKStroke) -> PKStroke {
+        let points = Array(stroke.path)
+        let locations = StrokeSmoother.smooth(points.map(\.location))
+        let controlPoints = zip(points, locations).map { point, location in
+            PKStrokePoint(
+                location: location,
+                timeOffset: point.timeOffset,
+                size: point.size,
+                opacity: point.opacity,
+                force: point.force,
+                azimuth: point.azimuth,
+                altitude: point.altitude
+            )
+        }
+        return PKStroke(
+            ink: stroke.ink,
+            path: PKStrokePath(controlPoints: controlPoints, creationDate: stroke.path.creationDate),
+            transform: stroke.transform,
+            mask: stroke.mask
+        )
+    }
+
+    /// Cambia el dibujo entero y lo apunta en el historial de deshacer.
+    ///
+    /// Asignar `drawing` a mano no se puede deshacer por sí solo (PencilKit
+    /// solo registra lo que dibuja el usuario). Al deshacer se vuelve a
+    /// llamar a este método con el dibujo anterior, y eso registra el rehacer.
+    private func replaceDrawing(with newDrawing: PKDrawing) {
+        let previous = canvasView.drawing
+        canvasView.undoManager?.registerUndo(withTarget: self) { canvas in
+            canvas.replaceDrawing(with: previous)
+        }
+        canvasView.drawing = newDrawing
+        updatePageSize()
     }
 
     // MARK: - Zoom y desplazamiento
