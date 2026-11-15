@@ -10,6 +10,7 @@ final class FakeDrawingCanvas: DrawingCanvas {
     var thumbnail: Data? = Data("mini".utf8)
     private(set) var isFingerDrawingEnabled: Bool?
     private(set) var background: CanvasBackground?
+    private(set) var theme: CanvasTheme?
     private(set) var undoCount = 0
     private(set) var redoCount = 0
 
@@ -35,8 +36,9 @@ final class FakeDrawingCanvas: DrawingCanvas {
         isFingerDrawingEnabled = enabled
     }
 
-    func setBackground(_ background: CanvasBackground) {
+    func setBackground(_ background: CanvasBackground, theme: CanvasTheme) {
         self.background = background
+        self.theme = theme
     }
 
     func renderPNG() -> Data? {

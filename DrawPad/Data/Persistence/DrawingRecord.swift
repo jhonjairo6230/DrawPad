@@ -21,8 +21,10 @@ final class DrawingRecord {
     /// creadas antes de que existieran los fondos no tienen esta columna, y
     /// SwiftData solo sabe añadirla sola si puede dejarla vacía (`nil`).
     var backgroundRaw: String?
+    /// `CanvasTheme.rawValue`. Opcional por el mismo motivo.
+    var themeRaw: String?
 
-    init(id: UUID, title: String, strokesData: Data, thumbnailData: Data?, createdAt: Date, updatedAt: Date, backgroundRaw: String?) {
+    init(id: UUID, title: String, strokesData: Data, thumbnailData: Data?, createdAt: Date, updatedAt: Date, backgroundRaw: String?, themeRaw: String?) {
         self.id = id
         self.title = title
         self.strokesData = strokesData
@@ -30,5 +32,6 @@ final class DrawingRecord {
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.backgroundRaw = backgroundRaw
+        self.themeRaw = themeRaw
     }
 }

@@ -107,6 +107,20 @@ final class CanvasUITests: XCTestCase {
             chooseBackground(title)
         }
         tapCanvas()
+        assertAppIsRunning()
+    }
+
+    func testDrawingOnDarkPaperDoesNotCrash() {
+        openNewDrawing()
+
+        chooseBackground("Papel oscuro")
+        chooseBackground("Puntos")
+        app.buttons["Dibujar con el dedo"].tap()
+        dragOnCanvas()
+        goBackToGallery()
+        app.buttons["Dibujo 1"].tap()
+        XCTAssertTrue(app.buttons["Fondo"].waitForExistence(timeout: 5))
+        chooseBackground("Papel oscuro")
 
         assertAppIsRunning()
     }
@@ -115,7 +129,9 @@ final class CanvasUITests: XCTestCase {
 
     private func chooseBackground(_ title: String) {
         app.buttons["Fondo"].tap()
-        let option = app.buttons[title]
+        // Según la versión de iOS, un interruptor dentro de un menú puede ser
+        // un botón o un switch: se busca por nombre, sea del tipo que sea.
+        let option = app.descendants(matching: .any).matching(identifier: title).firstMatch
         XCTAssertTrue(option.waitForExistence(timeout: 5))
         option.tap()
     }

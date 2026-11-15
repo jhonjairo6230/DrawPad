@@ -10,6 +10,7 @@ struct DrawingCard: View {
             thumbnail
                 .frame(maxWidth: .infinity)
                 .aspectRatio(4 / 3, contentMode: .fit)
+                // Blanco fijo también en modo oscuro: es "papel", no interfaz.
                 .background(.white)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .overlay {

@@ -20,6 +20,7 @@ final class CanvasViewModel {
     private(set) var title = ""
     private(set) var isFingerDrawingEnabled = false
     private(set) var background = CanvasBackground.blank
+    private(set) var theme = CanvasTheme.light
     private(set) var isExporting = false
     var alert: AlertMessage?
 
@@ -70,7 +71,8 @@ final class CanvasViewModel {
             let drawing = try loadDrawing.execute(id: drawingID)
             title = drawing.title
             background = drawing.background
-            canvas.setBackground(background)
+            theme = drawing.theme
+            canvas.setBackground(background, theme: theme)
             // Al cargar, el lienzo avisa de un "cambio" que no hay que guardar.
             isRestoring = true
             defer { isRestoring = false }
@@ -97,13 +99,25 @@ final class CanvasViewModel {
         canvas.setFingerDrawingEnabled(isFingerDrawingEnabled)
     }
 
-    /// Cambia el papel de fondo y lo guarda al momento (no espera al autoguardado).
+    /// Cambia el patrón del papel (cuadrícula, líneas…).
     func setBackground(_ newBackground: CanvasBackground) {
-        guard newBackground != background else { return }
+        changePaper(background: newBackground, theme: theme)
+    }
+
+    /// Cambia entre papel claro y oscuro.
+    func setTheme(_ newTheme: CanvasTheme) {
+        changePaper(background: background, theme: newTheme)
+    }
+
+    /// Guarda el papel al momento (no espera al autoguardado) y, solo si se
+    /// guardó, lo aplica al lienzo.
+    private func changePaper(background newBackground: CanvasBackground, theme newTheme: CanvasTheme) {
+        guard newBackground != background || newTheme != theme else { return }
         do {
-            try changeBackground.execute(id: drawingID, background: newBackground)
+            try changeBackground.execute(id: drawingID, background: newBackground, theme: newTheme)
             background = newBackground
-            canvas.setBackground(newBackground)
+            theme = newTheme
+            canvas.setBackground(newBackground, theme: newTheme)
         } catch {
             alert = AlertMessage(error: error)
         }

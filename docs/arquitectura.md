@@ -24,7 +24,7 @@ flowchart TB
     end
     subgraph DOM["Domain — Swift puro"]
         D1["Casos de uso<br/>List / Create / Load / Save<br/>Rename / Delete / ChangeBackground / Export"]
-        D2["Drawing · DrawingSummary<br/>CanvasBackground · DrawingError"]
+        D2["Drawing · DrawingSummary<br/>CanvasBackground · CanvasTheme<br/>DrawingError"]
         D3["DrawingRepository<br/>ImageLibrary<br/>(protocolos)"]
     end
     subgraph DATA["Data — detalles técnicos"]
@@ -84,7 +84,8 @@ DrawPad/
 ├── Domain/
 │   ├── Entities/
 │   │   ├── Drawing.swift           El dibujo completo: título, trazos, miniatura, fondo, fechas
-│   │   ├── CanvasBackground.swift  Papel de fondo: blanco, cuadrícula, líneas, puntos
+│   │   ├── CanvasBackground.swift  Patrón del papel: blanco, cuadrícula, líneas, puntos
+│   │   ├── CanvasTheme.swift       Papel claro u oscuro
 │   │   └── DrawingSummary.swift    Lo justo para la galería (sin trazos)
 │   ├── Errors/DrawingError.swift   Errores con mensaje para el usuario
 │   ├── Repositories/               Puertos (protocolos)
@@ -167,6 +168,7 @@ classDiagram
         +title String
         +isFingerDrawingEnabled Bool
         +background CanvasBackground
+        +theme CanvasTheme
         +isExporting Bool
         +alert AlertMessage?
         +onAppear()
@@ -174,6 +176,7 @@ classDiagram
         +redo()
         +toggleFingerDrawing()
         +setBackground(CanvasBackground)
+        +setTheme(CanvasTheme)
         +clear()
         +export()
         +flushPendingSave()
@@ -188,7 +191,7 @@ classDiagram
         +undo()
         +redo()
         +setFingerDrawingEnabled(Bool)
-        +setBackground(CanvasBackground)
+        +setBackground(CanvasBackground, CanvasTheme)
         +renderPNG() Data?
         +renderThumbnail() Data?
     }
@@ -227,6 +230,7 @@ classDiagram
         +createdAt Date
         +updatedAt Date
         +background CanvasBackground
+        +theme CanvasTheme
     }
     class DrawingSummary {
         <<struct>>
@@ -328,7 +332,7 @@ sequenceDiagram
     VM->>R: LoadDrawingUseCase.execute(id)
     alt el dibujo existe
         R-->>VM: Drawing
-        VM->>K: setBackground(fondo guardado)
+        VM->>K: setBackground(patrón y tema guardados)
         VM->>K: load(strokesData)
         Note over VM,K: isRestoring evita que esta carga<br/>dispare un autoguardado
     else ya no existe o falla la lectura
@@ -434,7 +438,11 @@ sequenceDiagram
 
 ### 5.6 Cambiar el papel de fondo
 
-El fondo se guarda **al momento**, sin esperar al autoguardado: es un cambio
+El papel tiene dos ajustes independientes: el **patrón** (blanco, cuadrícula,
+líneas, puntos) y el **tema** (claro u oscuro). El diagrama muestra el
+patrón; "Papel oscuro" sigue el mismo camino con `setTheme`.
+
+El papel se guarda **al momento**, sin esperar al autoguardado: es un cambio
 puntual, no una ráfaga como los trazos.
 
 ```mermaid
@@ -449,11 +457,11 @@ sequenceDiagram
 
     U->>V: menú "Fondo", elige "Cuadrícula"
     V->>VM: setBackground(.grid)
-    VM->>UC: execute(id, .grid)
+    VM->>UC: execute(id, .grid, tema actual)
     UC->>R: find(id) y save(con el fondo nuevo)
     alt se guardó
         VM->>VM: background = .grid
-        VM->>K: setBackground(.grid)
+        VM->>K: setBackground(.grid, tema actual)
         K->>K: pinta el papel bajo el lienzo transparente
         VM-->>V: el menú marca "Cuadrícula"
     else falla el guardado
@@ -532,12 +540,19 @@ las vistas (ver [ADR 0007](adr/0007-swiftdata.md)).
 dos vistas apiladas: abajo el papel (un color con patrón repetido) y arriba
 el `PKCanvasView` transparente. Cambiar de papel no toca el dibujo, y al
 exportar se pinta primero el papel y luego los trazos. Las miniaturas van
-siempre sobre blanco: el patrón reducido las ensucia.
+sobre papel liso: el patrón reducido las ensucia.
+
+**El aspecto del lienzo lo decide el papel, no el sistema.** La app sigue el
+modo claro u oscuro del iPad, pero cada lienzo usa el tema de su dibujo
+(`overrideUserInterfaceStyle`). PencilKit adapta la tinta al aspecto: sobre
+papel oscuro, el negro se muestra blanco. Los trazos guardados no cambian;
+al exportar se fija el mismo aspecto para que la imagen sea lo que se ve
+(ver [ADR 0008](adr/0008-papel-y-tema-por-dibujo.md)).
 
 **La columna del fondo es opcional en la base de datos.** `DrawingRecord`
-guarda `backgroundRaw: String?`. Al ser opcional, SwiftData la añade sola a
-las bases de datos ya instaladas (migración ligera); los dibujos antiguos la
-tienen vacía y se leen como "blanco".
+guarda `backgroundRaw: String?` y `themeRaw: String?`. Al ser opcionales, SwiftData la añade sola a
+las bases de datos ya instaladas (migración ligera); los dibujos antiguos las
+tienen vacías y se leen como papel blanco liso.
 
 **`DrawingSummary` para listar.** La galería no necesita los trazos, solo
 título, fecha y miniatura. Así abrir la galería no carga todos los dibujos.

@@ -45,7 +45,8 @@ extension Drawing {
         strokes: String = "",
         thumbnail: String? = nil,
         updatedAt: Date = Date(timeIntervalSince1970: 100),
-        background: CanvasBackground = .blank
+        background: CanvasBackground = .blank,
+        theme: CanvasTheme = .light
     ) -> Drawing {
         Drawing(
             id: id,
@@ -54,7 +55,8 @@ extension Drawing {
             thumbnailData: thumbnail.map { Data($0.utf8) },
             createdAt: Date(timeIntervalSince1970: 0),
             updatedAt: updatedAt,
-            background: background
+            background: background,
+            theme: theme
         )
     }
 }

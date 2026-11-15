@@ -83,6 +83,13 @@ struct CanvasScreen: View {
                             .tag(background)
                     }
                 }
+                Divider()
+                Toggle(isOn: Binding(
+                    get: { viewModel.theme == .dark },
+                    set: { viewModel.setTheme($0 ? .dark : .light) }
+                )) {
+                    Label("Papel oscuro", systemImage: "moon")
+                }
             } label: {
                 Label("Fondo", systemImage: "square.grid.3x3")
             }

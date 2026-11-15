@@ -120,17 +120,18 @@ final class UseCasesTests: XCTestCase {
         let repository = InMemoryDrawingRepository([drawing])
         let useCase = ChangeBackgroundUseCase(repository: repository)
 
-        try useCase.execute(id: drawing.id, background: .grid)
+        try useCase.execute(id: drawing.id, background: .grid, theme: .dark)
 
         var expected = drawing
         expected.background = .grid
+        expected.theme = .dark
         XCTAssertEqual(repository.drawings[drawing.id], expected)
     }
 
     func testChangeBackgroundFailsWhenTheDrawingDoesNotExist() {
         let useCase = ChangeBackgroundUseCase(repository: InMemoryDrawingRepository())
 
-        XCTAssertThrowsError(try useCase.execute(id: UUID(), background: .dots)) { error in
+        XCTAssertThrowsError(try useCase.execute(id: UUID(), background: .dots, theme: .light)) { error in
             XCTAssertEqual(error as? DrawingError, .drawingNotFound)
         }
     }

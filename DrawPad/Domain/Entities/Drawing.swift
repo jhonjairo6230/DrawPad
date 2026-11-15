@@ -18,4 +18,6 @@ struct Drawing: Equatable, Identifiable {
     var updatedAt: Date
     /// Papel de fondo. No forma parte de los trazos: se puede cambiar sin tocarlos.
     var background: CanvasBackground = .blank
+    /// Papel claro u oscuro.
+    var theme: CanvasTheme = .light
 }

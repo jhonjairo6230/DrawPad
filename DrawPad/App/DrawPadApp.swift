@@ -14,7 +14,6 @@ struct DrawPadApp: App {
                 viewModel: container.galleryViewModel,
                 makeCanvas: container.makeCanvasModule(drawingID:)
             )
-            .preferredColorScheme(.light)
         }
     }
 }

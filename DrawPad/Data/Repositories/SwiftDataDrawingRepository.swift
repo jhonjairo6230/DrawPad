@@ -47,8 +47,9 @@ final class SwiftDataDrawingRepository: DrawingRepository {
                     thumbnailData: $0.thumbnailData,
                     createdAt: $0.createdAt,
                     updatedAt: $0.updatedAt,
-                    // Sin valor (dibujo anterior a los fondos) o valor desconocido: blanco.
-                    background: $0.backgroundRaw.flatMap(CanvasBackground.init(rawValue:)) ?? .blank
+                    // Sin valor (dibujo anterior a los fondos) o valor desconocido: papel blanco liso.
+                    background: $0.backgroundRaw.flatMap(CanvasBackground.init(rawValue:)) ?? .blank,
+                    theme: $0.themeRaw.flatMap(CanvasTheme.init(rawValue:)) ?? .light
                 )
             }
         }
@@ -62,6 +63,7 @@ final class SwiftDataDrawingRepository: DrawingRepository {
                 existing.thumbnailData = drawing.thumbnailData
                 existing.updatedAt = drawing.updatedAt
                 existing.backgroundRaw = drawing.background.rawValue
+                existing.themeRaw = drawing.theme.rawValue
             } else {
                 context.insert(DrawingRecord(
                     id: drawing.id,
@@ -70,7 +72,8 @@ final class SwiftDataDrawingRepository: DrawingRepository {
                     thumbnailData: drawing.thumbnailData,
                     createdAt: drawing.createdAt,
                     updatedAt: drawing.updatedAt,
-                    backgroundRaw: drawing.background.rawValue
+                    backgroundRaw: drawing.background.rawValue,
+                    themeRaw: drawing.theme.rawValue
                 ))
             }
             try context.save()
