@@ -44,7 +44,8 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
     }
 
     func load(_ strokesData: Data) throws {
-        canvasView.drawing = try PKDrawing(data: strokesData)
+        // Un dibujo recién creado no tiene datos: `PKDrawing(data:)` fallaría.
+        canvasView.drawing = strokesData.isEmpty ? PKDrawing() : try PKDrawing(data: strokesData)
     }
 
     func clear() {
@@ -64,21 +65,40 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
     }
 
     func renderPNG() -> Data? {
-        let drawing = canvasView.drawing
-        guard !drawing.strokes.isEmpty else { return nil }
+        renderImage(scale: canvasView.traitCollection.displayScale)?.pngData()
+    }
 
-        // Área visible del lienzo + cualquier trazo que se salga de ella.
-        let rect = canvasView.bounds.union(drawing.bounds)
+    func renderThumbnail() -> Data? {
+        let longestSide = max(renderRect.width, renderRect.height)
+        guard longestSide > 0 else { return nil }
+        // Como mucho `thumbnailMaxSide` píxeles en el lado más largo.
+        return renderImage(scale: min(1, Self.thumbnailMaxSide / longestSide))?.pngData()
+    }
+
+    // MARK: - Renderizado
+
+    private static let thumbnailMaxSide: CGFloat = 480
+
+    /// Área visible del lienzo + cualquier trazo que se salga de ella.
+    private var renderRect: CGRect {
+        canvasView.bounds.union(canvasView.drawing.bounds)
+    }
+
+    /// El dibujo sobre fondo blanco. `scale` = píxeles por punto.
+    private func renderImage(scale: CGFloat) -> UIImage? {
+        let drawing = canvasView.drawing
+        let rect = renderRect
+        guard !drawing.strokes.isEmpty, rect.width > 0, rect.height > 0 else { return nil }
+
         let format = UIGraphicsImageRendererFormat()
-        format.scale = canvasView.traitCollection.displayScale
+        format.scale = scale
         format.opaque = true
 
-        let image = UIGraphicsImageRenderer(bounds: rect, format: format).image { context in
+        return UIGraphicsImageRenderer(bounds: rect, format: format).image { context in
             UIColor.white.setFill()
             context.fill(rect)
-            drawing.image(from: rect, scale: format.scale).draw(in: rect)
+            drawing.image(from: rect, scale: scale).draw(in: rect)
         }
-        return image.pngData()
     }
 }
 

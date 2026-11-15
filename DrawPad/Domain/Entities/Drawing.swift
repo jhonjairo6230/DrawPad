@@ -5,9 +5,15 @@ import Foundation
 /// El dominio no sabe nada de PencilKit: los trazos viajan como datos opacos
 /// (`strokesData`). Hoy esos datos son `PKDrawing.dataRepresentation()`, pero
 /// si mañana cambiáramos de motor de dibujo, esta entidad no cambiaría.
-struct Drawing: Equatable {
+struct Drawing: Equatable, Identifiable {
+    let id: UUID
+    var title: String
     /// Trazos serializados. Solo la capa de presentación sabe interpretarlos.
-    let strokesData: Data
-    /// Momento del último guardado.
-    let updatedAt: Date
+    /// Vacío en un dibujo recién creado.
+    var strokesData: Data
+    /// Miniatura PNG para la galería; `nil` si el dibujo está vacío.
+    var thumbnailData: Data?
+    let createdAt: Date
+    /// Momento del último cambio en los trazos.
+    var updatedAt: Date
 }

@@ -6,15 +6,21 @@ final class CanvasViewModelTests: XCTestCase {
     private var canvas: FakeDrawingCanvas!
     private var repository: InMemoryDrawingRepository!
     private var library: SpyImageLibrary!
+    /// El dibujo abierto en la pantalla; ya existe en el repositorio.
+    private var drawing: Drawing!
 
     override func setUp() async throws {
+        drawing = Drawing.sample(title: "Gato")
         canvas = FakeDrawingCanvas()
-        repository = InMemoryDrawingRepository()
+        repository = InMemoryDrawingRepository([drawing])
         library = SpyImageLibrary()
     }
 
+    private var stored: Drawing? { repository.drawings[drawing.id] }
+
     private func makeViewModel(autosaveDelay: Duration = .seconds(60)) -> CanvasViewModel {
         CanvasViewModel(
+            drawingID: drawing.id,
             canvas: canvas,
             loadDrawing: LoadDrawingUseCase(repository: repository),
             saveDrawing: SaveDrawingUseCase(repository: repository),
@@ -25,15 +31,26 @@ final class CanvasViewModelTests: XCTestCase {
 
     // MARK: - Carga
 
-    func testOnAppearRestoresTheSavedDrawingWithoutSavingItAgain() {
-        repository.stored = Drawing(strokesData: Data("guardado".utf8), updatedAt: Date())
+    func testOnAppearLoadsTheDrawingWithoutSavingItAgain() throws {
+        drawing.strokesData = Data("guardado".utf8)
+        try repository.save(drawing)
         let viewModel = makeViewModel()
 
         viewModel.onAppear()
 
+        XCTAssertEqual(viewModel.title, "Gato")
         XCTAssertEqual(canvas.strokes, Data("guardado".utf8))
         XCTAssertFalse(viewModel.hasPendingChanges)
         XCTAssertEqual(canvas.isFingerDrawingEnabled, false)
+    }
+
+    func testOnAppearShowsAnAlertWhenTheDrawingNoLongerExists() throws {
+        try repository.delete(id: drawing.id)
+        let viewModel = makeViewModel()
+
+        viewModel.onAppear()
+
+        XCTAssertEqual(viewModel.alert, AlertMessage(error: DrawingError.drawingNotFound))
     }
 
     func testOnAppearShowsAnAlertWhenLoadingFails() {
@@ -51,25 +68,28 @@ final class CanvasViewModelTests: XCTestCase {
         let viewModel = makeViewModel(autosaveDelay: .milliseconds(20))
         viewModel.onAppear()
 
+        let savesBefore = repository.saveCount
         canvas.simulateStroke(Data("uno".utf8))
         XCTAssertTrue(viewModel.hasPendingChanges)
-        try await waitUntil { self.repository.saveCount == 1 }
+        try await waitUntil { self.repository.saveCount == savesBefore + 1 }
 
-        XCTAssertEqual(repository.stored?.strokesData, Data("uno".utf8))
+        XCTAssertEqual(stored?.strokesData, Data("uno".utf8))
+        XCTAssertEqual(stored?.thumbnailData, Data("mini".utf8))
         XCTAssertFalse(viewModel.hasPendingChanges)
     }
 
     func testSeveralQuickStrokesAreSavedOnlyOnce() async throws {
         let viewModel = makeViewModel(autosaveDelay: .milliseconds(50))
         viewModel.onAppear()
+        let savesBefore = repository.saveCount
 
         canvas.simulateStroke(Data("uno".utf8))
         canvas.simulateStroke(Data("dos".utf8))
         canvas.simulateStroke(Data("tres".utf8))
         try await waitUntil { !viewModel.hasPendingChanges }
 
-        XCTAssertEqual(repository.saveCount, 1)
-        XCTAssertEqual(repository.stored?.strokesData, Data("tres".utf8))
+        XCTAssertEqual(repository.saveCount, savesBefore + 1)
+        XCTAssertEqual(stored?.strokesData, Data("tres".utf8))
     }
 
     func testFlushSavesPendingChangesImmediately() {
@@ -79,17 +99,18 @@ final class CanvasViewModelTests: XCTestCase {
 
         viewModel.flushPendingSave()
 
-        XCTAssertEqual(repository.stored?.strokesData, Data("uno".utf8))
+        XCTAssertEqual(stored?.strokesData, Data("uno".utf8))
         XCTAssertFalse(viewModel.hasPendingChanges)
     }
 
     func testFlushDoesNothingWithoutPendingChanges() {
         let viewModel = makeViewModel()
         viewModel.onAppear()
+        let savesBefore = repository.saveCount
 
         viewModel.flushPendingSave()
 
-        XCTAssertEqual(repository.saveCount, 0)
+        XCTAssertEqual(repository.saveCount, savesBefore)
     }
 
     func testClearEmptiesTheCanvasAndSavesTheEmptyDrawing() {
@@ -102,7 +123,8 @@ final class CanvasViewModelTests: XCTestCase {
         viewModel.flushPendingSave()
 
         XCTAssertTrue(canvas.isEmpty)
-        XCTAssertEqual(repository.stored?.strokesData, Data())
+        XCTAssertEqual(stored?.strokesData, Data())
+        XCTAssertNil(stored?.thumbnailData)
     }
 
     // MARK: - Herramientas

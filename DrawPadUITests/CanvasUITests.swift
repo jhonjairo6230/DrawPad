@@ -3,18 +3,54 @@ import XCTest
 /// Pruebas de interfaz: lanzan la app real en el simulador y la tocan.
 ///
 /// En el simulador todo toque es un "dedo" (no hay Apple Pencil), así que
-/// estas pruebas cubren justo lo que las unitarias no pueden: que PencilKit y
-/// la pantalla aguanten toques reales sin cerrarse.
+/// estas pruebas cubren justo lo que las unitarias no pueden: que PencilKit,
+/// la navegación y la base de datos aguanten toques reales sin cerrarse.
+///
+/// Cada prueba arranca con `-uiTesting`: una base de datos vacía en memoria.
 final class CanvasUITests: XCTestCase {
     private var app: XCUIApplication!
 
     override func setUp() {
         continueAfterFailure = false
         app = XCUIApplication()
+        app.launchArguments = ["-uiTesting"]
         app.launch()
     }
 
+    // MARK: - Galería
+
+    func testTheGalleryStartsEmpty() {
+        XCTAssertTrue(app.staticTexts["Aún no hay dibujos"].waitForExistence(timeout: 5))
+    }
+
+    func testANewDrawingAppearsInTheGalleryAndCanBeReopened() {
+        openNewDrawing()
+        app.buttons["Dibujar con el dedo"].tap()
+        dragOnCanvas()
+
+        goBackToGallery()
+        XCTAssertTrue(app.buttons["Dibujo 1"].waitForExistence(timeout: 5))
+
+        app.buttons["Dibujo 1"].tap()
+        XCTAssertTrue(app.buttons["Guardar en Fotos"].waitForExistence(timeout: 5))
+        assertAppIsRunning()
+    }
+
+    func testEachNewDrawingGetsItsOwnCard() {
+        openNewDrawing()
+        goBackToGallery()
+        openNewDrawing()
+        goBackToGallery()
+
+        XCTAssertTrue(app.buttons["Dibujo 1"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Dibujo 2"].exists)
+    }
+
+    // MARK: - Lienzo
+
     func testTouchingTheCanvasWithAFingerDoesNotCrash() {
+        openNewDrawing()
+
         tapCanvas()
         dragOnCanvas()
 
@@ -22,6 +58,7 @@ final class CanvasUITests: XCTestCase {
     }
 
     func testDrawingWithTheFingerEnabledDoesNotCrash() {
+        openNewDrawing()
         app.buttons["Dibujar con el dedo"].tap()
 
         dragOnCanvas()
@@ -31,6 +68,7 @@ final class CanvasUITests: XCTestCase {
     }
 
     func testUndoRedoAndClearDoNotCrash() {
+        openNewDrawing()
         app.buttons["Dibujar con el dedo"].tap()
         dragOnCanvas()
 
@@ -44,6 +82,18 @@ final class CanvasUITests: XCTestCase {
     }
 
     // MARK: - Utilidades
+
+    private func openNewDrawing() {
+        let newDrawing = app.buttons["Nuevo dibujo"]
+        XCTAssertTrue(newDrawing.waitForExistence(timeout: 5))
+        newDrawing.tap()
+        XCTAssertTrue(app.buttons["Guardar en Fotos"].waitForExistence(timeout: 5))
+    }
+
+    private func goBackToGallery() {
+        app.navigationBars.buttons["Dibujos"].tap()
+        XCTAssertTrue(app.buttons["Nuevo dibujo"].waitForExistence(timeout: 5))
+    }
 
     private func canvasPoint(_ x: CGFloat, _ y: CGFloat) -> XCUICoordinate {
         app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: x, dy: y))

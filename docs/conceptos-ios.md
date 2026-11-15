@@ -18,6 +18,7 @@ Glosario para estudiar el código. Cada entrada dice qué es y dónde verlo.
 | `Task` | Unidad de trabajo asíncrono; se puede cancelar. | Autoguardado en `CanvasViewModel` |
 | `@MainActor` | Garantiza que el código corre en el hilo principal (obligatorio para la interfaz). | ViewModel y lienzo |
 | `throws` / `do-catch` | Manejo de errores. | Repositorios y casos de uso |
+| `lazy var` | Propiedad que se crea la primera vez que se usa. | `AppContainer` |
 | `@testable import` | Deja a las pruebas ver los tipos `internal` de la app. | `DrawPadTests/*` |
 
 ## PencilKit
@@ -32,13 +33,36 @@ Glosario para estudiar el código. Cada entrada dice qué es y dónde verlo.
 
 Todo esto vive en un solo archivo: `Presentation/Canvas/PencilKitCanvas.swift`.
 
+## SwiftData (base de datos local)
+
+| Concepto | Qué es | Dónde |
+| -------- | ------ | ----- |
+| SwiftData | Framework de Apple (iOS 17) para guardar objetos en una base de datos local (SQLite por debajo). | `Data/` |
+| `@Model` | Macro que convierte una clase en una tabla: cada propiedad es una columna. | `DrawingRecord.swift` |
+| `@Attribute(.unique)` | No puede haber dos registros con el mismo valor. | `DrawingRecord.id` |
+| `@Attribute(.externalStorage)` | Guarda datos grandes en archivos aparte; la base de datos solo guarda la referencia. | Trazos y miniatura |
+| `ModelContainer` | La base de datos: sabe qué modelos existen y dónde está el archivo. | `SwiftDataDrawingRepository.makeContainer` |
+| `ModelContext` | La "sesión de trabajo": se insertan, cambian y borran objetos, y `save()` lo escribe a disco. No se comparte entre hilos. | `SwiftDataDrawingRepository` |
+| `FetchDescriptor` | Una consulta: filtro, orden y límite. | `list()` y `record(id:)` |
+| `#Predicate` | Macro para escribir el filtro en Swift; se traduce a SQL. | `record(id:)` |
+| `isStoredInMemoryOnly` | Base de datos que no toca el disco; ideal para pruebas. | Pruebas y `-uiTesting` |
+
+## Navegación
+
+| Concepto | Qué es | Dónde |
+| -------- | ------ | ----- |
+| `NavigationStack` | Contenedor que apila pantallas con botón "atrás". | `GalleryScreen` |
+| `navigationDestination(item:)` | Navega mientras un valor opcional no sea `nil`; al volver atrás lo pone a `nil`. | `GalleryScreen` |
+| `LazyVGrid` | Cuadrícula que solo crea las celdas visibles. | `GalleryScreen` |
+| `contextMenu` | Menú al mantener pulsado. | Renombrar / Eliminar |
+| `ContentUnavailableView` | Vista estándar de "no hay nada que mostrar". | Galería vacía |
+
 ## Almacenamiento y permisos
 
 | Concepto | Qué es | Dónde |
 | -------- | ------ | ----- |
 | *Sandbox* | Cada app solo puede leer y escribir en su propio contenedor. | — |
-| `Application Support` | Carpeta del contenedor para datos de la app que el usuario no gestiona. | `FileDrawingRepository.live()` |
-| Escritura atómica | Escribe en un temporal y renombra: nunca queda un archivo a medias. | `FileDrawingRepository.save` |
+| `Application Support` | Carpeta del contenedor para datos de la app que el usuario no gestiona. Ahí vive la base de datos. | — |
 | `Info.plist` | Metadatos de la app (nombre, orientaciones, textos de permisos). Aquí lo genera XcodeGen desde `project.yml`. | `project.yml` → `info` |
 | `NSPhotoLibraryAddUsageDescription` | Texto que iOS muestra al pedir permiso para añadir fotos. Sin él, la app se cierra al pedirlo. | `project.yml` |
 | `PHPhotoLibrary` | API de la fototeca. `.addOnly` = permiso solo para añadir. | `PhotoLibraryImageExporter.swift` |

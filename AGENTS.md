@@ -7,7 +7,7 @@ Documentación en `docs/`; decisiones en `docs/adr/`.
 ## Reglas de arquitectura
 
 - `DrawPad/Domain` solo importa `Foundation`. Nada de `SwiftUI`, `UIKit`,
-  `PencilKit` ni `Photos`.
+  `PencilKit`, `SwiftData` ni `Photos`.
 - `Presentation` no conoce `Data`: el ViewModel recibe casos de uso.
 - PencilKit solo se toca en `PencilKitCanvas.swift` y `PencilCanvasView.swift`.
   El ViewModel usa el protocolo `DrawingCanvas`.
@@ -16,9 +16,14 @@ Documentación en `docs/`; decisiones en `docs/adr/`.
   existe `UIApplication` y la app se cierra al tocar. En `AppContainer` todo
   es `lazy`.
 - `Data` convierte sus errores a `DrawingError`.
+- `DrawingRecord` (`@Model` de SwiftData) no sale de `Data`: el resto usa la
+  entidad `Drawing`. Si cambias sus propiedades, piensa en la migración de la
+  base de datos ya instalada (ver `docs/adr/0007-swiftdata.md`).
 - Cada tipo lleva un comentario `///` que explica su papel (el porqué).
 - Interfaz, comentarios y documentación en español; identificadores en inglés.
 - Lógica nueva → pruebas en `DrawPadTests` con los dobles de `Doubles/`.
+- Pantallas o flujos nuevos → prueba en `DrawPadUITests` (arrancan con
+  `-uiTesting`: base de datos vacía en memoria).
 
 ## Proyecto de Xcode
 
@@ -30,7 +35,7 @@ Documentación en `docs/`; decisiones en `docs/adr/`.
 ## Comprobar un cambio
 
 Push a la rama y mirar el workflow **Compilar IPA**
-(`.github/workflows/build.yml`): ejecuta las pruebas en un simulador de iPad y
+(`.github/workflows/build.yml`): ejecuta las pruebas unitarias y de interfaz en un simulador de iPad y
 publica `DrawPad-unsigned.ipa`. Si falla, el error de compilación está en el
 log del paso correspondiente.
 

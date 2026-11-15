@@ -3,22 +3,26 @@ import Observation
 
 /// Estado y acciones de la pantalla de dibujo (patrón MVVM).
 ///
+/// Trabaja sobre **un** dibujo, identificado por `drawingID`.
+///
 /// - Recibe intenciones de la vista (`undo()`, `export()`…).
 /// - Habla con el lienzo a través de ``DrawingCanvas`` y con el dominio a
-///   través de los casos de uso; nunca con PencilKit, archivos ni Fotos.
-/// - Publica estado observable (`isExporting`, `alert`…) que la vista pinta.
+///   través de los casos de uso; nunca con PencilKit, SwiftData ni Fotos.
+/// - Publica estado observable (`title`, `isExporting`, `alert`…).
 ///
 /// **Autoguardado:** cada cambio de trazos reinicia un temporizador
 /// (`autosaveDelay`). Cuando pasa ese tiempo sin cambios se guarda una sola
-/// vez (*debounce*). Al salir de la app se guarda lo pendiente de inmediato
-/// (``flushPendingSave()``).
+/// vez (*debounce*). Al salir del dibujo o de la app se guarda lo pendiente de
+/// inmediato (``flushPendingSave()``).
 @MainActor
 @Observable
 final class CanvasViewModel {
+    private(set) var title = ""
     private(set) var isFingerDrawingEnabled = false
     private(set) var isExporting = false
     var alert: AlertMessage?
 
+    private let drawingID: UUID
     private let canvas: DrawingCanvas
     private let loadDrawing: LoadDrawingUseCase
     private let saveDrawing: SaveDrawingUseCase
@@ -30,12 +34,14 @@ final class CanvasViewModel {
     @ObservationIgnored private var isRestoring = false
 
     init(
+        drawingID: UUID,
         canvas: DrawingCanvas,
         loadDrawing: LoadDrawingUseCase,
         saveDrawing: SaveDrawingUseCase,
         exportDrawing: ExportDrawingUseCase,
         autosaveDelay: Duration = .seconds(1)
     ) {
+        self.drawingID = drawingID
         self.canvas = canvas
         self.loadDrawing = loadDrawing
         self.saveDrawing = saveDrawing
@@ -51,13 +57,14 @@ final class CanvasViewModel {
 
     // MARK: - Ciclo de vida
 
-    /// Restaura el último dibujo. Solo actúa la primera vez que aparece la pantalla.
+    /// Carga el dibujo en el lienzo. Solo actúa la primera vez que aparece la pantalla.
     func onAppear() {
         guard !hasLoaded else { return }
         hasLoaded = true
         canvas.setFingerDrawingEnabled(isFingerDrawingEnabled)
         do {
-            guard let drawing = try loadDrawing.execute() else { return }
+            let drawing = try loadDrawing.execute(id: drawingID)
+            title = drawing.title
             // Al cargar, el lienzo avisa de un "cambio" que no hay que guardar.
             isRestoring = true
             defer { isRestoring = false }
@@ -67,7 +74,7 @@ final class CanvasViewModel {
         }
     }
 
-    /// Guarda ya lo pendiente (la app pasa a segundo plano).
+    /// Guarda ya lo pendiente (se sale del dibujo o la app pasa a segundo plano).
     func flushPendingSave() {
         guard hasPendingChanges else { return }
         saveNow()
@@ -130,7 +137,11 @@ final class CanvasViewModel {
         pendingSave?.cancel()
         pendingSave = nil
         do {
-            try saveDrawing.execute(strokesData: canvas.currentData())
+            try saveDrawing.execute(
+                id: drawingID,
+                strokesData: canvas.currentData(),
+                thumbnailData: canvas.renderThumbnail()
+            )
         } catch {
             alert = AlertMessage(error: error)
         }

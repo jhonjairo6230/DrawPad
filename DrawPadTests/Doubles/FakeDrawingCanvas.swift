@@ -7,6 +7,7 @@ final class FakeDrawingCanvas: DrawingCanvas {
     var onDrawingChanged: (() -> Void)?
     var strokes = Data()
     var png: Data? = Data("png".utf8)
+    var thumbnail: Data? = Data("mini".utf8)
     private(set) var isFingerDrawingEnabled: Bool?
     private(set) var undoCount = 0
     private(set) var redoCount = 0
@@ -35,6 +36,10 @@ final class FakeDrawingCanvas: DrawingCanvas {
 
     func renderPNG() -> Data? {
         isEmpty ? nil : png
+    }
+
+    func renderThumbnail() -> Data? {
+        isEmpty ? nil : thumbnail
     }
 
     /// Simula que el usuario dibuja un trazo.

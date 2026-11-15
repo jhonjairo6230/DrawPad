@@ -2,27 +2,73 @@ import XCTest
 @testable import DrawPad
 
 final class UseCasesTests: XCTestCase {
-    func testLoadReturnsNilWhenNothingWasSaved() throws {
+    // MARK: - Listar
+
+    func testListReturnsSummariesNewestFirst() throws {
+        let old = Drawing.sample(title: "Viejo", updatedAt: Date(timeIntervalSince1970: 1))
+        let new = Drawing.sample(title: "Nuevo", updatedAt: Date(timeIntervalSince1970: 2))
+        let useCase = ListDrawingsUseCase(repository: InMemoryDrawingRepository([old, new]))
+
+        XCTAssertEqual(try useCase.execute().map(\.title), ["Nuevo", "Viejo"])
+    }
+
+    // MARK: - Crear
+
+    func testCreateSavesAnEmptyDrawingWithANumberedTitle() throws {
+        let repository = InMemoryDrawingRepository([.sample(), .sample()])
+        let id = UUID()
+        let date = Date(timeIntervalSince1970: 500)
+        let useCase = CreateDrawingUseCase(repository: repository, now: { date }, makeID: { id })
+
+        let created = try useCase.execute()
+
+        let expected = Drawing(
+            id: id, title: "Dibujo 3", strokesData: Data(), thumbnailData: nil, createdAt: date, updatedAt: date
+        )
+        XCTAssertEqual(created, expected)
+        XCTAssertEqual(repository.drawings[id], expected)
+    }
+
+    // MARK: - Cargar
+
+    func testLoadReturnsTheDrawing() throws {
+        let drawing = Drawing.sample(strokes: "abc")
+        let useCase = LoadDrawingUseCase(repository: InMemoryDrawingRepository([drawing]))
+
+        XCTAssertEqual(try useCase.execute(id: drawing.id), drawing)
+    }
+
+    func testLoadFailsWhenTheDrawingDoesNotExist() {
         let useCase = LoadDrawingUseCase(repository: InMemoryDrawingRepository())
 
-        XCTAssertNil(try useCase.execute())
+        XCTAssertThrowsError(try useCase.execute(id: UUID())) { error in
+            XCTAssertEqual(error as? DrawingError, .drawingNotFound)
+        }
     }
 
-    func testLoadReturnsStoredDrawing() throws {
-        let drawing = Drawing(strokesData: Data("abc".utf8), updatedAt: Date(timeIntervalSince1970: 10))
-        let useCase = LoadDrawingUseCase(repository: InMemoryDrawingRepository(stored: drawing))
+    // MARK: - Guardar
 
-        XCTAssertEqual(try useCase.execute(), drawing)
+    func testSaveUpdatesStrokesThumbnailAndDateButKeepsTheRest() throws {
+        let drawing = Drawing.sample(title: "Gato", strokes: "viejo")
+        let repository = InMemoryDrawingRepository([drawing])
+        let date = Date(timeIntervalSince1970: 1_000)
+        let useCase = SaveDrawingUseCase(repository: repository, now: { date })
+
+        try useCase.execute(id: drawing.id, strokesData: Data("nuevo".utf8), thumbnailData: Data("mini".utf8))
+
+        var expected = drawing
+        expected.strokesData = Data("nuevo".utf8)
+        expected.thumbnailData = Data("mini".utf8)
+        expected.updatedAt = date
+        XCTAssertEqual(repository.drawings[drawing.id], expected)
     }
 
-    func testSaveStampsTheDrawingWithTheCurrentDate() throws {
-        let repository = InMemoryDrawingRepository()
-        let fixedDate = Date(timeIntervalSince1970: 1_000)
-        let useCase = SaveDrawingUseCase(repository: repository, now: { fixedDate })
+    func testSaveFailsWhenTheDrawingWasDeleted() {
+        let useCase = SaveDrawingUseCase(repository: InMemoryDrawingRepository())
 
-        try useCase.execute(strokesData: Data("abc".utf8))
-
-        XCTAssertEqual(repository.stored, Drawing(strokesData: Data("abc".utf8), updatedAt: fixedDate))
+        XCTAssertThrowsError(try useCase.execute(id: UUID(), strokesData: Data(), thumbnailData: nil)) { error in
+            XCTAssertEqual(error as? DrawingError, .drawingNotFound)
+        }
     }
 
     func testSavePropagatesStorageErrors() {
@@ -30,10 +76,56 @@ final class UseCasesTests: XCTestCase {
         repository.error = .storageFailed
         let useCase = SaveDrawingUseCase(repository: repository)
 
-        XCTAssertThrowsError(try useCase.execute(strokesData: Data())) { error in
+        XCTAssertThrowsError(try useCase.execute(id: UUID(), strokesData: Data(), thumbnailData: nil)) { error in
             XCTAssertEqual(error as? DrawingError, .storageFailed)
         }
     }
+
+    // MARK: - Renombrar
+
+    func testRenameTrimsTheTitleAndKeepsTheDate() throws {
+        let drawing = Drawing.sample(title: "Viejo")
+        let repository = InMemoryDrawingRepository([drawing])
+        let useCase = RenameDrawingUseCase(repository: repository)
+
+        try useCase.execute(id: drawing.id, title: "  Paisaje \n")
+
+        XCTAssertEqual(repository.drawings[drawing.id]?.title, "Paisaje")
+        XCTAssertEqual(repository.drawings[drawing.id]?.updatedAt, drawing.updatedAt)
+    }
+
+    func testRenameRejectsABlankTitle() {
+        let drawing = Drawing.sample(title: "Viejo")
+        let repository = InMemoryDrawingRepository([drawing])
+        let useCase = RenameDrawingUseCase(repository: repository)
+
+        XCTAssertThrowsError(try useCase.execute(id: drawing.id, title: "   ")) { error in
+            XCTAssertEqual(error as? DrawingError, .invalidTitle)
+        }
+        XCTAssertEqual(repository.drawings[drawing.id]?.title, "Viejo")
+    }
+
+    func testRenameFailsWhenTheDrawingDoesNotExist() {
+        let useCase = RenameDrawingUseCase(repository: InMemoryDrawingRepository())
+
+        XCTAssertThrowsError(try useCase.execute(id: UUID(), title: "Algo")) { error in
+            XCTAssertEqual(error as? DrawingError, .drawingNotFound)
+        }
+    }
+
+    // MARK: - Eliminar
+
+    func testDeleteRemovesTheDrawing() throws {
+        let drawing = Drawing.sample()
+        let repository = InMemoryDrawingRepository([drawing])
+        let useCase = DeleteDrawingUseCase(repository: repository)
+
+        try useCase.execute(id: drawing.id)
+
+        XCTAssertTrue(repository.drawings.isEmpty)
+    }
+
+    // MARK: - Exportar
 
     func testExportAddsThePNGToTheLibrary() async throws {
         let library = SpyImageLibrary()
