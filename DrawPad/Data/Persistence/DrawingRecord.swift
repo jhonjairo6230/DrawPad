@@ -17,13 +17,21 @@ final class DrawingRecord {
     @Attribute(.externalStorage) var thumbnailData: Data?
     var createdAt: Date
     var updatedAt: Date
+    /// `CanvasBackground.rawValue`. Es opcional a propósito: las bases de datos
+    /// creadas antes de que existieran los fondos no tienen esta columna, y
+    /// SwiftData solo sabe añadirla sola si puede dejarla vacía (`nil`).
+    var backgroundRaw: String?
+    /// `CanvasTheme.rawValue`. Opcional por el mismo motivo.
+    var themeRaw: String?
 
-    init(id: UUID, title: String, strokesData: Data, thumbnailData: Data?, createdAt: Date, updatedAt: Date) {
+    init(id: UUID, title: String, strokesData: Data, thumbnailData: Data?, createdAt: Date, updatedAt: Date, backgroundRaw: String?, themeRaw: String?) {
         self.id = id
         self.title = title
         self.strokesData = strokesData
         self.thumbnailData = thumbnailData
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+        self.backgroundRaw = backgroundRaw
+        self.themeRaw = themeRaw
     }
 }

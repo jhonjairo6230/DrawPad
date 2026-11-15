@@ -24,6 +24,7 @@ final class CanvasViewModelTests: XCTestCase {
             canvas: canvas,
             loadDrawing: LoadDrawingUseCase(repository: repository),
             saveDrawing: SaveDrawingUseCase(repository: repository),
+            changeBackground: ChangeBackgroundUseCase(repository: repository),
             exportDrawing: ExportDrawingUseCase(library: library),
             autosaveDelay: autosaveDelay
         )
@@ -125,6 +126,85 @@ final class CanvasViewModelTests: XCTestCase {
         XCTAssertTrue(canvas.isEmpty)
         XCTAssertEqual(stored?.strokesData, Data())
         XCTAssertNil(stored?.thumbnailData)
+    }
+
+    // MARK: - Fondo
+
+    func testOnAppearAppliesTheSavedBackground() throws {
+        drawing.background = .grid
+        drawing.theme = .dark
+        try repository.save(drawing)
+        let viewModel = makeViewModel()
+
+        viewModel.onAppear()
+
+        XCTAssertEqual(viewModel.background, .grid)
+        XCTAssertEqual(viewModel.theme, .dark)
+        XCTAssertEqual(canvas.background, .grid)
+        XCTAssertEqual(canvas.theme, .dark)
+    }
+
+    func testSetThemeKeepsThePatternAndSavesItImmediately() {
+        let viewModel = makeViewModel()
+        viewModel.onAppear()
+        viewModel.setBackground(.lines)
+
+        viewModel.setTheme(.dark)
+
+        XCTAssertEqual(viewModel.theme, .dark)
+        XCTAssertEqual(canvas.theme, .dark)
+        XCTAssertEqual(canvas.background, .lines)
+        XCTAssertEqual(stored?.theme, .dark)
+        XCTAssertEqual(stored?.background, .lines)
+    }
+
+    func testSetThemeKeepsTheOldOneWhenSavingFails() {
+        let viewModel = makeViewModel()
+        viewModel.onAppear()
+        repository.error = .storageFailed
+
+        viewModel.setTheme(.dark)
+
+        XCTAssertEqual(viewModel.theme, .light)
+        XCTAssertEqual(canvas.theme, .light)
+        XCTAssertEqual(viewModel.alert, AlertMessage(error: DrawingError.storageFailed))
+    }
+
+    func testSetBackgroundUpdatesTheCanvasAndSavesItImmediately() {
+        let viewModel = makeViewModel()
+        viewModel.onAppear()
+
+        viewModel.setBackground(.dots)
+
+        XCTAssertEqual(viewModel.background, .dots)
+        XCTAssertEqual(canvas.background, .dots)
+        XCTAssertEqual(stored?.background, .dots)
+    }
+
+    func testSetBackgroundKeepsTheOldOneWhenSavingFails() {
+        let viewModel = makeViewModel()
+        viewModel.onAppear()
+        repository.error = .storageFailed
+
+        viewModel.setBackground(.lines)
+
+        XCTAssertEqual(viewModel.background, .blank)
+        XCTAssertEqual(canvas.background, .blank)
+        XCTAssertEqual(viewModel.alert, AlertMessage(error: DrawingError.storageFailed))
+    }
+
+    func testAutosaveAfterChangingTheBackgroundKeepsIt() {
+        let viewModel = makeViewModel()
+        viewModel.onAppear()
+        viewModel.setBackground(.grid)
+        viewModel.setTheme(.dark)
+
+        canvas.simulateStroke()
+        viewModel.flushPendingSave()
+
+        XCTAssertEqual(stored?.background, .grid)
+        XCTAssertEqual(stored?.theme, .dark)
+        XCTAssertEqual(stored?.strokesData, Data("trazo".utf8))
     }
 
     // MARK: - Herramientas

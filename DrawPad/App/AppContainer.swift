@@ -34,6 +34,7 @@ final class AppContainer {
             canvas: canvas,
             loadDrawing: LoadDrawingUseCase(repository: drawingRepository),
             saveDrawing: SaveDrawingUseCase(repository: drawingRepository),
+            changeBackground: ChangeBackgroundUseCase(repository: drawingRepository),
             exportDrawing: ExportDrawingUseCase(library: imageLibrary)
         )
         return CanvasModule(viewModel: viewModel, canvas: canvas)

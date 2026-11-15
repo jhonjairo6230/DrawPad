@@ -23,7 +23,7 @@ final class SwiftDataDrawingRepositoryTests: XCTestCase {
     }
 
     func testSaveThenFindReturnsTheSameDrawing() throws {
-        let drawing = Drawing.sample(title: "Gato", strokes: "trazos", thumbnail: "mini")
+        let drawing = Drawing.sample(title: "Gato", strokes: "trazos", thumbnail: "mini", background: .dots, theme: .dark)
 
         try repository.save(drawing)
 
@@ -37,6 +37,8 @@ final class SwiftDataDrawingRepositoryTests: XCTestCase {
         drawing.title = "Nuevo"
         drawing.strokesData = Data("nuevo".utf8)
         drawing.updatedAt = Date(timeIntervalSince1970: 200)
+        drawing.background = .lines
+        drawing.theme = .dark
         try repository.save(drawing)
 
         XCTAssertEqual(try repository.list().count, 1)
@@ -50,6 +52,35 @@ final class SwiftDataDrawingRepositoryTests: XCTestCase {
         try repository.save(new)
 
         XCTAssertEqual(try repository.list(), [new.summary, old.summary])
+    }
+
+    func testARecordWithoutPaperIsReadAsBlankAndLight() throws {
+        // Así quedan los dibujos guardados antes de que existieran los fondos.
+        let id = UUID()
+        let context = ModelContext(container)
+        context.insert(DrawingRecord(
+            id: id, title: "Antiguo", strokesData: Data(), thumbnailData: nil,
+            createdAt: Date(), updatedAt: Date(), backgroundRaw: nil, themeRaw: nil
+        ))
+        try context.save()
+
+        let drawing = try XCTUnwrap(repository.find(id: id))
+        XCTAssertEqual(drawing.background, .blank)
+        XCTAssertEqual(drawing.theme, .light)
+    }
+
+    func testUnknownPaperValuesAreReadAsBlankAndLight() throws {
+        let id = UUID()
+        let context = ModelContext(container)
+        context.insert(DrawingRecord(
+            id: id, title: "Raro", strokesData: Data(), thumbnailData: nil,
+            createdAt: Date(), updatedAt: Date(), backgroundRaw: "hexagonos", themeRaw: "sepia"
+        ))
+        try context.save()
+
+        let drawing = try XCTUnwrap(repository.find(id: id))
+        XCTAssertEqual(drawing.background, .blank)
+        XCTAssertEqual(drawing.theme, .light)
     }
 
     func testDeleteRemovesOnlyThatDrawing() throws {

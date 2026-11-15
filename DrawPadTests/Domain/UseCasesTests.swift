@@ -113,6 +113,29 @@ final class UseCasesTests: XCTestCase {
         }
     }
 
+    // MARK: - Cambiar el fondo
+
+    func testChangeBackgroundKeepsStrokesAndDate() throws {
+        let drawing = Drawing.sample(strokes: "trazos")
+        let repository = InMemoryDrawingRepository([drawing])
+        let useCase = ChangeBackgroundUseCase(repository: repository)
+
+        try useCase.execute(id: drawing.id, background: .grid, theme: .dark)
+
+        var expected = drawing
+        expected.background = .grid
+        expected.theme = .dark
+        XCTAssertEqual(repository.drawings[drawing.id], expected)
+    }
+
+    func testChangeBackgroundFailsWhenTheDrawingDoesNotExist() {
+        let useCase = ChangeBackgroundUseCase(repository: InMemoryDrawingRepository())
+
+        XCTAssertThrowsError(try useCase.execute(id: UUID(), background: .dots, theme: .light)) { error in
+            XCTAssertEqual(error as? DrawingError, .drawingNotFound)
+        }
+    }
+
     // MARK: - Eliminar
 
     func testDeleteRemovesTheDrawing() throws {

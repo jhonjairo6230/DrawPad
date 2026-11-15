@@ -19,6 +19,8 @@ import Observation
 final class CanvasViewModel {
     private(set) var title = ""
     private(set) var isFingerDrawingEnabled = false
+    private(set) var background = CanvasBackground.blank
+    private(set) var theme = CanvasTheme.light
     private(set) var isExporting = false
     var alert: AlertMessage?
 
@@ -26,6 +28,7 @@ final class CanvasViewModel {
     private let canvas: DrawingCanvas
     private let loadDrawing: LoadDrawingUseCase
     private let saveDrawing: SaveDrawingUseCase
+    private let changeBackground: ChangeBackgroundUseCase
     private let exportDrawing: ExportDrawingUseCase
     private let autosaveDelay: Duration
 
@@ -38,6 +41,7 @@ final class CanvasViewModel {
         canvas: DrawingCanvas,
         loadDrawing: LoadDrawingUseCase,
         saveDrawing: SaveDrawingUseCase,
+        changeBackground: ChangeBackgroundUseCase,
         exportDrawing: ExportDrawingUseCase,
         autosaveDelay: Duration = .seconds(1)
     ) {
@@ -45,6 +49,7 @@ final class CanvasViewModel {
         self.canvas = canvas
         self.loadDrawing = loadDrawing
         self.saveDrawing = saveDrawing
+        self.changeBackground = changeBackground
         self.exportDrawing = exportDrawing
         self.autosaveDelay = autosaveDelay
         canvas.onDrawingChanged = { [weak self] in
@@ -65,6 +70,9 @@ final class CanvasViewModel {
         do {
             let drawing = try loadDrawing.execute(id: drawingID)
             title = drawing.title
+            background = drawing.background
+            theme = drawing.theme
+            canvas.setBackground(background, theme: theme)
             // Al cargar, el lienzo avisa de un "cambio" que no hay que guardar.
             isRestoring = true
             defer { isRestoring = false }
@@ -89,6 +97,30 @@ final class CanvasViewModel {
     func toggleFingerDrawing() {
         isFingerDrawingEnabled.toggle()
         canvas.setFingerDrawingEnabled(isFingerDrawingEnabled)
+    }
+
+    /// Cambia el patrón del papel (cuadrícula, líneas…).
+    func setBackground(_ newBackground: CanvasBackground) {
+        changePaper(background: newBackground, theme: theme)
+    }
+
+    /// Cambia entre papel claro y oscuro.
+    func setTheme(_ newTheme: CanvasTheme) {
+        changePaper(background: background, theme: newTheme)
+    }
+
+    /// Guarda el papel al momento (no espera al autoguardado) y, solo si se
+    /// guardó, lo aplica al lienzo.
+    private func changePaper(background newBackground: CanvasBackground, theme newTheme: CanvasTheme) {
+        guard newBackground != background || newTheme != theme else { return }
+        do {
+            try changeBackground.execute(id: drawingID, background: newBackground, theme: newTheme)
+            background = newBackground
+            theme = newTheme
+            canvas.setBackground(newBackground, theme: newTheme)
+        } catch {
+            alert = AlertMessage(error: error)
+        }
     }
 
     func clear() {
