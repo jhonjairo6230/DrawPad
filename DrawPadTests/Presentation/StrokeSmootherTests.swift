@@ -9,10 +9,12 @@ final class StrokeSmootherTests: XCTestCase {
         }
     }
 
-    /// Cuánto se aparta la línea, como máximo, de la recta entre sus extremos
-    /// (aquí, del eje `y = 0`).
-    private func wobble(_ points: [CGPoint]) -> CGFloat {
-        points.dropFirst().dropLast().map { abs($0.y) }.max() ?? 0
+    /// El mayor salto vertical entre dos puntos vecinos: cuánto "tiembla".
+    ///
+    /// No se mide la distancia al eje: un zigzag entre 0 y 10 no se aplana
+    /// hacia 0, sino hacia su línea media (5).
+    private func roughness(_ points: [CGPoint]) -> CGFloat {
+        zip(points, points.dropFirst()).map { abs($1.y - $0.y) }.max() ?? 0
     }
 
     func testAStraightLineDoesNotChange() {
@@ -44,9 +46,11 @@ final class StrokeSmootherTests: XCTestCase {
 
         let smoothed = StrokeSmoother.smooth(line, passes: 1)
 
-        // Un pico de 10 entre dos vecinos a 0 baja a (0 + 2·10 + 0) / 4 = 5.
+        // Un pico de 10 entre dos vecinos a 0 baja a (0 + 2·10 + 0) / 4 = 5,
+        // y un valle de 0 entre dos picos sube a (10 + 0 + 10) / 4 = 5.
         XCTAssertEqual(smoothed[1].y, 5, accuracy: 0.0001)
-        XCTAssertLessThan(wobble(smoothed), wobble(line))
+        XCTAssertEqual(smoothed[2].y, 5, accuracy: 0.0001)
+        XCTAssertLessThan(roughness(smoothed), roughness(line))
     }
 
     func testMorePassesSmoothMore() {
@@ -55,7 +59,7 @@ final class StrokeSmootherTests: XCTestCase {
         let once = StrokeSmoother.smooth(line, passes: 1)
         let fourTimes = StrokeSmoother.smooth(line, passes: 4)
 
-        XCTAssertLessThan(wobble(fourTimes), wobble(once))
+        XCTAssertLessThan(roughness(fourTimes), roughness(once))
     }
 
     func testHorizontalPositionsOfAnEvenlySpacedLineDoNotMove() {
