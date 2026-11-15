@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// Pantalla de un dibujo: el lienzo a pantalla completa y una barra de acciones.
+/// El lienzo de una hoja a pantalla completa y sus acciones en la barra.
 ///
-/// Se muestra dentro del `NavigationStack` de ``GalleryScreen``.
+/// Se muestra dentro de ``NotebookScreen``, que pone el título y los
+/// controles para cambiar de hoja.
 ///
 /// La vista no toma decisiones: traduce toques en llamadas al
 /// ``CanvasViewModel`` y pinta su estado.
@@ -21,7 +22,7 @@ struct CanvasScreen: View {
                 if phase != .active { viewModel.flushPendingSave() }
             }
             .confirmationDialog(
-                "¿Borrar todo el dibujo?",
+                "¿Borrar todo lo dibujado en esta hoja?",
                 isPresented: $isConfirmingClear,
                 titleVisibility: .visible
             ) {
@@ -44,8 +45,6 @@ struct CanvasScreen: View {
     private var canvasView: some View {
         PencilCanvasView(canvas: canvas)
             .ignoresSafeArea(edges: .bottom)
-            .navigationTitle(viewModel.title)
-            .navigationBarTitleDisplayMode(.inline)
             .toolbar { toolbarContent }
     }
 

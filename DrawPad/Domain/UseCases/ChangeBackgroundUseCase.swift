@@ -1,8 +1,8 @@
 import Foundation
 
-/// Cambia el papel de un dibujo: su patrón y si es claro u oscuro.
+/// Cambia el papel de una hoja: su patrón y si es claro u oscuro.
 ///
-/// Como renombrar, no toca `updatedAt`: los trazos no cambian.
+/// No toca `updatedAt`: los trazos no cambian.
 struct ChangeBackgroundUseCase {
     private let repository: DrawingRepository
 
@@ -10,9 +10,9 @@ struct ChangeBackgroundUseCase {
         self.repository = repository
     }
 
-    /// - Throws: ``DrawingError/drawingNotFound`` si el dibujo ya no existe.
+    /// - Throws: ``DrawingError/drawingNotFound`` si la hoja ya no existe.
     func execute(id: UUID, background: CanvasBackground, theme: CanvasTheme) throws {
-        guard var drawing = try repository.find(id: id) else {
+        guard var drawing = try repository.findDrawing(id: id) else {
             throw DrawingError.drawingNotFound
         }
         drawing.background = background

@@ -7,8 +7,12 @@ import Foundation
 enum DrawingError: Error, Equatable {
     /// No se pudo leer o escribir en la base de datos local.
     case storageFailed
-    /// El dibujo ya no existe (por ejemplo, se eliminó).
+    /// La hoja ya no existe (por ejemplo, se eliminó).
     case drawingNotFound
+    /// El cuaderno ya no existe.
+    case notebookNotFound
+    /// Se intentó eliminar la única hoja de un cuaderno.
+    case lastPage
     /// El título está vacío.
     case invalidTitle
     /// El usuario no dio permiso para añadir imágenes a Fotos.
@@ -17,7 +21,7 @@ enum DrawingError: Error, Equatable {
     case exportFailed
     /// No se pudo preparar el archivo para compartir.
     case shareFailed
-    /// Se intentó exportar un dibujo sin trazos.
+    /// Se intentó exportar una hoja sin trazos.
     case emptyDrawing
 }
 
@@ -25,9 +29,13 @@ extension DrawingError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .storageFailed:
-            return "No se pudo guardar o recuperar tus dibujos."
+            return "No se pudo guardar o recuperar tus cuadernos."
         case .drawingNotFound:
-            return "Ese dibujo ya no existe."
+            return "Esa hoja ya no existe."
+        case .notebookNotFound:
+            return "Ese cuaderno ya no existe."
+        case .lastPage:
+            return "Un cuaderno necesita al menos una hoja."
         case .invalidTitle:
             return "El título no puede estar vacío."
         case .photoLibraryAccessDenied:
@@ -37,7 +45,7 @@ extension DrawingError: LocalizedError {
         case .shareFailed:
             return "No se pudo preparar el archivo para compartir."
         case .emptyDrawing:
-            return "El lienzo está vacío: dibuja algo antes de exportar o compartir."
+            return "La hoja está vacía: dibuja algo antes de exportar o compartir."
         }
     }
 }

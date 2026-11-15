@@ -1,6 +1,6 @@
 import Foundation
 
-/// Guarda los trazos actuales de un dibujo y su miniatura.
+/// Guarda los trazos actuales de una hoja y su miniatura.
 struct SaveDrawingUseCase {
     private let repository: DrawingRepository
     /// Reloj inyectable: en las pruebas se fija una fecha conocida.
@@ -11,9 +11,9 @@ struct SaveDrawingUseCase {
         self.now = now
     }
 
-    /// - Throws: ``DrawingError/drawingNotFound`` si el dibujo ya no existe.
+    /// - Throws: ``DrawingError/drawingNotFound`` si la hoja ya no existe.
     func execute(id: UUID, strokesData: Data, thumbnailData: Data?) throws {
-        guard var drawing = try repository.find(id: id) else {
+        guard var drawing = try repository.findDrawing(id: id) else {
             throw DrawingError.drawingNotFound
         }
         drawing.strokesData = strokesData

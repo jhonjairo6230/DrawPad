@@ -18,24 +18,28 @@ flowchart TB
     end
     subgraph PRES["Presentation — SwiftUI + MVVM"]
         G1["GalleryScreen<br/>GalleryViewModel"]
+        N1["NotebookScreen<br/>NotebookViewModel"]
         P1["CanvasScreen<br/>CanvasViewModel"]
-        P3["DrawingCanvas<br/>(protocolo)"]
+        P3["DrawingCanvas · PageSession<br/>(protocolos)"]
         P4["PencilKitCanvas<br/>PencilCanvasView"]
     end
     subgraph DOM["Domain — Swift puro"]
-        D1["Casos de uso<br/>List / Create / Load / Save<br/>Rename / Delete / ChangeBackground<br/>Export / PrepareShareFile"]
-        D2["Drawing · DrawingSummary<br/>CanvasBackground · CanvasTheme<br/>DrawingError"]
-        D3["DrawingRepository<br/>ImageLibrary<br/>ExportFileStore<br/>(protocolos)"]
+        D1["Casos de uso<br/>cuadernos · hojas · papel<br/>exportar · compartir"]
+        D2["Notebook · Drawing<br/>CanvasBackground · CanvasTheme<br/>DrawingError"]
+        D3["NotebookRepository<br/>DrawingRepository<br/>ImageLibrary · ExportFileStore<br/>(protocolos)"]
     end
     subgraph DATA["Data — detalles técnicos"]
-        T1["SwiftDataDrawingRepository<br/>DrawingRecord"]
+        T1["SwiftDataLibrary<br/>NotebookRecord · DrawingRecord"]
         T2["PhotoLibraryImageExporter<br/>(Photos)"]
         T4["TemporaryExportFileStore<br/>(archivos temporales)"]
         T3[("Base de datos local<br/>SwiftData")]
     end
 
-    G1 --> P1
+    G1 --> N1
+    N1 --> P1
     G1 --> D1
+    N1 --> D1
+    N1 --> P3
     P1 --> P3
     P1 --> D1
     P4 -. implementa .-> P3
@@ -47,6 +51,7 @@ flowchart TB
     T1 --> T3
     A1 --> A2
     A2 --> G1
+    A2 --> N1
     A2 --> P1
     A2 --> P4
     A2 --> T1
@@ -86,43 +91,55 @@ DrawPad/
 │   └── AppContainer.swift          Crea y conecta las dependencias
 ├── Domain/
 │   ├── Entities/
-│   │   ├── Drawing.swift           El dibujo completo: título, trazos, miniatura, fondo, fechas
+│   │   ├── Notebook.swift          Un cuaderno: título y fecha
+│   │   ├── NotebookSummary.swift   Lo justo para la galería: hojas, portada, actividad
+│   │   ├── Drawing.swift           Una hoja: trazos, miniatura, papel, fechas
+│   │   ├── DrawingSummary.swift    Lo justo para listar hojas (sin trazos)
 │   │   ├── CanvasBackground.swift  Patrón del papel: blanco, cuadrícula, líneas, puntos
 │   │   ├── CanvasTheme.swift       Papel claro u oscuro
-│   │   ├── ExportFormat.swift      Formatos para compartir: PNG o PDF
-│   │   └── DrawingSummary.swift    Lo justo para la galería (sin trazos)
+│   │   └── ExportFormat.swift      Formatos para compartir: PNG o PDF
 │   ├── Errors/DrawingError.swift   Errores con mensaje para el usuario
 │   ├── Repositories/               Puertos (protocolos)
+│   │   ├── NotebookRepository.swift
 │   │   ├── DrawingRepository.swift
 │   │   ├── ImageLibrary.swift
 │   │   └── ExportFileStore.swift
 │   └── UseCases/                   Una acción de negocio por archivo
-│       ├── ListDrawingsUseCase.swift
-│       ├── CreateDrawingUseCase.swift
+│       ├── ListNotebooksUseCase.swift
+│       ├── CreateNotebookUseCase.swift
+│       ├── LoadNotebookUseCase.swift
+│       ├── RenameNotebookUseCase.swift
+│       ├── DeleteNotebookUseCase.swift
+│       ├── ListPagesUseCase.swift
+│       ├── AddPageUseCase.swift
+│       ├── DeletePageUseCase.swift
 │       ├── LoadDrawingUseCase.swift
 │       ├── SaveDrawingUseCase.swift
-│       ├── RenameDrawingUseCase.swift
-│       ├── DeleteDrawingUseCase.swift
 │       ├── ChangeBackgroundUseCase.swift
 │       ├── ExportDrawingUseCase.swift
 │       └── PrepareShareFileUseCase.swift
 ├── Data/
 │   ├── Persistence/
-│   │   ├── DrawingRecord.swift               Modelo de SwiftData (@Model)
-│   │   └── LegacyDrawingFileImporter.swift   Importa el dibujo de la versión sin galería
-│   ├── Repositories/SwiftDataDrawingRepository.swift
+│   │   ├── NotebookRecord.swift    Modelo de SwiftData de un cuaderno (@Model)
+│   │   └── DrawingRecord.swift     Modelo de SwiftData de una hoja (@Model)
+│   ├── Repositories/SwiftDataLibrary.swift   Los dos repositorios, una base de datos
 │   └── Gateways/
 │       ├── PhotoLibraryImageExporter.swift
 │       └── TemporaryExportFileStore.swift
 ├── Presentation/
 │   ├── Gallery/
-│   │   ├── GalleryScreen.swift     Cuadrícula de dibujos y navegación
-│   │   ├── GalleryViewModel.swift  Listar, crear, renombrar, eliminar
-│   │   └── DrawingCard.swift       Tarjeta con miniatura
+│   │   ├── GalleryScreen.swift     Cuadrícula de cuadernos y navegación
+│   │   ├── GalleryViewModel.swift  Listar, crear, renombrar, eliminar cuadernos
+│   │   └── NotebookCard.swift      Tarjeta con portada
+│   ├── Notebook/
+│   │   ├── NotebookScreen.swift    Cuaderno abierto: hoja actual y controles de hojas
+│   │   └── NotebookViewModel.swift Pasar, añadir y eliminar hojas
 │   ├── Canvas/
 │   │   ├── CanvasScreen.swift      Vista: lienzo + barra de acciones
-│   │   ├── CanvasViewModel.swift   Estado y acciones de un dibujo
-│   │   ├── CanvasModule.swift      ViewModel + lienzo de un dibujo abierto
+│   │   ├── CanvasViewModel.swift   Estado y acciones de una hoja
+│   │   ├── CanvasModule.swift      ViewModel + lienzo de una hoja abierta
+│   │   ├── PageSession.swift       Puerto: lo que el cuaderno pide a una hoja abierta
+│   │   ├── CanvasPreferences.swift Ajustes que se mantienen entre hojas
 │   │   ├── DrawingCanvas.swift     Puerto: lo que el ViewModel pide al lienzo
 │   │   ├── PencilKitCanvas.swift   Adaptador de PencilKit
 │   │   ├── CanvasGeometry.swift    Cuentas del zoom: tamaño de hoja y posición del papel
@@ -136,19 +153,25 @@ DrawPad/
 └── Resources/Assets.xcassets       Icono de la app
 
 DrawPadTests/
-├── Doubles/                        Falsos: repositorio, biblioteca y lienzo
+├── Doubles/                        Falsos: biblioteca, lienzo, hoja abierta, Fotos, archivos
 ├── Domain/UseCasesTests.swift
 ├── Data/
-│   ├── SwiftDataDrawingRepositoryTests.swift   Base de datos real en memoria
-│   ├── LegacyDrawingFileImporterTests.swift
+│   ├── SwiftDataLibraryTests.swift             Base de datos real en memoria
 │   └── TemporaryExportFileStoreTests.swift
 └── Presentation/
+    ├── GalleryViewModelTests.swift
+    ├── NotebookViewModelTests.swift
     ├── CanvasViewModelTests.swift
-    └── GalleryViewModelTests.swift
+    └── CanvasGeometryTests.swift
 
 DrawPadUITests/
 └── CanvasUITests.swift             Toca la app real en el simulador
 ```
+
+> **Sobre los nombres:** en la interfaz se habla de **cuadernos** y **hojas**.
+> En el código, el cuaderno es `Notebook` y la hoja es `Drawing` (así se
+> llamaba cuando cada dibujo era independiente; se conserva para no renombrar
+> la tabla de la base de datos).
 
 ## 4. Tipos y relaciones
 
@@ -158,16 +181,38 @@ classDiagram
 
     class GalleryScreen {
         <<SwiftUI View>>
-        -openCanvas CanvasModule?
+        -openNotebook NotebookViewModel?
     }
     class GalleryViewModel {
         <<Observable>>
-        +drawings DrawingSummary[]
+        +notebooks NotebookSummary[]
         +alert AlertMessage?
         +load()
         +create() UUID?
         +rename(id, title)
         +delete(id)
+    }
+    class NotebookScreen {
+        <<SwiftUI View>>
+    }
+    class NotebookViewModel {
+        <<Observable>>
+        +title String
+        +pages DrawingSummary[]
+        +currentIndex Int
+        +session PageSession?
+        +pageLabel String
+        +onAppear()
+        +goToPreviousPage()
+        +goToNextPage()
+        +addPage()
+        +deleteCurrentPage()
+        +flushPendingSave()
+    }
+    class PageSession {
+        <<protocol>>
+        +flushPendingSave()
+        +discardPendingSave()
     }
     class CanvasModule {
         +viewModel CanvasViewModel
@@ -178,7 +223,6 @@ classDiagram
     }
     class CanvasViewModel {
         <<Observable>>
-        +title String
         +isFingerDrawingEnabled Bool
         +background CanvasBackground
         +theme CanvasTheme
@@ -195,6 +239,11 @@ classDiagram
         +export()
         +share(ExportFormat)
         +flushPendingSave()
+        +discardPendingSave()
+    }
+    class CanvasPreferences {
+        <<Observable>>
+        +isFingerDrawingEnabled Bool
     }
     class DrawingCanvas {
         <<protocol>>
@@ -217,22 +266,27 @@ classDiagram
     }
     class UseCases {
         <<Domain>>
-        ListDrawings
-        CreateDrawing
-        LoadDrawing
-        SaveDrawing
-        RenameDrawing
-        DeleteDrawing
+        ListNotebooks · CreateNotebook
+        LoadNotebook · RenameNotebook
+        DeleteNotebook
+        ListPages · AddPage · DeletePage
+        LoadDrawing · SaveDrawing
         ChangeBackground
-        ExportDrawing
-        PrepareShareFile
+        ExportDrawing · PrepareShareFile
+    }
+    class NotebookRepository {
+        <<protocol>>
+        +listNotebooks() NotebookSummary[]
+        +findNotebook(id) Notebook?
+        +save(Notebook)
+        +deleteNotebook(id)
     }
     class DrawingRepository {
         <<protocol>>
-        +list() DrawingSummary[]
-        +find(id) Drawing?
+        +listDrawings(notebookID) DrawingSummary[]
+        +findDrawing(id) Drawing?
         +save(Drawing)
-        +delete(id)
+        +deleteDrawing(id)
     }
     class ImageLibrary {
         <<protocol>>
@@ -242,11 +296,16 @@ classDiagram
         <<protocol>>
         +write(Data, fileName) URL
     }
-    class TemporaryExportFileStore
-    class Drawing {
+    class Notebook {
         <<struct>>
         +id UUID
         +title String
+        +createdAt Date
+    }
+    class Drawing {
+        <<struct>>
+        +id UUID
+        +notebookID UUID
         +strokesData Data
         +thumbnailData Data?
         +createdAt Date
@@ -254,43 +313,52 @@ classDiagram
         +background CanvasBackground
         +theme CanvasTheme
     }
-    class DrawingSummary {
-        <<struct>>
-        +id UUID
-        +title String
-        +thumbnailData Data?
-        +updatedAt Date
+    class SwiftDataLibrary {
+        +adoptOrphanDrawings()
     }
-    class SwiftDataDrawingRepository
+    class NotebookRecord {
+        <<SwiftData Model>>
+    }
     class DrawingRecord {
         <<SwiftData Model>>
     }
     class PhotoLibraryImageExporter
+    class TemporaryExportFileStore
 
     GalleryScreen --> GalleryViewModel
-    GalleryScreen --> CanvasModule : abre
+    GalleryScreen --> NotebookViewModel : abre
+    NotebookScreen --> NotebookViewModel
+    NotebookScreen --> CanvasScreen : hoja actual
+    NotebookViewModel --> PageSession
+    CanvasModule ..|> PageSession
     CanvasModule --> CanvasViewModel
     CanvasModule --> PencilKitCanvas
     CanvasScreen --> CanvasViewModel
     CanvasScreen --> PencilKitCanvas
     GalleryViewModel --> UseCases
+    NotebookViewModel --> UseCases
     CanvasViewModel --> UseCases
     CanvasViewModel --> DrawingCanvas
+    CanvasViewModel --> CanvasPreferences
     PencilKitCanvas ..|> DrawingCanvas
+    UseCases --> NotebookRepository
     UseCases --> DrawingRepository
     UseCases --> ImageLibrary
     UseCases --> ExportFileStore
-    TemporaryExportFileStore ..|> ExportFileStore
+    NotebookRepository ..> Notebook
     DrawingRepository ..> Drawing
-    DrawingRepository ..> DrawingSummary
-    SwiftDataDrawingRepository ..|> DrawingRepository
-    SwiftDataDrawingRepository --> DrawingRecord
+    Drawing --> Notebook : notebookID
+    SwiftDataLibrary ..|> NotebookRepository
+    SwiftDataLibrary ..|> DrawingRepository
+    SwiftDataLibrary --> NotebookRecord
+    SwiftDataLibrary --> DrawingRecord
     PhotoLibraryImageExporter ..|> ImageLibrary
+    TemporaryExportFileStore ..|> ExportFileStore
 ```
 
 ## 5. Flujos (diagramas de secuencia)
 
-### 5.1 Arranque: mostrar la galería
+### 5.1 Arranque: mostrar la galería de cuadernos
 
 ```mermaid
 sequenceDiagram
@@ -298,32 +366,30 @@ sequenceDiagram
     participant iOS
     participant App as DrawPadApp
     participant C as AppContainer
+    participant L as SwiftDataLibrary
+    participant DB as Base de datos
     participant G as GalleryScreen
     participant GVM as GalleryViewModel
-    participant UC as ListDrawingsUseCase
-    participant R as SwiftDataDrawingRepository
-    participant DB as Base de datos
 
     iOS->>App: lanza la app
     App->>C: crea el contenedor (vacío, todo es lazy)
     Note over iOS,App: arranca UIApplication y se crea la escena
     App->>C: pide el ViewModel de la galería
-    C->>R: abre la base de datos y crea el repositorio
-    opt existe el archivo de la versión sin galería
-        C->>R: LegacyDrawingFileImporter lo guarda como "Mi primer dibujo"
+    C->>L: abre la base de datos
+    C->>L: adoptOrphanDrawings()
+    opt hay dibujos de antes de los cuadernos
+        L->>DB: crea un cuaderno por dibujo, con su título
     end
     C->>GVM: crea el ViewModel con sus casos de uso
     App->>G: muestra la galería
     G->>GVM: load()
-    GVM->>UC: execute()
-    UC->>R: list()
-    R->>DB: consulta ordenada por fecha
-    DB-->>R: registros
-    R-->>GVM: [DrawingSummary]
-    GVM-->>G: pinta las tarjetas (o "Aún no hay dibujos")
+    GVM->>L: ListNotebooksUseCase, listNotebooks()
+    L->>DB: cuadernos y sus hojas
+    L-->>GVM: [NotebookSummary] por última actividad
+    GVM-->>G: pinta las tarjetas (o "Aún no hay cuadernos")
 ```
 
-### 5.2 Crear o abrir un dibujo
+### 5.2 Crear o abrir un cuaderno
 
 ```mermaid
 sequenceDiagram
@@ -332,29 +398,36 @@ sequenceDiagram
     participant G as GalleryScreen
     participant GVM as GalleryViewModel
     participant C as AppContainer
+    participant N as NotebookScreen
+    participant NVM as NotebookViewModel
     participant V as CanvasScreen
     participant VM as CanvasViewModel
     participant K as PencilKitCanvas
-    participant R as DrawingRepository
+    participant R as Repositorios
 
-    alt toca "+" (nuevo dibujo)
-        U->>G: toca "Nuevo dibujo"
+    alt toca "+" (nuevo cuaderno)
+        U->>G: toca "Nuevo cuaderno"
         G->>GVM: create()
-        GVM->>R: CreateDrawingUseCase guarda "Dibujo N" vacío
-        GVM-->>G: id del dibujo
+        GVM->>R: CreateNotebookUseCase guarda "Cuaderno N" y su primera hoja
+        GVM-->>G: id del cuaderno
     else toca una tarjeta
-        U->>G: toca el dibujo
+        U->>G: toca el cuaderno
     end
-    G->>C: makeCanvasModule(drawingID)
+    G->>C: makeNotebookViewModel(notebookID)
+    C-->>G: NotebookViewModel
+    G->>G: openNotebook = ViewModel (SwiftUI navega)
+    G->>N: muestra NotebookScreen
+    N->>NVM: onAppear()
+    NVM->>R: LoadNotebookUseCase y ListPagesUseCase
+    R-->>NVM: título y hojas en orden
+    NVM->>C: makeSession(primera hoja, "Título - Hoja 1")
     C->>K: crea un lienzo nuevo
-    C->>VM: crea el ViewModel para ese dibujo
-    C-->>G: CanvasModule
-    G->>G: openCanvas = módulo (SwiftUI navega)
-    G->>V: muestra CanvasScreen
-    V->>K: PencilCanvasView muestra el lienzo y la paleta
+    C->>VM: crea el ViewModel de esa hoja
+    C-->>NVM: CanvasModule (como PageSession)
+    N->>V: muestra CanvasScreen de la hoja
     V->>VM: onAppear()
     VM->>R: LoadDrawingUseCase.execute(id)
-    alt el dibujo existe
+    alt la hoja existe
         R-->>VM: Drawing
         VM->>K: setBackground(patrón y tema guardados)
         VM->>K: load(strokesData)
@@ -369,7 +442,8 @@ sequenceDiagram
 
 Cada trazo reinicia un temporizador de 1 segundo. Solo cuando el usuario deja
 de dibujar durante ese tiempo se guarda, **una vez** (*debounce*). Con los
-trazos se guarda también la miniatura que verá la galería.
+trazos se guarda también la miniatura (la de la primera hoja es la portada
+del cuaderno en la galería).
 
 ```mermaid
 sequenceDiagram
@@ -378,7 +452,7 @@ sequenceDiagram
     participant K as PencilKitCanvas
     participant VM as CanvasViewModel
     participant UC as SaveDrawingUseCase
-    participant R as SwiftDataDrawingRepository
+    participant R as SwiftDataLibrary
     participant DB as Base de datos
 
     U->>K: trazo 1 con el Apple Pencil
@@ -391,7 +465,7 @@ sequenceDiagram
     VM->>K: currentData() y renderThumbnail()
     K-->>VM: trazos + miniatura PNG
     VM->>UC: execute(id, strokesData, thumbnailData)
-    UC->>R: find(id)
+    UC->>R: findDrawing(id)
     R-->>UC: Drawing
     UC->>R: save(Drawing con trazos, miniatura y fecha nuevos)
     R->>DB: actualiza el registro
@@ -402,9 +476,53 @@ sequenceDiagram
     end
 ```
 
-### 5.4 Volver a la galería o salir de la app
+### 5.4 Pasar de hoja, añadir y eliminar
 
-Si quedaba un guardado pendiente, no se espera al temporizador.
+El título de la barra (`‹ Cuaderno 1 · Hoja 2 de 5 ›`) lleva las flechas y un
+menú con "Nueva hoja" y "Eliminar esta hoja".
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Usuario
+    participant N as NotebookScreen
+    participant NVM as NotebookViewModel
+    participant S as Hoja abierta (PageSession)
+    participant UC as Casos de uso
+    participant C as AppContainer
+
+    alt pasa a la hoja siguiente o anterior
+        U->>N: toca la flecha
+        N->>NVM: goToNextPage()
+        NVM->>S: flushPendingSave()
+        NVM->>C: makeSession(hoja nueva, nombre)
+        C-->>NVM: otra PageSession
+        NVM-->>N: session cambia, se monta su CanvasScreen
+    else añade una hoja
+        U->>N: menú, "Nueva hoja"
+        N->>NVM: addPage()
+        NVM->>UC: AddPageUseCase.execute(notebookID)
+        Note over UC: hoja en blanco al final,<br/>con el papel de la última
+        NVM->>UC: ListPagesUseCase
+        NVM->>S: flushPendingSave()
+        NVM->>C: makeSession(hoja añadida, nombre)
+    else elimina la hoja que ve
+        U->>N: menú, "Eliminar esta hoja", confirma
+        N->>NVM: deleteCurrentPage()
+        NVM->>UC: DeletePageUseCase.execute(id)
+        alt es la única hoja
+            UC-->>NVM: lanza lastPage
+            NVM-->>N: alerta "Un cuaderno necesita al menos una hoja."
+        else hay más hojas
+            NVM->>S: discardPendingSave()
+            Note over NVM,S: la hoja ya no existe,<br/>guardar lo pendiente fallaría
+            NVM->>UC: ListPagesUseCase
+            NVM->>C: makeSession(la hoja que ocupa su lugar, nombre)
+        end
+    end
+```
+
+### 5.5 Volver a la galería, salir de la app, renombrar y eliminar cuadernos
 
 ```mermaid
 sequenceDiagram
@@ -412,50 +530,33 @@ sequenceDiagram
     actor U as Usuario
     participant V as CanvasScreen
     participant G as GalleryScreen
+    participant NVM as NotebookViewModel
     participant VM as CanvasViewModel
     participant GVM as GalleryViewModel
+    participant R as NotebookRepository
 
     alt vuelve a la galería
-        U->>V: toca "Dibujos" (atrás)
-        V-->>G: openCanvas pasa a nil
-        G->>VM: flushPendingSave()
+        U->>V: toca "Cuadernos" (atrás)
+        V-->>G: openNotebook pasa a nil
+        G->>NVM: flushPendingSave()
+        NVM->>VM: flushPendingSave() de la hoja abierta
         G->>GVM: load()
-        Note over G,GVM: en ese orden, para que la miniatura<br/>nueva ya esté guardada al listar
+        Note over G,GVM: en ese orden, para que la portada<br/>nueva ya esté guardada al listar
     else sale de la app
         U->>V: scenePhase deja de ser active
         V->>VM: flushPendingSave()
-    end
-```
-
-### 5.5 Renombrar y eliminar
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor U as Usuario
-    participant G as GalleryScreen
-    participant GVM as GalleryViewModel
-    participant UC as Caso de uso
-    participant R as DrawingRepository
-
-    U->>G: mantiene pulsada una tarjeta
-    G-->>U: menú: Renombrar / Eliminar
-    alt Renombrar
-        U->>G: escribe el título y toca Guardar
+    else renombra un cuaderno
+        U->>G: mantiene pulsada la tarjeta, "Renombrar"
         G->>GVM: rename(id, título)
-        GVM->>UC: RenameDrawingUseCase.execute
         alt título vacío
-            UC-->>GVM: lanza invalidTitle
             GVM-->>G: alerta "El título no puede estar vacío."
         else título válido
-            UC->>R: find(id) y save(con el título nuevo)
-            GVM->>R: vuelve a listar
+            GVM->>R: RenameNotebookUseCase, luego vuelve a listar
         end
-    else Eliminar
-        U->>G: confirma "Eliminar"
+    else elimina un cuaderno
+        U->>G: mantiene pulsada la tarjeta, "Eliminar", confirma
         G->>GVM: delete(id)
-        GVM->>UC: DeleteDrawingUseCase.execute
-        UC->>R: delete(id)
+        GVM->>R: deleteNotebook(id) borra el cuaderno y sus hojas
         GVM->>R: vuelve a listar
     end
 ```
@@ -482,7 +583,7 @@ sequenceDiagram
     U->>V: menú "Fondo", elige "Cuadrícula"
     V->>VM: setBackground(.grid)
     VM->>UC: execute(id, .grid, tema actual)
-    UC->>R: find(id) y save(con el fondo nuevo)
+    UC->>R: findDrawing(id) y save(con el fondo nuevo)
     alt se guardó
         VM->>VM: background = .grid
         VM->>K: setBackground(.grid, tema actual)
@@ -554,12 +655,12 @@ sequenceDiagram
     VM->>K: renderPDF()
     alt lienzo vacío
         K-->>VM: nil
-        VM-->>V: alerta "El lienzo está vacío…"
+        VM-->>V: alerta "La hoja está vacía…"
     else hay trazos
         K-->>VM: PDF con papel y trazos
-        VM->>UC: execute(título, .pdf, datos)
-        UC->>UC: nombre de archivo seguro: "Gato.pdf"
-        UC->>S: write(datos, "Gato.pdf")
+        VM->>UC: execute("Física - Hoja 2", .pdf, datos)
+        UC->>UC: nombre de archivo seguro
+        UC->>S: write(datos, "Física - Hoja 2.pdf")
         alt se escribió
             S-->>UC: URL en la carpeta temporal
             UC-->>VM: URL
@@ -599,12 +700,13 @@ lo escribe; la carpeta temporal se vacía en cada exportación.
 como curvas vectoriales, así que la página del PDF contiene el dibujo a
 triple resolución sobre su papel.
 
-**Inyección de dependencias manual.** Con dos pantallas no hace falta una
+**Inyección de dependencias manual.** Con tres pantallas no hace falta una
 librería: `AppContainer` crea todo y lo pasa por los `init`.
 
 **Entidad de dominio y modelo de base de datos son tipos distintos.**
-`Drawing` es un `struct` sin dependencias; `DrawingRecord` es la clase
-`@Model` que SwiftData sabe guardar. El repositorio convierte entre ambos.
+`Notebook` y `Drawing` son `struct` sin dependencias; `NotebookRecord` y
+`DrawingRecord` son las clases `@Model` que SwiftData sabe guardar. La
+biblioteca (`SwiftDataLibrary`) convierte entre ambos.
 Cuesta unas líneas de mapeo y evita que SwiftData se cuele en el dominio y en
 las vistas (ver [ADR 0007](adr/0007-swiftdata.md)).
 
@@ -628,18 +730,45 @@ papel oscuro, el negro se muestra blanco. Los trazos guardados no cambian;
 al exportar se fija el mismo aspecto para que la imagen sea lo que se ve
 (ver [ADR 0008](adr/0008-papel-y-tema-por-dibujo.md)).
 
-**La columna del fondo es opcional en la base de datos.** `DrawingRecord`
-guarda `backgroundRaw: String?` y `themeRaw: String?`. Al ser opcionales, SwiftData la añade sola a
+**Las columnas añadidas después son opcionales en la base de datos.**
+`DrawingRecord` guarda `backgroundRaw`, `themeRaw` y `notebookID` como
+opcionales. Al serlo, SwiftData la añade sola a
 las bases de datos ya instaladas (migración ligera); los dibujos antiguos las
-tienen vacías y se leen como papel blanco liso.
+tienen vacías: el papel se lee como blanco liso, y a cada dibujo sin
+cuaderno se le crea uno al arrancar (`adoptOrphanDrawings`).
 
-**`DrawingSummary` para listar.** La galería no necesita los trazos, solo
-título, fecha y miniatura. Así abrir la galería no carga todos los dibujos.
+**Un cuaderno es una carpeta de hojas, y nunca está vacío.** `Notebook`
+solo tiene título y fecha; cada `Drawing` (hoja) apunta a su cuaderno con
+`notebookID`. Las hojas se ordenan por fecha de creación. Crear un cuaderno
+crea su primera hoja, y `DeletePageUseCase` se niega a borrar la última:
+esas dos reglas están en los casos de uso, no en las vistas
+(ver [ADR 0010](adr/0010-cuadernos-y-hojas.md)).
 
-**La navegación vive en `GalleryScreen`.** Guarda el `CanvasModule` abierto
-y SwiftUI navega mientras no sea `nil`. El módulo se crea **una vez**, al
-tocar la tarjeta: crear el lienzo dentro del cuerpo de una vista lo repetiría
-en cada repintado.
+**Una sola clase para los dos repositorios.** `SwiftDataLibrary` implementa
+`NotebookRepository` y `DrawingRepository` porque comparten un mismo
+`ModelContext`: dos contextos no ven al momento los cambios del otro, y
+borrar un cuaderno toca las dos tablas. Los casos de uso siguen pidiendo
+solo el puerto que necesitan.
+
+**El cuaderno no conoce el lienzo.** `NotebookViewModel` decide qué hoja se
+ve, pero solo le pide a la hoja abierta "guarda ya" o "descarta lo
+pendiente" a través de `PageSession`. Quien implementa ese protocolo es
+`CanvasModule`; en las pruebas, un doble sin PencilKit.
+
+**Cada hoja abierta tiene lienzo y ViewModel propios.** Al cambiar de hoja
+se crean de nuevo. Lo que debe sobrevivir al cambio vive fuera:
+`CanvasPreferences` (dibujar con el dedo) y una única paleta de herramientas
+compartida (lápiz y color elegidos).
+
+**Resúmenes para listar.** La galería usa `NotebookSummary` (título, número
+de hojas, portada, última actividad) y el cuaderno usa `DrawingSummary`: ni
+una ni otro cargan los trazos.
+
+**La navegación vive en `GalleryScreen`.** Guarda el `NotebookViewModel`
+abierto y SwiftUI navega mientras no sea `nil`. Se crea **una vez**, al tocar
+la tarjeta: crearlo dentro del cuerpo de una vista lo repetiría en cada
+repintado. Dentro del cuaderno no hay navegación: `NotebookScreen` cambia la
+hoja que muestra.
 
 **El contenedor crea todo de forma diferida (`lazy`).** `DrawPadApp.init()`
 se ejecuta antes de que exista `UIApplication`. Un `PKCanvasView` creado en
@@ -656,15 +785,15 @@ la interfaz va en el hilo principal). El temporizador de autoguardado es una
 
 | Qué se prueba | Archivo | Cómo |
 | ------------- | ------- | ---- |
-| Casos de uso | `Domain/UseCasesTests.swift` | Repositorio en memoria y biblioteca espía. |
-| Repositorio SwiftData | `Data/SwiftDataDrawingRepositoryTests.swift` | Base de datos real, en memoria. |
+| Casos de uso | `Domain/UseCasesTests.swift` | Biblioteca en memoria y dobles espía. |
+| Biblioteca SwiftData | `Data/SwiftDataLibraryTests.swift` | Base de datos real, en memoria. Incluye la migración de dibujos sin cuaderno. |
 | Archivos para compartir | `Data/TemporaryExportFileStoreTests.swift` | Carpeta temporal real. |
-| Importador del archivo antiguo | `Data/LegacyDrawingFileImporterTests.swift` | Archivo temporal real. |
 | ViewModel del lienzo | `Presentation/CanvasViewModelTests.swift` | Lienzo falso; el autoguardado se prueba con un retardo de milisegundos. |
 | Cuentas del zoom | `Presentation/CanvasGeometryTests.swift` | Funciones puras, sin vistas. |
-| ViewModel de la galería | `Presentation/GalleryViewModelTests.swift` | Repositorio en memoria. |
+| ViewModel de la galería | `Presentation/GalleryViewModelTests.swift` | Biblioteca en memoria. |
+| ViewModel del cuaderno | `Presentation/NotebookViewModelTests.swift` | Biblioteca en memoria y hojas abiertas falsas. |
 
-| Pantallas reales | `DrawPadUITests/CanvasUITests.swift` | Lanza la app en el simulador (con `-uiTesting`: base de datos vacía en memoria), crea dibujos, navega y toca el lienzo con el "dedo". |
+| Pantallas reales | `DrawPadUITests/CanvasUITests.swift` | Lanza la app en el simulador (con `-uiTesting`: base de datos vacía en memoria), crea cuadernos y hojas, navega y toca el lienzo con el "dedo". |
 
 `PencilKitCanvas`, `PhotoLibraryImageExporter` y las vistas no tienen pruebas
 unitarias: son adaptadores finos sobre frameworks de Apple. Las pruebas de

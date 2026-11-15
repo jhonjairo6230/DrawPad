@@ -3,85 +3,86 @@ import XCTest
 
 @MainActor
 final class GalleryViewModelTests: XCTestCase {
-    private var repository: InMemoryDrawingRepository!
+    private var library: InMemoryLibrary!
 
-    private func makeViewModel(_ drawings: [Drawing] = []) -> GalleryViewModel {
-        repository = InMemoryDrawingRepository(drawings)
+    private func makeViewModel(_ notebooks: [Notebook] = []) -> GalleryViewModel {
+        library = InMemoryLibrary(notebooks: notebooks)
         return GalleryViewModel(
-            listDrawings: ListDrawingsUseCase(repository: repository),
-            createDrawing: CreateDrawingUseCase(repository: repository),
-            renameDrawing: RenameDrawingUseCase(repository: repository),
-            deleteDrawing: DeleteDrawingUseCase(repository: repository)
+            listNotebooks: ListNotebooksUseCase(notebooks: library),
+            createNotebook: CreateNotebookUseCase(notebooks: library, drawings: library),
+            renameNotebook: RenameNotebookUseCase(notebooks: library),
+            deleteNotebook: DeleteNotebookUseCase(notebooks: library)
         )
     }
 
-    func testLoadShowsDrawingsNewestFirst() {
+    func testLoadShowsNotebooksMostRecentFirst() {
         let viewModel = makeViewModel([
-            .sample(title: "Viejo", updatedAt: Date(timeIntervalSince1970: 1)),
-            .sample(title: "Nuevo", updatedAt: Date(timeIntervalSince1970: 2)),
+            .sample(title: "Viejo", createdAt: Date(timeIntervalSince1970: 1)),
+            .sample(title: "Nuevo", createdAt: Date(timeIntervalSince1970: 2)),
         ])
 
         viewModel.load()
 
-        XCTAssertEqual(viewModel.drawings.map(\.title), ["Nuevo", "Viejo"])
+        XCTAssertEqual(viewModel.notebooks.map(\.title), ["Nuevo", "Viejo"])
     }
 
     func testLoadShowsAnAlertWhenStorageFails() {
         let viewModel = makeViewModel()
-        repository.error = .storageFailed
+        library.error = .storageFailed
 
         viewModel.load()
 
         XCTAssertEqual(viewModel.alert, AlertMessage(error: DrawingError.storageFailed))
-        XCTAssertTrue(viewModel.drawings.isEmpty)
+        XCTAssertTrue(viewModel.notebooks.isEmpty)
     }
 
-    func testCreateAddsADrawingAndReturnsItsID() throws {
+    func testCreateAddsANotebookWithOnePageAndReturnsItsID() throws {
         let viewModel = makeViewModel()
 
         let id = try XCTUnwrap(viewModel.create())
 
-        XCTAssertEqual(viewModel.drawings.map(\.id), [id])
-        XCTAssertEqual(viewModel.drawings.first?.title, "Dibujo 1")
+        XCTAssertEqual(viewModel.notebooks.map(\.id), [id])
+        XCTAssertEqual(viewModel.notebooks.first?.title, "Cuaderno 1")
+        XCTAssertEqual(viewModel.notebooks.first?.pageCount, 1)
     }
 
     func testCreateReturnsNilAndShowsAnAlertWhenStorageFails() {
         let viewModel = makeViewModel()
-        repository.error = .storageFailed
+        library.error = .storageFailed
 
         XCTAssertNil(viewModel.create())
         XCTAssertEqual(viewModel.alert, AlertMessage(error: DrawingError.storageFailed))
     }
 
     func testRenameUpdatesTheList() {
-        let drawing = Drawing.sample(title: "Viejo")
-        let viewModel = makeViewModel([drawing])
+        let notebook = Notebook.sample(title: "Viejo")
+        let viewModel = makeViewModel([notebook])
         viewModel.load()
 
-        viewModel.rename(id: drawing.id, to: "Paisaje")
+        viewModel.rename(id: notebook.id, to: "Física")
 
-        XCTAssertEqual(viewModel.drawings.map(\.title), ["Paisaje"])
+        XCTAssertEqual(viewModel.notebooks.map(\.title), ["Física"])
     }
 
     func testRenameWithABlankTitleShowsAnAlertAndKeepsTheOldTitle() {
-        let drawing = Drawing.sample(title: "Viejo")
-        let viewModel = makeViewModel([drawing])
+        let notebook = Notebook.sample(title: "Viejo")
+        let viewModel = makeViewModel([notebook])
         viewModel.load()
 
-        viewModel.rename(id: drawing.id, to: "  ")
+        viewModel.rename(id: notebook.id, to: "  ")
 
         XCTAssertEqual(viewModel.alert, AlertMessage(error: DrawingError.invalidTitle))
-        XCTAssertEqual(viewModel.drawings.map(\.title), ["Viejo"])
+        XCTAssertEqual(viewModel.notebooks.map(\.title), ["Viejo"])
     }
 
-    func testDeleteRemovesTheDrawingFromTheList() {
-        let kept = Drawing.sample(title: "Se queda")
-        let removed = Drawing.sample(title: "Se va")
+    func testDeleteRemovesTheNotebookFromTheList() {
+        let kept = Notebook.sample(title: "Se queda")
+        let removed = Notebook.sample(title: "Se va")
         let viewModel = makeViewModel([kept, removed])
         viewModel.load()
 
         viewModel.delete(id: removed.id)
 
-        XCTAssertEqual(viewModel.drawings.map(\.title), ["Se queda"])
+        XCTAssertEqual(viewModel.notebooks.map(\.title), ["Se queda"])
     }
 }

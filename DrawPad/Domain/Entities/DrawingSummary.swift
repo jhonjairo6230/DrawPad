@@ -1,18 +1,16 @@
 import Foundation
 
-/// Lo justo de un dibujo para mostrarlo en la galería.
+/// Lo justo de una hoja para listarla dentro de su cuaderno.
 ///
-/// No incluye los trazos: así listar cien dibujos no carga cien dibujos
-/// completos en memoria.
+/// No incluye los trazos: así listar las hojas no las carga enteras en memoria.
 struct DrawingSummary: Equatable, Identifiable {
     let id: UUID
-    let title: String
     let thumbnailData: Data?
     let updatedAt: Date
 }
 
 extension Drawing {
     var summary: DrawingSummary {
-        DrawingSummary(id: id, title: title, thumbnailData: thumbnailData, updatedAt: updatedAt)
+        DrawingSummary(id: id, thumbnailData: thumbnailData, updatedAt: updatedAt)
     }
 }

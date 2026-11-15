@@ -1,58 +1,58 @@
 import Foundation
 import Observation
 
-/// Estado y acciones de la galería de dibujos (patrón MVVM).
+/// Estado y acciones de la galería de cuadernos (patrón MVVM).
 @MainActor
 @Observable
 final class GalleryViewModel {
-    /// Dibujos a mostrar, del más reciente al más antiguo.
-    private(set) var drawings: [DrawingSummary] = []
+    /// Cuadernos a mostrar, del usado más recientemente al más antiguo.
+    private(set) var notebooks: [NotebookSummary] = []
     var alert: AlertMessage?
 
-    private let listDrawings: ListDrawingsUseCase
-    private let createDrawing: CreateDrawingUseCase
-    private let renameDrawing: RenameDrawingUseCase
-    private let deleteDrawing: DeleteDrawingUseCase
+    private let listNotebooks: ListNotebooksUseCase
+    private let createNotebook: CreateNotebookUseCase
+    private let renameNotebook: RenameNotebookUseCase
+    private let deleteNotebook: DeleteNotebookUseCase
 
     init(
-        listDrawings: ListDrawingsUseCase,
-        createDrawing: CreateDrawingUseCase,
-        renameDrawing: RenameDrawingUseCase,
-        deleteDrawing: DeleteDrawingUseCase
+        listNotebooks: ListNotebooksUseCase,
+        createNotebook: CreateNotebookUseCase,
+        renameNotebook: RenameNotebookUseCase,
+        deleteNotebook: DeleteNotebookUseCase
     ) {
-        self.listDrawings = listDrawings
-        self.createDrawing = createDrawing
-        self.renameDrawing = renameDrawing
-        self.deleteDrawing = deleteDrawing
+        self.listNotebooks = listNotebooks
+        self.createNotebook = createNotebook
+        self.renameNotebook = renameNotebook
+        self.deleteNotebook = deleteNotebook
     }
 
-    /// Vuelve a leer la lista (al aparecer y al volver de un dibujo).
+    /// Vuelve a leer la lista (al aparecer y al volver de un cuaderno).
     func load() {
-        perform { drawings = try listDrawings.execute() }
+        perform { notebooks = try listNotebooks.execute() }
     }
 
-    /// Crea un dibujo vacío.
+    /// Crea un cuaderno con una hoja en blanco.
     /// - Returns: su identificador, para abrirlo; `nil` si falló.
     func create() -> UUID? {
         var id: UUID?
         perform {
-            id = try createDrawing.execute().id
-            drawings = try listDrawings.execute()
+            id = try createNotebook.execute().id
+            notebooks = try listNotebooks.execute()
         }
         return id
     }
 
     func rename(id: UUID, to title: String) {
         perform {
-            try renameDrawing.execute(id: id, title: title)
-            drawings = try listDrawings.execute()
+            try renameNotebook.execute(id: id, title: title)
+            notebooks = try listNotebooks.execute()
         }
     }
 
     func delete(id: UUID) {
         perform {
-            try deleteDrawing.execute(id: id)
-            drawings = try listDrawings.execute()
+            try deleteNotebook.execute(id: id)
+            notebooks = try listNotebooks.execute()
         }
     }
 

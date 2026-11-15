@@ -1,6 +1,6 @@
 import Foundation
 
-/// Recupera un dibujo completo para abrirlo en el lienzo.
+/// Recupera una hoja completa para abrirla en el lienzo.
 struct LoadDrawingUseCase {
     private let repository: DrawingRepository
 
@@ -8,9 +8,9 @@ struct LoadDrawingUseCase {
         self.repository = repository
     }
 
-    /// - Throws: ``DrawingError/drawingNotFound`` si el dibujo no existe.
+    /// - Throws: ``DrawingError/drawingNotFound`` si la hoja no existe.
     func execute(id: UUID) throws -> Drawing {
-        guard let drawing = try repository.find(id: id) else {
+        guard let drawing = try repository.findDrawing(id: id) else {
             throw DrawingError.drawingNotFound
         }
         return drawing

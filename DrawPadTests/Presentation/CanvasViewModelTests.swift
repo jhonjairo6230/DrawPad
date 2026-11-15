@@ -4,16 +4,18 @@ import XCTest
 @MainActor
 final class CanvasViewModelTests: XCTestCase {
     private var canvas: FakeDrawingCanvas!
-    private var repository: InMemoryDrawingRepository!
+    private var repository: InMemoryLibrary!
+    private var preferences: CanvasPreferences!
     private var library: SpyImageLibrary!
     private var exportStore: SpyExportFileStore!
     /// El dibujo abierto en la pantalla; ya existe en el repositorio.
     private var drawing: Drawing!
 
     override func setUp() async throws {
-        drawing = Drawing.sample(title: "Gato")
+        drawing = Drawing.sample()
         canvas = FakeDrawingCanvas()
-        repository = InMemoryDrawingRepository([drawing])
+        repository = InMemoryLibrary(drawings: [drawing])
+        preferences = CanvasPreferences()
         library = SpyImageLibrary()
         exportStore = SpyExportFileStore()
     }
@@ -23,6 +25,8 @@ final class CanvasViewModelTests: XCTestCase {
     private func makeViewModel(autosaveDelay: Duration = .seconds(60)) -> CanvasViewModel {
         CanvasViewModel(
             drawingID: drawing.id,
+            shareName: "Física - Hoja 1",
+            preferences: preferences,
             canvas: canvas,
             loadDrawing: LoadDrawingUseCase(repository: repository),
             saveDrawing: SaveDrawingUseCase(repository: repository),
@@ -35,21 +39,20 @@ final class CanvasViewModelTests: XCTestCase {
 
     // MARK: - Carga
 
-    func testOnAppearLoadsTheDrawingWithoutSavingItAgain() throws {
+    func testOnAppearLoadsThePageWithoutSavingItAgain() throws {
         drawing.strokesData = Data("guardado".utf8)
         try repository.save(drawing)
         let viewModel = makeViewModel()
 
         viewModel.onAppear()
 
-        XCTAssertEqual(viewModel.title, "Gato")
         XCTAssertEqual(canvas.strokes, Data("guardado".utf8))
         XCTAssertFalse(viewModel.hasPendingChanges)
         XCTAssertEqual(canvas.isFingerDrawingEnabled, false)
     }
 
-    func testOnAppearShowsAnAlertWhenTheDrawingNoLongerExists() throws {
-        try repository.delete(id: drawing.id)
+    func testOnAppearShowsAnAlertWhenThePageNoLongerExists() throws {
+        try repository.deleteDrawing(id: drawing.id)
         let viewModel = makeViewModel()
 
         viewModel.onAppear()
@@ -221,6 +224,31 @@ final class CanvasViewModelTests: XCTestCase {
         XCTAssertEqual(canvas.isFingerDrawingEnabled, true)
     }
 
+    func testFingerDrawingIsRememberedWhenAnotherPageOpens() {
+        makeViewModel().toggleFingerDrawing()
+        let nextPageCanvas = FakeDrawingCanvas()
+        canvas = nextPageCanvas
+
+        let nextPage = makeViewModel()
+        nextPage.onAppear()
+
+        XCTAssertTrue(nextPage.isFingerDrawingEnabled)
+        XCTAssertEqual(nextPageCanvas.isFingerDrawingEnabled, true)
+    }
+
+    func testDiscardPendingSaveDropsUnsavedChanges() {
+        let viewModel = makeViewModel()
+        viewModel.onAppear()
+        let savesBefore = repository.saveCount
+        canvas.simulateStroke()
+
+        viewModel.discardPendingSave()
+        viewModel.flushPendingSave()
+
+        XCTAssertFalse(viewModel.hasPendingChanges)
+        XCTAssertEqual(repository.saveCount, savesBefore)
+    }
+
     func testUndoAndRedoAreForwardedToTheCanvas() {
         let viewModel = makeViewModel()
 
@@ -267,16 +295,16 @@ final class CanvasViewModelTests: XCTestCase {
 
     // MARK: - Compartir
 
-    func testShareAsPDFWritesAFileNamedAfterTheDrawingAndOpensTheSheet() {
+    func testShareAsPDFWritesAFileNamedAfterThePageAndOpensTheSheet() {
         let viewModel = makeViewModel()
         viewModel.onAppear()
         canvas.simulateStroke()
 
         viewModel.share(as: .pdf)
 
-        XCTAssertEqual(exportStore.written.map(\.fileName), ["Gato.pdf"])
+        XCTAssertEqual(exportStore.written.map(\.fileName), ["Física - Hoja 1.pdf"])
         XCTAssertEqual(exportStore.written.first?.data, Data("pdf".utf8))
-        XCTAssertEqual(viewModel.sharedFile?.url.lastPathComponent, "Gato.pdf")
+        XCTAssertEqual(viewModel.sharedFile?.url.lastPathComponent, "Física - Hoja 1.pdf")
     }
 
     func testShareAsPNGUsesThePNGRender() {
@@ -286,7 +314,7 @@ final class CanvasViewModelTests: XCTestCase {
 
         viewModel.share(as: .png)
 
-        XCTAssertEqual(exportStore.written.map(\.fileName), ["Gato.png"])
+        XCTAssertEqual(exportStore.written.map(\.fileName), ["Física - Hoja 1.png"])
         XCTAssertEqual(exportStore.written.first?.data, Data("png".utf8))
     }
 

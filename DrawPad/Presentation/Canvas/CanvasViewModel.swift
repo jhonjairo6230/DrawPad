@@ -3,22 +3,21 @@ import Observation
 
 /// Estado y acciones de la pantalla de dibujo (patrón MVVM).
 ///
-/// Trabaja sobre **un** dibujo, identificado por `drawingID`.
+/// Trabaja sobre **una** hoja, identificada por `drawingID`.
 ///
 /// - Recibe intenciones de la vista (`undo()`, `export()`…).
 /// - Habla con el lienzo a través de ``DrawingCanvas`` y con el dominio a
 ///   través de los casos de uso; nunca con PencilKit, SwiftData ni Fotos.
-/// - Publica estado observable (`title`, `isExporting`, `alert`…).
+/// - Publica estado observable (`background`, `isExporting`, `alert`…).
 ///
 /// **Autoguardado:** cada cambio de trazos reinicia un temporizador
 /// (`autosaveDelay`). Cuando pasa ese tiempo sin cambios se guarda una sola
-/// vez (*debounce*). Al salir del dibujo o de la app se guarda lo pendiente de
+/// vez (*debounce*). Al salir de la hoja o de la app se guarda lo pendiente de
 /// inmediato (``flushPendingSave()``).
 @MainActor
 @Observable
 final class CanvasViewModel {
-    private(set) var title = ""
-    private(set) var isFingerDrawingEnabled = false
+    var isFingerDrawingEnabled: Bool { preferences.isFingerDrawingEnabled }
     private(set) var background = CanvasBackground.blank
     private(set) var theme = CanvasTheme.light
     private(set) var isExporting = false
@@ -27,6 +26,9 @@ final class CanvasViewModel {
     var sharedFile: SharedFile?
 
     private let drawingID: UUID
+    /// Nombre de la hoja para el archivo al compartir ("Cuaderno 1 - Hoja 2").
+    private let shareName: String
+    private let preferences: CanvasPreferences
     private let canvas: DrawingCanvas
     private let loadDrawing: LoadDrawingUseCase
     private let saveDrawing: SaveDrawingUseCase
@@ -41,6 +43,8 @@ final class CanvasViewModel {
 
     init(
         drawingID: UUID,
+        shareName: String,
+        preferences: CanvasPreferences,
         canvas: DrawingCanvas,
         loadDrawing: LoadDrawingUseCase,
         saveDrawing: SaveDrawingUseCase,
@@ -50,6 +54,8 @@ final class CanvasViewModel {
         autosaveDelay: Duration = .seconds(1)
     ) {
         self.drawingID = drawingID
+        self.shareName = shareName
+        self.preferences = preferences
         self.canvas = canvas
         self.loadDrawing = loadDrawing
         self.saveDrawing = saveDrawing
@@ -67,14 +73,13 @@ final class CanvasViewModel {
 
     // MARK: - Ciclo de vida
 
-    /// Carga el dibujo en el lienzo. Solo actúa la primera vez que aparece la pantalla.
+    /// Carga la hoja en el lienzo. Solo actúa la primera vez que aparece la pantalla.
     func onAppear() {
         guard !hasLoaded else { return }
         hasLoaded = true
         canvas.setFingerDrawingEnabled(isFingerDrawingEnabled)
         do {
             let drawing = try loadDrawing.execute(id: drawingID)
-            title = drawing.title
             background = drawing.background
             theme = drawing.theme
             canvas.setBackground(background, theme: theme)
@@ -87,10 +92,16 @@ final class CanvasViewModel {
         }
     }
 
-    /// Guarda ya lo pendiente (se sale del dibujo o la app pasa a segundo plano).
+    /// Guarda ya lo pendiente (se sale de la hoja o la app pasa a segundo plano).
     func flushPendingSave() {
         guard hasPendingChanges else { return }
         saveNow()
+    }
+
+    /// Olvida lo pendiente sin guardarlo (la hoja se acaba de eliminar).
+    func discardPendingSave() {
+        pendingSave?.cancel()
+        pendingSave = nil
     }
 
     // MARK: - Acciones del usuario
@@ -100,7 +111,7 @@ final class CanvasViewModel {
     func redo() { canvas.redo() }
 
     func toggleFingerDrawing() {
-        isFingerDrawingEnabled.toggle()
+        preferences.isFingerDrawingEnabled.toggle()
         canvas.setFingerDrawingEnabled(isFingerDrawingEnabled)
     }
 
@@ -133,7 +144,7 @@ final class CanvasViewModel {
         scheduleAutosave()
     }
 
-    /// Convierte el dibujo a PNG y lo añade a Fotos.
+    /// Convierte la hoja a PNG y la añade a Fotos.
     func export() async {
         guard !isExporting else { return }
         guard !canvas.isEmpty, let png = canvas.renderPNG() else {
@@ -159,7 +170,7 @@ final class CanvasViewModel {
         }
         do {
             guard !canvas.isEmpty, let data else { throw DrawingError.emptyDrawing }
-            let url = try prepareShareFile.execute(title: title, format: format, data: data)
+            let url = try prepareShareFile.execute(name: shareName, format: format, data: data)
             sharedFile = SharedFile(url: url)
         } catch {
             alert = AlertMessage(error: error)

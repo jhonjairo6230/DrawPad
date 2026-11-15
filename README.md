@@ -10,10 +10,13 @@ desde Windows. No está pensada para publicarse en el App Store.
 
 - Lienzo con **PencilKit**: presión, inclinación y la paleta de herramientas
   de Apple (lápiz, rotulador, borrador, regla, colores, grosor).
-- **Galería de dibujos**: crear, abrir, renombrar y eliminar, con miniaturas.
+- **Cuadernos**: cada cuaderno agrupa sus hojas. Se crean, renombran y
+  eliminan desde la galería, con la primera hoja como portada.
+- **Hojas a demanda**: dentro de un cuaderno se añaden hojas, se pasa de una
+  a otra y se eliminan.
 - **Base de datos local** (SwiftData): todo se guarda en el iPad, con
   autoguardado mientras dibujas.
-- **Papel de fondo** por dibujo: blanco, cuadrícula, líneas o puntos, en
+- **Papel de fondo** por hoja: blanco, cuadrícula, líneas o puntos, en
   claro u **oscuro**. La app sigue el modo claro/oscuro del iPad.
 - **Zoom** con pellizco (hasta 4×) y desplazamiento por la hoja.
 - Deshacer y rehacer.
