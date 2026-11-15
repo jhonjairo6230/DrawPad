@@ -18,7 +18,8 @@ desde Windows. No está pensada para publicarse en el App Store.
 - Deshacer y rehacer.
 - **Dibujar con el dedo** (opcional; por defecto solo dibuja el Pencil).
 - Borrar todo, con confirmación.
-- **Guardar en Fotos** como PNG.
+- **Guardar en Fotos** y **compartir** como imagen (PNG) o PDF: AirDrop,
+  Archivos, Mensajes, imprimir…
 
 Requiere iPadOS 17 o posterior.
 

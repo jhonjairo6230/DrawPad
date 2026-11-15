@@ -88,6 +88,21 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
         renderImage(scale: canvasView.traitCollection.displayScale, paper: background)?.pngData()
     }
 
+    func renderPDF() -> Data? {
+        guard let rect = nonEmptyRenderRect else { return nil }
+        // PencilKit no ofrece los trazos como vectores: el PDF lleva una
+        // imagen a alta resolución sobre el papel.
+        let strokes = strokesImage(in: rect, scale: Self.pdfImageScale)
+        let page = CGRect(origin: .zero, size: rect.size)
+
+        return UIGraphicsPDFRenderer(bounds: page).pdfData { context in
+            context.beginPage()
+            CanvasBackgroundPattern.color(for: background, theme: theme).setFill()
+            context.fill(page)
+            strokes.draw(in: page)
+        }
+    }
+
     func renderThumbnail() -> Data? {
         let longestSide = max(renderRect.width, renderRect.height)
         guard longestSide > 0 else { return nil }
@@ -98,6 +113,7 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
     // MARK: - Renderizado
 
     private static let thumbnailMaxSide: CGFloat = 480
+    private static let pdfImageScale: CGFloat = 3
 
     private var interfaceStyle: UIUserInterfaceStyle {
         theme == .dark ? .dark : .light
@@ -110,16 +126,8 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
 
     /// El dibujo sobre el papel indicado. `scale` = píxeles por punto.
     private func renderImage(scale: CGFloat, paper: CanvasBackground) -> UIImage? {
-        let drawing = canvasView.drawing
-        let rect = renderRect
-        guard !drawing.strokes.isEmpty, rect.width > 0, rect.height > 0 else { return nil }
-
-        // `image(from:scale:)` usa el aspecto "actual" para decidir el color de
-        // la tinta: se fija el del papel para que la imagen sea lo que se ve.
-        var strokes = UIImage()
-        UITraitCollection(userInterfaceStyle: interfaceStyle).performAsCurrent {
-            strokes = drawing.image(from: rect, scale: scale)
-        }
+        guard let rect = nonEmptyRenderRect else { return nil }
+        let strokes = strokesImage(in: rect, scale: scale)
 
         let format = UIGraphicsImageRendererFormat()
         format.scale = scale
@@ -130,6 +138,26 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
             context.fill(rect)
             strokes.draw(in: rect)
         }
+    }
+
+    /// `renderRect` si hay algo que dibujar; `nil` si el lienzo está vacío.
+    private var nonEmptyRenderRect: CGRect? {
+        let rect = renderRect
+        guard !canvasView.drawing.strokes.isEmpty, rect.width > 0, rect.height > 0 else { return nil }
+        return rect
+    }
+
+    /// Solo los trazos, sobre transparente.
+    ///
+    /// `image(from:scale:)` usa el aspecto "actual" para decidir el color de
+    /// la tinta: se fija el del papel para que la imagen sea lo que se ve.
+    private func strokesImage(in rect: CGRect, scale: CGFloat) -> UIImage {
+        let drawing = canvasView.drawing
+        var strokes = UIImage()
+        UITraitCollection(userInterfaceStyle: interfaceStyle).performAsCurrent {
+            strokes = drawing.image(from: rect, scale: scale)
+        }
+        return strokes
     }
 }
 

@@ -35,7 +35,8 @@ final class AppContainer {
             loadDrawing: LoadDrawingUseCase(repository: drawingRepository),
             saveDrawing: SaveDrawingUseCase(repository: drawingRepository),
             changeBackground: ChangeBackgroundUseCase(repository: drawingRepository),
-            exportDrawing: ExportDrawingUseCase(library: imageLibrary)
+            exportDrawing: ExportDrawingUseCase(library: imageLibrary),
+            prepareShareFile: PrepareShareFileUseCase(store: exportFileStore)
         )
         return CanvasModule(viewModel: viewModel, canvas: canvas)
     }
@@ -58,4 +59,5 @@ final class AppContainer {
     }()
 
     private lazy var imageLibrary: ImageLibrary = PhotoLibraryImageExporter()
+    private lazy var exportFileStore: ExportFileStore = TemporaryExportFileStore.live()
 }

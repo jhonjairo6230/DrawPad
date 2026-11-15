@@ -27,6 +27,9 @@ struct CanvasScreen: View {
             ) {
                 Button("Borrar todo", role: .destructive) { viewModel.clear() }
             }
+            .sheet(item: $viewModel.sharedFile) { file in
+                ActivityView(items: [file.url])
+            }
             .alert(
                 viewModel.alert?.title ?? "",
                 isPresented: isShowingAlert,
@@ -101,8 +104,19 @@ struct CanvasScreen: View {
             if viewModel.isExporting {
                 ProgressView()
             } else {
-                Button { Task { await viewModel.export() } } label: {
-                    Label("Guardar en Fotos", systemImage: "square.and.arrow.down")
+                Menu {
+                    Button { Task { await viewModel.export() } } label: {
+                        Label("Guardar en Fotos", systemImage: "square.and.arrow.down")
+                    }
+                    Divider()
+                    Button { viewModel.share(as: .png) } label: {
+                        Label("Compartir como imagen", systemImage: "photo")
+                    }
+                    Button { viewModel.share(as: .pdf) } label: {
+                        Label("Compartir como PDF", systemImage: "doc.richtext")
+                    }
+                } label: {
+                    Label("Compartir", systemImage: "square.and.arrow.up")
                 }
             }
         }

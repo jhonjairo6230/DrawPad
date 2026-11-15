@@ -32,7 +32,7 @@ final class CanvasUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Dibujo 1"].waitForExistence(timeout: 5))
 
         app.buttons["Dibujo 1"].tap()
-        XCTAssertTrue(app.buttons["Guardar en Fotos"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Compartir"].waitForExistence(timeout: 5))
         assertAppIsRunning()
     }
 
@@ -125,7 +125,42 @@ final class CanvasUITests: XCTestCase {
         assertAppIsRunning()
     }
 
+    // MARK: - Compartir
+
+    func testSharingAnEmptyCanvasShowsAnAlert() {
+        openNewDrawing()
+
+        app.buttons["Compartir"].tap()
+        app.buttons["Compartir como PDF"].tap()
+
+        XCTAssertTrue(app.alerts["Algo salió mal"].waitForExistence(timeout: 5))
+        app.alerts.buttons["Aceptar"].tap()
+        assertAppIsRunning()
+    }
+
+    func testSharingADrawingAsImageDoesNotCrash() {
+        shareDrawing(option: "Compartir como imagen")
+    }
+
+    func testSharingADrawingAsPDFDoesNotCrash() {
+        shareDrawing(option: "Compartir como PDF")
+    }
+
     // MARK: - Utilidades
+
+    /// Dibuja algo y abre la hoja de compartir. La hoja es del sistema: basta
+    /// con comprobar que la app sigue viva y no mostró un error.
+    private func shareDrawing(option: String) {
+        openNewDrawing()
+        app.buttons["Dibujar con el dedo"].tap()
+        dragOnCanvas()
+
+        app.buttons["Compartir"].tap()
+        app.buttons[option].tap()
+
+        XCTAssertFalse(app.alerts["Algo salió mal"].waitForExistence(timeout: 3))
+        assertAppIsRunning()
+    }
 
     private func chooseBackground(_ title: String) {
         app.buttons["Fondo"].tap()
@@ -140,7 +175,7 @@ final class CanvasUITests: XCTestCase {
         let newDrawing = app.buttons["Nuevo dibujo"]
         XCTAssertTrue(newDrawing.waitForExistence(timeout: 5))
         newDrawing.tap()
-        XCTAssertTrue(app.buttons["Guardar en Fotos"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Compartir"].waitForExistence(timeout: 5))
     }
 
     private func goBackToGallery() {

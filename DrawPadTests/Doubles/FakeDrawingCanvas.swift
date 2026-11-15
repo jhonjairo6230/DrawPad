@@ -7,6 +7,7 @@ final class FakeDrawingCanvas: DrawingCanvas {
     var onDrawingChanged: (() -> Void)?
     var strokes = Data()
     var png: Data? = Data("png".utf8)
+    var pdf: Data? = Data("pdf".utf8)
     var thumbnail: Data? = Data("mini".utf8)
     private(set) var isFingerDrawingEnabled: Bool?
     private(set) var background: CanvasBackground?
@@ -43,6 +44,10 @@ final class FakeDrawingCanvas: DrawingCanvas {
 
     func renderPNG() -> Data? {
         isEmpty ? nil : png
+    }
+
+    func renderPDF() -> Data? {
+        isEmpty ? nil : pdf
     }
 
     func renderThumbnail() -> Data? {

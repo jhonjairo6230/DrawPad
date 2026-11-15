@@ -27,6 +27,9 @@ protocol DrawingCanvas: AnyObject {
     func setBackground(_ background: CanvasBackground, theme: CanvasTheme)
     /// El dibujo como PNG sobre su papel de fondo, o `nil` si está vacío.
     func renderPNG() -> Data?
+    /// El dibujo como PDF de una página sobre su papel de fondo, o `nil` si
+    /// está vacío.
+    func renderPDF() -> Data?
     /// Versión pequeña del dibujo para la galería, sobre papel liso (el
     /// patrón en pequeño ensucia la miniatura); `nil` si está vacío.
     func renderThumbnail() -> Data?

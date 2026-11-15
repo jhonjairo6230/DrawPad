@@ -15,6 +15,8 @@ enum DrawingError: Error, Equatable {
     case photoLibraryAccessDenied
     /// Fotos rechazó la imagen.
     case exportFailed
+    /// No se pudo preparar el archivo para compartir.
+    case shareFailed
     /// Se intentó exportar un dibujo sin trazos.
     case emptyDrawing
 }
@@ -32,8 +34,10 @@ extension DrawingError: LocalizedError {
             return "DrawPad no tiene permiso para guardar en Fotos. Actívalo en Ajustes > DrawPad > Fotos."
         case .exportFailed:
             return "No se pudo guardar la imagen en Fotos."
+        case .shareFailed:
+            return "No se pudo preparar el archivo para compartir."
         case .emptyDrawing:
-            return "El lienzo está vacío: dibuja algo antes de exportar."
+            return "El lienzo está vacío: dibuja algo antes de exportar o compartir."
         }
     }
 }
