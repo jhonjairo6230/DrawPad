@@ -1,0 +1,385 @@
+import XCTest
+@testable import DrawPad
+
+@MainActor
+final class CanvasViewModelTests: XCTestCase {
+    private var canvas: FakeDrawingCanvas!
+    private var repository: InMemoryLibrary!
+    private var preferences: CanvasPreferences!
+    private var library: SpyImageLibrary!
+    private var exportStore: SpyExportFileStore!
+    /// El dibujo abierto en la pantalla; ya existe en el repositorio.
+    private var drawing: Drawing!
+
+    override func setUp() async throws {
+        drawing = Drawing.sample()
+        canvas = FakeDrawingCanvas()
+        repository = InMemoryLibrary(drawings: [drawing])
+        preferences = CanvasPreferences()
+        library = SpyImageLibrary()
+        exportStore = SpyExportFileStore()
+    }
+
+    private var stored: Drawing? { repository.drawings[drawing.id] }
+
+    private func makeViewModel(autosaveDelay: Duration = .seconds(60)) -> CanvasViewModel {
+        CanvasViewModel(
+            drawingID: drawing.id,
+            shareName: "Física - Hoja 1",
+            preferences: preferences,
+            canvas: canvas,
+            loadDrawing: LoadDrawingUseCase(repository: repository),
+            saveDrawing: SaveDrawingUseCase(repository: repository),
+            changeBackground: ChangeBackgroundUseCase(repository: repository),
+            exportDrawing: ExportDrawingUseCase(library: library),
+            prepareShareFile: PrepareShareFileUseCase(store: exportStore),
+            autosaveDelay: autosaveDelay
+        )
+    }
+
+    // MARK: - Carga
+
+    func testOnAppearLoadsThePageWithoutSavingItAgain() throws {
+        drawing.strokesData = Data("guardado".utf8)
+        try repository.save(drawing)
+        let viewModel = makeViewModel()
+
+        viewModel.onAppear()
+
+        XCTAssertEqual(canvas.strokes, Data("guardado".utf8))
+        XCTAssertFalse(viewModel.hasPendingChanges)
+        XCTAssertEqual(canvas.isFingerDrawingEnabled, false)
+    }
+
+    func testOnAppearShowsAnAlertWhenThePageNoLongerExists() throws {
+        try repository.deleteDrawing(id: drawing.id)
+        let viewModel = makeViewModel()
+
+        viewModel.onAppear()
+
+        XCTAssertEqual(viewModel.alert, AlertMessage(error: DrawingError.drawingNotFound))
+    }
+
+    func testOnAppearShowsAnAlertWhenLoadingFails() {
+        repository.error = .storageFailed
+        let viewModel = makeViewModel()
+
+        viewModel.onAppear()
+
+        XCTAssertEqual(viewModel.alert, AlertMessage(error: DrawingError.storageFailed))
+    }
+
+    // MARK: - Autoguardado
+
+    func testAStrokeIsSavedAfterTheAutosaveDelay() async throws {
+        let viewModel = makeViewModel(autosaveDelay: .milliseconds(20))
+        viewModel.onAppear()
+
+        let savesBefore = repository.saveCount
+        canvas.simulateStroke(Data("uno".utf8))
+        XCTAssertTrue(viewModel.hasPendingChanges)
+        try await waitUntil { self.repository.saveCount == savesBefore + 1 }
+
+        XCTAssertEqual(stored?.strokesData, Data("uno".utf8))
+        XCTAssertEqual(stored?.thumbnailData, Data("mini".utf8))
+        XCTAssertFalse(viewModel.hasPendingChanges)
+    }
+
+    func testSeveralQuickStrokesAreSavedOnlyOnce() async throws {
+        let viewModel = makeViewModel(autosaveDelay: .milliseconds(50))
+        viewModel.onAppear()
+        let savesBefore = repository.saveCount
+
+        canvas.simulateStroke(Data("uno".utf8))
+        canvas.simulateStroke(Data("dos".utf8))
+        canvas.simulateStroke(Data("tres".utf8))
+        try await waitUntil { !viewModel.hasPendingChanges }
+
+        XCTAssertEqual(repository.saveCount, savesBefore + 1)
+        XCTAssertEqual(stored?.strokesData, Data("tres".utf8))
+    }
+
+    func testFlushSavesPendingChangesImmediately() {
+        let viewModel = makeViewModel()
+        viewModel.onAppear()
+        canvas.simulateStroke(Data("uno".utf8))
+
+        viewModel.flushPendingSave()
+
+        XCTAssertEqual(stored?.strokesData, Data("uno".utf8))
+        XCTAssertFalse(viewModel.hasPendingChanges)
+    }
+
+    func testFlushDoesNothingWithoutPendingChanges() {
+        let viewModel = makeViewModel()
+        viewModel.onAppear()
+        let savesBefore = repository.saveCount
+
+        viewModel.flushPendingSave()
+
+        XCTAssertEqual(repository.saveCount, savesBefore)
+    }
+
+    func testClearEmptiesTheCanvasAndSavesTheEmptyDrawing() {
+        let viewModel = makeViewModel()
+        viewModel.onAppear()
+        canvas.simulateStroke()
+        viewModel.flushPendingSave()
+
+        viewModel.clear()
+        viewModel.flushPendingSave()
+
+        XCTAssertTrue(canvas.isEmpty)
+        XCTAssertEqual(stored?.strokesData, Data())
+        XCTAssertNil(stored?.thumbnailData)
+    }
+
+    // MARK: - Fondo
+
+    func testOnAppearAppliesTheSavedBackground() throws {
+        drawing.background = .grid
+        drawing.theme = .dark
+        try repository.save(drawing)
+        let viewModel = makeViewModel()
+
+        viewModel.onAppear()
+
+        XCTAssertEqual(viewModel.background, .grid)
+        XCTAssertEqual(viewModel.theme, .dark)
+        XCTAssertEqual(canvas.background, .grid)
+        XCTAssertEqual(canvas.theme, .dark)
+    }
+
+    func testSetThemeKeepsThePatternAndSavesItImmediately() {
+        let viewModel = makeViewModel()
+        viewModel.onAppear()
+        viewModel.setBackground(.lines)
+
+        viewModel.setTheme(.dark)
+
+        XCTAssertEqual(viewModel.theme, .dark)
+        XCTAssertEqual(canvas.theme, .dark)
+        XCTAssertEqual(canvas.background, .lines)
+        XCTAssertEqual(stored?.theme, .dark)
+        XCTAssertEqual(stored?.background, .lines)
+    }
+
+    func testSetThemeKeepsTheOldOneWhenSavingFails() {
+        let viewModel = makeViewModel()
+        viewModel.onAppear()
+        repository.error = .storageFailed
+
+        viewModel.setTheme(.dark)
+
+        XCTAssertEqual(viewModel.theme, .light)
+        XCTAssertEqual(canvas.theme, .light)
+        XCTAssertEqual(viewModel.alert, AlertMessage(error: DrawingError.storageFailed))
+    }
+
+    func testSetBackgroundUpdatesTheCanvasAndSavesItImmediately() {
+        let viewModel = makeViewModel()
+        viewModel.onAppear()
+
+        viewModel.setBackground(.dots)
+
+        XCTAssertEqual(viewModel.background, .dots)
+        XCTAssertEqual(canvas.background, .dots)
+        XCTAssertEqual(stored?.background, .dots)
+    }
+
+    func testSetBackgroundKeepsTheOldOneWhenSavingFails() {
+        let viewModel = makeViewModel()
+        viewModel.onAppear()
+        repository.error = .storageFailed
+
+        viewModel.setBackground(.lines)
+
+        XCTAssertEqual(viewModel.background, .blank)
+        XCTAssertEqual(canvas.background, .blank)
+        XCTAssertEqual(viewModel.alert, AlertMessage(error: DrawingError.storageFailed))
+    }
+
+    func testAutosaveAfterChangingTheBackgroundKeepsIt() {
+        let viewModel = makeViewModel()
+        viewModel.onAppear()
+        viewModel.setBackground(.grid)
+        viewModel.setTheme(.dark)
+
+        canvas.simulateStroke()
+        viewModel.flushPendingSave()
+
+        XCTAssertEqual(stored?.background, .grid)
+        XCTAssertEqual(stored?.theme, .dark)
+        XCTAssertEqual(stored?.strokesData, Data("trazo".utf8))
+    }
+
+    // MARK: - Herramientas
+
+    func testToggleFingerDrawingUpdatesStateAndCanvas() {
+        let viewModel = makeViewModel()
+
+        viewModel.toggleFingerDrawing()
+
+        XCTAssertTrue(viewModel.isFingerDrawingEnabled)
+        XCTAssertEqual(canvas.isFingerDrawingEnabled, true)
+    }
+
+    func testFingerDrawingIsRememberedWhenAnotherPageOpens() {
+        makeViewModel().toggleFingerDrawing()
+        let nextPageCanvas = FakeDrawingCanvas()
+        canvas = nextPageCanvas
+
+        let nextPage = makeViewModel()
+        nextPage.onAppear()
+
+        XCTAssertTrue(nextPage.isFingerDrawingEnabled)
+        XCTAssertEqual(nextPageCanvas.isFingerDrawingEnabled, true)
+    }
+
+    func testDiscardPendingSaveDropsUnsavedChanges() {
+        let viewModel = makeViewModel()
+        viewModel.onAppear()
+        let savesBefore = repository.saveCount
+        canvas.simulateStroke()
+
+        viewModel.discardPendingSave()
+        viewModel.flushPendingSave()
+
+        XCTAssertFalse(viewModel.hasPendingChanges)
+        XCTAssertEqual(repository.saveCount, savesBefore)
+    }
+
+    func testUndoAndRedoAreForwardedToTheCanvas() {
+        let viewModel = makeViewModel()
+
+        viewModel.undo()
+        viewModel.redo()
+        viewModel.redo()
+
+        XCTAssertEqual(canvas.undoCount, 1)
+        XCTAssertEqual(canvas.redoCount, 2)
+    }
+
+    // MARK: - Suavizar
+
+    func testSmoothStrokesSmoothsTheCanvasAndSavesTheResult() {
+        let viewModel = makeViewModel()
+        viewModel.onAppear()
+        canvas.simulateStroke(Data("tembloroso".utf8))
+        viewModel.flushPendingSave()
+        let savesBefore = repository.saveCount
+
+        viewModel.smoothStrokes()
+        XCTAssertTrue(viewModel.hasPendingChanges)
+        viewModel.flushPendingSave()
+
+        XCTAssertEqual(canvas.smoothCount, 1)
+        XCTAssertEqual(repository.saveCount, savesBefore + 1)
+    }
+
+    func testSmoothStrokesDoesNothingOnAnEmptyPage() {
+        let viewModel = makeViewModel()
+        viewModel.onAppear()
+
+        viewModel.smoothStrokes()
+
+        XCTAssertEqual(canvas.smoothCount, 0)
+        XCTAssertFalse(viewModel.hasPendingChanges)
+    }
+
+    // MARK: - Exportar
+
+    func testExportSendsThePNGToTheLibraryAndConfirms() async {
+        let viewModel = makeViewModel()
+        canvas.simulateStroke()
+
+        await viewModel.export()
+
+        XCTAssertEqual(library.added, [Data("png".utf8)])
+        XCTAssertEqual(viewModel.alert, .exportSucceeded)
+        XCTAssertFalse(viewModel.isExporting)
+    }
+
+    func testExportWithAnEmptyCanvasShowsAnAlertAndExportsNothing() async {
+        let viewModel = makeViewModel()
+
+        await viewModel.export()
+
+        XCTAssertTrue(library.added.isEmpty)
+        XCTAssertEqual(viewModel.alert, AlertMessage(error: DrawingError.emptyDrawing))
+    }
+
+    func testExportShowsTheLibraryError() async {
+        library.error = .photoLibraryAccessDenied
+        let viewModel = makeViewModel()
+        canvas.simulateStroke()
+
+        await viewModel.export()
+
+        XCTAssertEqual(viewModel.alert, AlertMessage(error: DrawingError.photoLibraryAccessDenied))
+        XCTAssertFalse(viewModel.isExporting)
+    }
+
+    // MARK: - Compartir
+
+    func testShareAsPDFWritesAFileNamedAfterThePageAndOpensTheSheet() {
+        let viewModel = makeViewModel()
+        viewModel.onAppear()
+        canvas.simulateStroke()
+
+        viewModel.share(as: .pdf)
+
+        XCTAssertEqual(exportStore.written.map(\.fileName), ["Física - Hoja 1.pdf"])
+        XCTAssertEqual(exportStore.written.first?.data, Data("pdf".utf8))
+        XCTAssertEqual(viewModel.sharedFile?.url.lastPathComponent, "Física - Hoja 1.pdf")
+    }
+
+    func testShareAsPNGUsesThePNGRender() {
+        let viewModel = makeViewModel()
+        viewModel.onAppear()
+        canvas.simulateStroke()
+
+        viewModel.share(as: .png)
+
+        XCTAssertEqual(exportStore.written.map(\.fileName), ["Física - Hoja 1.png"])
+        XCTAssertEqual(exportStore.written.first?.data, Data("png".utf8))
+    }
+
+    func testShareWithAnEmptyCanvasShowsAnAlertAndNoSheet() {
+        let viewModel = makeViewModel()
+        viewModel.onAppear()
+
+        viewModel.share(as: .png)
+
+        XCTAssertNil(viewModel.sharedFile)
+        XCTAssertTrue(exportStore.written.isEmpty)
+        XCTAssertEqual(viewModel.alert, AlertMessage(error: DrawingError.emptyDrawing))
+    }
+
+    func testShareShowsAnAlertWhenTheFileCannotBeWritten() {
+        exportStore.error = .shareFailed
+        let viewModel = makeViewModel()
+        viewModel.onAppear()
+        canvas.simulateStroke()
+
+        viewModel.share(as: .pdf)
+
+        XCTAssertNil(viewModel.sharedFile)
+        XCTAssertEqual(viewModel.alert, AlertMessage(error: DrawingError.shareFailed))
+    }
+
+    // MARK: - Utilidades
+
+    /// Espera (como máximo 2 s) a que se cumpla una condición.
+    private func waitUntil(
+        _ condition: @escaping () -> Bool,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) async throws {
+        for _ in 0..<200 {
+            if condition() { return }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTFail("La condición no se cumplió a tiempo", file: file, line: line)
+    }
+}
