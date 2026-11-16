@@ -15,6 +15,7 @@ entienda **por qué** el código es como es.
 | [0006](0006-documentacion.md) | Documentar con Markdown + Mermaid y comentarios DocC | Aceptada |
 | [0007](0007-swiftdata.md) | SwiftData como base de datos local | Aceptada |
 | [0008](0008-papel-y-tema-por-dibujo.md) | Papel de fondo y tema claro/oscuro por dibujo | Aceptada |
+| [0009](0009-zoom-y-tamano-de-hoja.md) | Zoom y tamaño de la hoja | Aceptada |
 
 ## Cómo añadir un ADR
 

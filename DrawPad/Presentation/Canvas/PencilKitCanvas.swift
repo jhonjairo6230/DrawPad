@@ -10,8 +10,10 @@ import UIKit
 final class PencilKitCanvas: NSObject, DrawingCanvas {
     /// La vista que SwiftUI muestra a través de ``PencilCanvasView``: el papel
     /// de fondo y, encima, el lienzo transparente de PencilKit.
-    let view = UIView()
+    let view: UIView = CanvasContainerView()
     private let paperView = UIView()
+    /// Tamaño de la hoja en coordenadas de dibujo (ver ``CanvasGeometry``).
+    private var pageSize = CGSize.zero
     private let canvasView = PKCanvasView()
     private var background = CanvasBackground.blank
     private var theme = CanvasTheme.light
@@ -28,10 +30,23 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
         canvasView.backgroundColor = .clear
         canvasView.isOpaque = false
 
-        for subview in [paperView, canvasView] {
-            subview.frame = view.bounds
-            subview.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-            view.addSubview(subview)
+        // Zoom con pellizco. El lienzo es un `UIScrollView`: con estos límites
+        // ya sabe ampliar y desplazarse (dos dedos, o uno si el dedo no dibuja).
+        canvasView.minimumZoomScale = CanvasGeometry.minimumZoom
+        canvasView.maximumZoomScale = CanvasGeometry.maximumZoom
+        // Sin márgenes automáticos: las cuentas del papel asumen que el
+        // contenido empieza en la esquina de la vista.
+        canvasView.contentInsetAdjustmentBehavior = .never
+
+        // Lo que asoma al tirar más allá del borde de la hoja.
+        view.backgroundColor = .systemGray5
+        view.clipsToBounds = true
+        view.addSubview(paperView)
+        canvasView.frame = view.bounds
+        canvasView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        view.addSubview(canvasView)
+        (view as? CanvasContainerView)?.onLayout = { [weak self] in
+            self?.updatePageSize()
         }
         setBackground(background, theme: theme)
     }
@@ -55,10 +70,12 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
     func load(_ strokesData: Data) throws {
         // Un dibujo recién creado no tiene datos: `PKDrawing(data:)` fallaría.
         canvasView.drawing = strokesData.isEmpty ? PKDrawing() : try PKDrawing(data: strokesData)
+        updatePageSize()
     }
 
     func clear() {
         canvasView.drawing = PKDrawing()
+        updatePageSize()
     }
 
     func undo() {
@@ -104,7 +121,7 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
     }
 
     func renderThumbnail() -> Data? {
-        let longestSide = max(renderRect.width, renderRect.height)
+        let longestSide = max(pageSize.width, pageSize.height)
         guard longestSide > 0 else { return nil }
         // Como mucho `thumbnailMaxSide` píxeles en el lado más largo.
         return renderImage(scale: min(1, Self.thumbnailMaxSide / longestSide), paper: .blank)?.pngData()
@@ -119,9 +136,40 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
         theme == .dark ? .dark : .light
     }
 
-    /// Área visible del lienzo + cualquier trazo que se salga de ella.
+    /// La hoja completa, en coordenadas de dibujo: lo que se exporta no
+    /// depende del zoom ni de qué parte se esté viendo.
     private var renderRect: CGRect {
-        canvasView.bounds.union(canvasView.drawing.bounds)
+        CGRect(origin: .zero, size: pageSize)
+    }
+
+    // MARK: - Zoom y desplazamiento
+
+    /// Recalcula el tamaño de la hoja (cambió la vista o cambiaron los trazos).
+    private func updatePageSize() {
+        let viewport = canvasView.bounds.size
+        guard viewport.width > 0, viewport.height > 0 else { return }
+        let drawing = canvasView.drawing
+        pageSize = CanvasGeometry.pageSize(
+            viewport: viewport,
+            drawingBounds: drawing.strokes.isEmpty ? nil : drawing.bounds
+        )
+        let contentSize = CanvasGeometry.contentSize(pageSize: pageSize, zoomScale: canvasView.zoomScale)
+        if canvasView.contentSize != contentSize {
+            canvasView.contentSize = contentSize
+        }
+        updatePaperPlacement()
+    }
+
+    /// Coloca el papel bajo los trazos: mismo zoom y mismo desplazamiento.
+    private func updatePaperPlacement() {
+        let zoom = canvasView.zoomScale
+        paperView.bounds = CGRect(origin: .zero, size: pageSize)
+        paperView.transform = CGAffineTransform(scaleX: zoom, y: zoom)
+        paperView.center = CanvasGeometry.paperCenter(
+            pageSize: pageSize,
+            zoomScale: zoom,
+            contentOffset: canvasView.contentOffset
+        )
     }
 
     /// El dibujo sobre el papel indicado. `scale` = píxeles por punto.
@@ -163,6 +211,29 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
 
 extension PencilKitCanvas: PKCanvasViewDelegate {
     func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
+        updatePageSize()
         onDrawingChanged?()
+    }
+
+    // `PKCanvasViewDelegate` hereda de `UIScrollViewDelegate`: el lienzo avisa
+    // de cada desplazamiento y cada cambio de zoom.
+
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        updatePaperPlacement()
+    }
+
+    func scrollViewDidZoom(_ scrollView: UIScrollView) {
+        updatePaperPlacement()
+    }
+}
+
+/// Vista contenedora que avisa cuando cambia de tamaño (primer diseño, giro
+/// del iPad, multitarea), para recalcular la hoja.
+private final class CanvasContainerView: UIView {
+    var onLayout: (() -> Void)?
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        onLayout?()
     }
 }
