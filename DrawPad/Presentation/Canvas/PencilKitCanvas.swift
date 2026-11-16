@@ -17,7 +17,10 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
     private let canvasView = PKCanvasView()
     private var background = CanvasBackground.blank
     private var theme = CanvasTheme.light
-    private let toolPicker = PKToolPicker()
+    /// Una sola paleta para toda la app: así el lápiz y el color elegidos se
+    /// mantienen al pasar de una hoja a otra (cada hoja crea su propio lienzo).
+    private static let sharedToolPicker = PKToolPicker()
+    private var toolPicker: PKToolPicker { Self.sharedToolPicker }
 
     var onDrawingChanged: (() -> Void)?
 
@@ -25,7 +28,7 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
         super.init()
         canvasView.delegate = self
         canvasView.drawingPolicy = .pencilOnly
-        canvasView.tool = PKInkingTool(.pen, color: .black, width: 5)
+        canvasView.tool = toolPicker.selectedTool
         // Transparente, para que se vea el papel que hay debajo.
         canvasView.backgroundColor = .clear
         canvasView.isOpaque = false

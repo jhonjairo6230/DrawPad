@@ -1,6 +1,6 @@
 import Foundation
 
-/// Puerto de persistencia de los dibujos.
+/// Puerto de persistencia de las hojas.
 ///
 /// El dominio define **qué** necesita; la capa Data decide **cómo** (hoy, una
 /// base de datos SwiftData). Esto es la *inversión de dependencias* de Clean
@@ -9,15 +9,15 @@ import Foundation
 /// Todos los métodos lanzan ``DrawingError/storageFailed`` si falla el
 /// almacenamiento.
 protocol DrawingRepository {
-    /// Resúmenes de todos los dibujos, del más reciente al más antiguo.
-    func list() throws -> [DrawingSummary]
+    /// Las hojas de un cuaderno, en orden: de la primera a la última.
+    func listDrawings(notebookID: UUID) throws -> [DrawingSummary]
 
-    /// El dibujo completo, o `nil` si no existe.
-    func find(id: UUID) throws -> Drawing?
+    /// La hoja completa, o `nil` si no existe.
+    func findDrawing(id: UUID) throws -> Drawing?
 
-    /// Crea el dibujo o reemplaza el que tenga el mismo `id`.
+    /// Crea la hoja o reemplaza la que tenga el mismo `id`.
     func save(_ drawing: Drawing) throws
 
-    /// Elimina el dibujo. No hace nada si no existe.
-    func delete(id: UUID) throws
+    /// Elimina la hoja. No hace nada si no existe.
+    func deleteDrawing(id: UUID) throws
 }

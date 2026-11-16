@@ -46,13 +46,15 @@ Todo esto vive en un solo archivo: `Presentation/Canvas/PencilKitCanvas.swift`.
 | Concepto | Qué es | Dónde |
 | -------- | ------ | ----- |
 | SwiftData | Framework de Apple (iOS 17) para guardar objetos en una base de datos local (SQLite por debajo). | `Data/` |
-| `@Model` | Macro que convierte una clase en una tabla: cada propiedad es una columna. | `DrawingRecord.swift` |
+| `@Model` | Macro que convierte una clase en una tabla: cada propiedad es una columna. | `NotebookRecord.swift`, `DrawingRecord.swift` |
+| Clave ajena | Una columna que guarda el `id` de otra tabla para relacionarlas. | `DrawingRecord.notebookID` |
+| Migración ligera | SwiftData adapta sola la base de datos ya instalada si el cambio es simple (una tabla nueva, una columna opcional). | `DrawingRecord`, ADR 0007 y 0010 |
 | `@Attribute(.unique)` | No puede haber dos registros con el mismo valor. | `DrawingRecord.id` |
 | `@Attribute(.externalStorage)` | Guarda datos grandes en archivos aparte; la base de datos solo guarda la referencia. | Trazos y miniatura |
-| `ModelContainer` | La base de datos: sabe qué modelos existen y dónde está el archivo. | `SwiftDataDrawingRepository.makeContainer` |
-| `ModelContext` | La "sesión de trabajo": se insertan, cambian y borran objetos, y `save()` lo escribe a disco. No se comparte entre hilos. | `SwiftDataDrawingRepository` |
-| `FetchDescriptor` | Una consulta: filtro, orden y límite. | `list()` y `record(id:)` |
-| `#Predicate` | Macro para escribir el filtro en Swift; se traduce a SQL. | `record(id:)` |
+| `ModelContainer` | La base de datos: sabe qué modelos existen y dónde está el archivo. | `SwiftDataLibrary.makeContainer` |
+| `ModelContext` | La "sesión de trabajo": se insertan, cambian y borran objetos, y `save()` lo escribe a disco. No se comparte entre hilos. | `SwiftDataLibrary` |
+| `FetchDescriptor` | Una consulta: filtro, orden y límite. | `SwiftDataLibrary` |
+| `#Predicate` | Macro para escribir el filtro en Swift; se traduce a SQL. | `SwiftDataLibrary` |
 | `isStoredInMemoryOnly` | Base de datos que no toca el disco; ideal para pruebas. | Pruebas y `-uiTesting` |
 
 ## Navegación
@@ -62,6 +64,8 @@ Todo esto vive en un solo archivo: `Presentation/Canvas/PencilKitCanvas.swift`.
 | `NavigationStack` | Contenedor que apila pantallas con botón "atrás". | `GalleryScreen` |
 | `navigationDestination(item:)` | Navega mientras un valor opcional no sea `nil`; al volver atrás lo pone a `nil`. | `GalleryScreen` |
 | `LazyVGrid` | Cuadrícula que solo crea las celdas visibles. | `GalleryScreen` |
+| `.id(_:)` | Da identidad a una vista: si cambia, SwiftUI la desmonta y monta otra nueva. | Cambio de hoja en `NotebookScreen` |
+| `ToolbarItem(placement: .principal)` | Contenido propio en el centro de la barra, en lugar del título. | Controles de hojas en `NotebookScreen` |
 | `contextMenu` | Menú al mantener pulsado. | Renombrar / Eliminar |
 | `ContentUnavailableView` | Vista estándar de "no hay nada que mostrar". | Galería vacía |
 

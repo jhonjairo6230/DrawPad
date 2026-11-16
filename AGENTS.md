@@ -16,9 +16,12 @@ Documentación en `docs/`; decisiones en `docs/adr/`.
   existe `UIApplication` y la app se cierra al tocar. En `AppContainer` todo
   es `lazy`.
 - `Data` convierte sus errores a `DrawingError`.
-- `DrawingRecord` (`@Model` de SwiftData) no sale de `Data`: el resto usa la
-  entidad `Drawing`. Si cambias sus propiedades, piensa en la migración de la
-  base de datos ya instalada (ver `docs/adr/0007-swiftdata.md`).
+- Los `@Model` de SwiftData (`NotebookRecord`, `DrawingRecord`) no salen de
+  `Data`: el resto usa las entidades `Notebook` y `Drawing`. Toda propiedad
+  nueva en un `@Model` debe ser **opcional**, o la base de datos ya instalada
+  no abrirá (ver `docs/adr/0007-swiftdata.md`).
+- En la interfaz se dice **cuaderno** y **hoja**; en el código, `Notebook` y
+  `Drawing`. Un cuaderno nunca se queda sin hojas (regla en los casos de uso).
 - Cada tipo lleva un comentario `///` que explica su papel (el porqué).
 - Interfaz, comentarios y documentación en español; identificadores en inglés.
 - Lógica nueva → pruebas en `DrawPadTests` con los dobles de `Doubles/`.

@@ -1,13 +1,13 @@
 import SwiftUI
 import UIKit
 
-/// Tarjeta de un dibujo en la galería: miniatura, título y fecha.
-struct DrawingCard: View {
-    let drawing: DrawingSummary
+/// Tarjeta de un cuaderno en la galería: portada, título, hojas y fecha.
+struct NotebookCard: View {
+    let notebook: NotebookSummary
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            thumbnail
+            cover
                 .frame(maxWidth: .infinity)
                 .aspectRatio(4 / 3, contentMode: .fit)
                 // Blanco fijo también en modo oscuro: es "papel", no interfaz.
@@ -17,26 +17,35 @@ struct DrawingCard: View {
                     RoundedRectangle(cornerRadius: 12).stroke(.quaternary)
                 }
 
-            Text(drawing.title)
+            Text(notebook.title)
                 .font(.headline)
                 .foregroundStyle(.primary)
                 .lineLimit(1)
 
-            Text(drawing.updatedAt, format: .relative(presentation: .named))
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            HStack(spacing: 4) {
+                Text(pageCountText)
+                Text("·")
+                Text(notebook.lastActivityAt, format: .relative(presentation: .named))
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
         }
     }
 
+    private var pageCountText: String {
+        notebook.pageCount == 1 ? "1 hoja" : "\(notebook.pageCount) hojas"
+    }
+
+    /// La primera hoja del cuaderno hace de portada.
     @ViewBuilder
-    private var thumbnail: some View {
-        if let data = drawing.thumbnailData, let image = UIImage(data: data) {
+    private var cover: some View {
+        if let data = notebook.coverThumbnailData, let image = UIImage(data: data) {
             Image(uiImage: image)
                 .resizable()
                 .scaledToFit()
         } else {
-            // Dibujo vacío: todavía no hay miniatura.
-            Image(systemName: "scribble.variable")
+            // Primera hoja vacía: todavía no hay miniatura.
+            Image(systemName: "book.closed")
                 .font(.largeTitle)
                 .foregroundStyle(.tertiary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

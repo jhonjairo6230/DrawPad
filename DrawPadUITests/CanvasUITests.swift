@@ -4,7 +4,8 @@ import XCTest
 ///
 /// En el simulador todo toque es un "dedo" (no hay Apple Pencil), así que
 /// estas pruebas cubren justo lo que las unitarias no pueden: que PencilKit,
-/// la navegación y la base de datos aguanten toques reales sin cerrarse.
+/// la navegación entre cuadernos y hojas y la base de datos aguanten toques
+/// reales sin cerrarse.
 ///
 /// Cada prueba arranca con `-uiTesting`: una base de datos vacía en memoria.
 final class CanvasUITests: XCTestCase {
@@ -17,39 +18,84 @@ final class CanvasUITests: XCTestCase {
         app.launch()
     }
 
-    // MARK: - Galería
+    // MARK: - Galería de cuadernos
 
     func testTheGalleryStartsEmpty() {
-        XCTAssertTrue(app.staticTexts["Aún no hay dibujos"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Aún no hay cuadernos"].waitForExistence(timeout: 5))
     }
 
-    func testANewDrawingAppearsInTheGalleryAndCanBeReopened() {
-        openNewDrawing()
+    func testANewNotebookAppearsInTheGalleryAndCanBeReopened() {
+        openNewNotebook()
         app.buttons["Dibujar con el dedo"].tap()
         dragOnCanvas()
 
         goBackToGallery()
-        XCTAssertTrue(app.buttons["Dibujo 1"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Cuaderno 1"].waitForExistence(timeout: 5))
 
-        app.buttons["Dibujo 1"].tap()
+        app.buttons["Cuaderno 1"].tap()
         XCTAssertTrue(app.buttons["Compartir"].waitForExistence(timeout: 5))
+        assertPageLabel(contains: "Cuaderno 1 · Hoja 1 de 1")
         assertAppIsRunning()
     }
 
-    func testEachNewDrawingGetsItsOwnCard() {
-        openNewDrawing()
+    func testEachNewNotebookGetsItsOwnCard() {
+        openNewNotebook()
         goBackToGallery()
-        openNewDrawing()
+        openNewNotebook()
         goBackToGallery()
 
-        XCTAssertTrue(app.buttons["Dibujo 1"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Dibujo 2"].exists)
+        XCTAssertTrue(app.buttons["Cuaderno 1"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Cuaderno 2"].exists)
+    }
+
+    // MARK: - Hojas
+
+    func testAddingPagesMovingBetweenThemAndDeletingOne() {
+        openNewNotebook()
+        assertPageLabel(contains: "Hoja 1 de 1")
+        XCTAssertFalse(app.buttons["Hoja anterior"].isEnabled)
+        XCTAssertFalse(app.buttons["Hoja siguiente"].isEnabled)
+
+        choosePageAction("Nueva hoja")
+        assertPageLabel(contains: "Hoja 2 de 2")
+        app.buttons["Dibujar con el dedo"].tap()
+        dragOnCanvas()
+
+        app.buttons["Hoja anterior"].tap()
+        assertPageLabel(contains: "Hoja 1 de 2")
+        dragOnCanvas() // "Dibujar con el dedo" sigue activo al cambiar de hoja.
+        app.buttons["Hoja siguiente"].tap()
+        assertPageLabel(contains: "Hoja 2 de 2")
+
+        choosePageAction("Eliminar esta hoja")
+        app.buttons["Eliminar hoja"].firstMatch.tap()
+        assertPageLabel(contains: "Hoja 1 de 1")
+
+        tapCanvas()
+        goBackToGallery()
+        XCTAssertTrue(app.buttons["Cuaderno 1"].waitForExistence(timeout: 5))
+        assertAppIsRunning()
+    }
+
+    func testANewPageKeepsThePaperOfThePreviousOne() {
+        openNewNotebook()
+        chooseBackground("Cuadrícula")
+
+        choosePageAction("Nueva hoja")
+        assertPageLabel(contains: "Hoja 2 de 2")
+
+        app.buttons["Fondo"].tap()
+        let grid = app.buttons["Cuadrícula"]
+        XCTAssertTrue(grid.waitForExistence(timeout: 5))
+        XCTAssertTrue(grid.isSelected)
+        grid.tap()
+        assertAppIsRunning()
     }
 
     // MARK: - Lienzo
 
     func testTouchingTheCanvasWithAFingerDoesNotCrash() {
-        openNewDrawing()
+        openNewNotebook()
 
         tapCanvas()
         dragOnCanvas()
@@ -58,7 +104,7 @@ final class CanvasUITests: XCTestCase {
     }
 
     func testDrawingWithTheFingerEnabledDoesNotCrash() {
-        openNewDrawing()
+        openNewNotebook()
         app.buttons["Dibujar con el dedo"].tap()
 
         dragOnCanvas()
@@ -68,7 +114,7 @@ final class CanvasUITests: XCTestCase {
     }
 
     func testUndoRedoAndClearDoNotCrash() {
-        openNewDrawing()
+        openNewNotebook()
         app.buttons["Dibujar con el dedo"].tap()
         dragOnCanvas()
 
@@ -82,13 +128,13 @@ final class CanvasUITests: XCTestCase {
     }
 
     func testChangingTheBackgroundSurvivesReopeningTheDrawing() {
-        openNewDrawing()
+        openNewNotebook()
 
         chooseBackground("Cuadrícula")
         app.buttons["Dibujar con el dedo"].tap()
         dragOnCanvas()
         goBackToGallery()
-        app.buttons["Dibujo 1"].tap()
+        app.buttons["Cuaderno 1"].tap()
         XCTAssertTrue(app.buttons["Fondo"].waitForExistence(timeout: 5))
 
         // El menú marca como seleccionado el fondo guardado.
@@ -101,7 +147,7 @@ final class CanvasUITests: XCTestCase {
     }
 
     func testEveryBackgroundCanBeChosenWithoutCrashing() {
-        openNewDrawing()
+        openNewNotebook()
 
         for title in ["Cuadrícula", "Líneas", "Puntos", "Blanco"] {
             chooseBackground(title)
@@ -111,14 +157,14 @@ final class CanvasUITests: XCTestCase {
     }
 
     func testDrawingOnDarkPaperDoesNotCrash() {
-        openNewDrawing()
+        openNewNotebook()
 
         chooseBackground("Papel oscuro")
         chooseBackground("Puntos")
         app.buttons["Dibujar con el dedo"].tap()
         dragOnCanvas()
         goBackToGallery()
-        app.buttons["Dibujo 1"].tap()
+        app.buttons["Cuaderno 1"].tap()
         XCTAssertTrue(app.buttons["Fondo"].waitForExistence(timeout: 5))
         chooseBackground("Papel oscuro")
 
@@ -128,7 +174,7 @@ final class CanvasUITests: XCTestCase {
     // MARK: - Zoom
 
     func testZoomingScrollingAndDrawingDoesNotCrash() {
-        openNewDrawing()
+        openNewNotebook()
         let window = app.windows.firstMatch
 
         window.pinch(withScale: 2.5, velocity: 2)
@@ -145,7 +191,7 @@ final class CanvasUITests: XCTestCase {
     // MARK: - Compartir
 
     func testSharingAnEmptyCanvasShowsAnAlert() {
-        openNewDrawing()
+        openNewNotebook()
 
         app.buttons["Compartir"].tap()
         app.buttons["Compartir como PDF"].tap()
@@ -168,7 +214,7 @@ final class CanvasUITests: XCTestCase {
     /// Dibuja algo y abre la hoja de compartir. La hoja es del sistema: basta
     /// con comprobar que la app sigue viva y no mostró un error.
     private func shareDrawing(option: String) {
-        openNewDrawing()
+        openNewNotebook()
         app.buttons["Dibujar con el dedo"].tap()
         dragOnCanvas()
 
@@ -188,16 +234,32 @@ final class CanvasUITests: XCTestCase {
         option.tap()
     }
 
-    private func openNewDrawing() {
-        let newDrawing = app.buttons["Nuevo dibujo"]
-        XCTAssertTrue(newDrawing.waitForExistence(timeout: 5))
-        newDrawing.tap()
+    private func openNewNotebook() {
+        let newNotebook = app.buttons["Nuevo cuaderno"]
+        XCTAssertTrue(newNotebook.waitForExistence(timeout: 5))
+        newNotebook.tap()
         XCTAssertTrue(app.buttons["Compartir"].waitForExistence(timeout: 5))
     }
 
     private func goBackToGallery() {
-        app.navigationBars.buttons["Dibujos"].tap()
-        XCTAssertTrue(app.buttons["Nuevo dibujo"].waitForExistence(timeout: 5))
+        app.navigationBars.buttons["Cuadernos"].tap()
+        XCTAssertTrue(app.buttons["Nuevo cuaderno"].waitForExistence(timeout: 5))
+    }
+
+    /// Abre el menú de hojas (el título de la barra) y elige una acción.
+    private func choosePageAction(_ title: String) {
+        app.buttons["Hojas"].tap()
+        let action = app.buttons[title]
+        XCTAssertTrue(action.waitForExistence(timeout: 5))
+        action.tap()
+    }
+
+    /// Espera a que el título de la barra diga, por ejemplo, "Hoja 2 de 3".
+    private func assertPageLabel(contains text: String, file: StaticString = #filePath, line: UInt = #line) {
+        let label = NSPredicate(format: "label CONTAINS %@", text)
+        let expectation = XCTNSPredicateExpectation(predicate: label, object: app.buttons["Hojas"])
+        let result = XCTWaiter().wait(for: [expectation], timeout: 5)
+        XCTAssertEqual(result, .completed, "El título no muestra \"\(text)\"", file: file, line: line)
     }
 
     private func canvasPoint(_ x: CGFloat, _ y: CGFloat) -> XCUICoordinate {

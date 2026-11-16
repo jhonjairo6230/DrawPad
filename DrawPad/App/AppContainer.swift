@@ -20,21 +20,38 @@ final class AppContainer {
     private let isUITesting = ProcessInfo.processInfo.arguments.contains(AppContainer.uiTestingArgument)
 
     private(set) lazy var galleryViewModel = GalleryViewModel(
-        listDrawings: ListDrawingsUseCase(repository: drawingRepository),
-        createDrawing: CreateDrawingUseCase(repository: drawingRepository),
-        renameDrawing: RenameDrawingUseCase(repository: drawingRepository),
-        deleteDrawing: DeleteDrawingUseCase(repository: drawingRepository)
+        listNotebooks: ListNotebooksUseCase(notebooks: library),
+        createNotebook: CreateNotebookUseCase(notebooks: library, drawings: library),
+        renameNotebook: RenameNotebookUseCase(notebooks: library),
+        deleteNotebook: DeleteNotebookUseCase(notebooks: library)
     )
 
-    /// Monta la pantalla de un dibujo: un lienzo nuevo y su ViewModel.
-    func makeCanvasModule(drawingID: UUID) -> CanvasModule {
+    /// Monta un cuaderno abierto. Cada hoja que muestre la crea con
+    /// ``makeCanvasModule(drawingID:shareName:)``.
+    func makeNotebookViewModel(notebookID: UUID) -> NotebookViewModel {
+        NotebookViewModel(
+            notebookID: notebookID,
+            loadNotebook: LoadNotebookUseCase(notebooks: library),
+            listPages: ListPagesUseCase(drawings: library),
+            addPage: AddPageUseCase(drawings: library),
+            deletePage: DeletePageUseCase(drawings: library),
+            makeSession: { [unowned self] pageID, shareName in
+                makeCanvasModule(drawingID: pageID, shareName: shareName)
+            }
+        )
+    }
+
+    /// Monta la pantalla de una hoja: un lienzo nuevo y su ViewModel.
+    func makeCanvasModule(drawingID: UUID, shareName: String) -> CanvasModule {
         let canvas = PencilKitCanvas()
         let viewModel = CanvasViewModel(
             drawingID: drawingID,
+            shareName: shareName,
+            preferences: canvasPreferences,
             canvas: canvas,
-            loadDrawing: LoadDrawingUseCase(repository: drawingRepository),
-            saveDrawing: SaveDrawingUseCase(repository: drawingRepository),
-            changeBackground: ChangeBackgroundUseCase(repository: drawingRepository),
+            loadDrawing: LoadDrawingUseCase(repository: library),
+            saveDrawing: SaveDrawingUseCase(repository: library),
+            changeBackground: ChangeBackgroundUseCase(repository: library),
             exportDrawing: ExportDrawingUseCase(library: imageLibrary),
             prepareShareFile: PrepareShareFileUseCase(store: exportFileStore)
         )
@@ -43,21 +60,21 @@ final class AppContainer {
 
     // MARK: - Implementaciones concretas
 
-    private lazy var drawingRepository: DrawingRepository = {
-        let container: ModelContainer
+    /// La base de datos: sirve de repositorio de cuadernos y de hojas.
+    private lazy var library: SwiftDataLibrary = {
         do {
-            container = try SwiftDataDrawingRepository.makeContainer(inMemory: isUITesting)
+            let container = try SwiftDataLibrary.makeContainer(inMemory: isUITesting)
+            let library = SwiftDataLibrary(container: container)
+            // Dibujos guardados antes de que existieran los cuadernos.
+            try library.adoptOrphanDrawings()
+            return library
         } catch {
             // Sin base de datos la app no puede hacer nada útil.
             fatalError("No se pudo abrir la base de datos: \(error)")
         }
-        let repository = SwiftDataDrawingRepository(container: container)
-        if !isUITesting {
-            LegacyDrawingFileImporter.live().importIfNeeded(into: repository)
-        }
-        return repository
     }()
 
+    private lazy var canvasPreferences = CanvasPreferences()
     private lazy var imageLibrary: ImageLibrary = PhotoLibraryImageExporter()
     private lazy var exportFileStore: ExportFileStore = TemporaryExportFileStore.live()
 }

@@ -1,62 +1,62 @@
 import SwiftUI
 
-/// Pantalla inicial: la cuadrícula de dibujos.
+/// Pantalla inicial: la cuadrícula de cuadernos.
 ///
-/// También es la dueña de la navegación: guarda el dibujo abierto
-/// (`openCanvas`) y SwiftUI muestra ``CanvasScreen`` mientras no sea `nil`.
+/// También es la dueña de la navegación: guarda el cuaderno abierto
+/// (`openNotebook`) y SwiftUI muestra ``NotebookScreen`` mientras no sea `nil`.
 struct GalleryScreen: View {
     @Bindable var viewModel: GalleryViewModel
-    /// Fábrica que monta la pantalla de un dibujo (la da ``AppContainer``).
-    let makeCanvas: (UUID) -> CanvasModule
+    /// Fábrica que monta un cuaderno abierto (la da ``AppContainer``).
+    let makeNotebook: (UUID) -> NotebookViewModel
 
-    @State private var openCanvas: CanvasModule?
-    @State private var drawingToRename: DrawingSummary?
+    @State private var openNotebook: NotebookViewModel?
+    @State private var notebookToRename: NotebookSummary?
     @State private var newTitle = ""
-    @State private var drawingToDelete: DrawingSummary?
+    @State private var notebookToDelete: NotebookSummary?
 
     private let columns = [GridItem(.adaptive(minimum: 220), spacing: 24)]
 
     var body: some View {
         NavigationStack {
             content
-                .navigationTitle("Dibujos")
+                .navigationTitle("Cuadernos")
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button { createAndOpen() } label: {
-                            Label("Nuevo dibujo", systemImage: "plus")
+                            Label("Nuevo cuaderno", systemImage: "plus")
                         }
                     }
                 }
-                .navigationDestination(item: $openCanvas) { module in
-                    CanvasScreen(viewModel: module.viewModel, canvas: module.canvas)
+                .navigationDestination(item: $openNotebook) { notebook in
+                    NotebookScreen(viewModel: notebook)
                 }
         }
         .onAppear { viewModel.load() }
-        .onChange(of: openCanvas) { closed, opened in
-            // Al volver de un dibujo: guardar lo pendiente y refrescar la
-            // lista, en ese orden, para que la miniatura salga actualizada.
+        .onChange(of: openNotebook) { closed, opened in
+            // Al volver de un cuaderno: guardar lo pendiente y refrescar la
+            // lista, en ese orden, para que la portada salga actualizada.
             guard opened == nil else { return }
-            closed?.viewModel.flushPendingSave()
+            closed?.flushPendingSave()
             viewModel.load()
         }
-        .alert("Renombrar dibujo", isPresented: isRenaming) {
+        .alert("Renombrar cuaderno", isPresented: isRenaming) {
             TextField("Título", text: $newTitle)
             Button("Guardar") {
-                if let drawing = drawingToRename {
-                    viewModel.rename(id: drawing.id, to: newTitle)
+                if let notebook = notebookToRename {
+                    viewModel.rename(id: notebook.id, to: newTitle)
                 }
             }
             Button("Cancelar", role: .cancel) {}
         }
         .confirmationDialog(
-            "¿Eliminar este dibujo?",
+            "¿Eliminar este cuaderno?",
             isPresented: isDeleting,
             titleVisibility: .visible,
-            presenting: drawingToDelete
-        ) { drawing in
-            Button("Eliminar", role: .destructive) { viewModel.delete(id: drawing.id) }
-        } message: { drawing in
-            Text("\"\(drawing.title)\" se borrará para siempre.")
+            presenting: notebookToDelete
+        ) { notebook in
+            Button("Eliminar", role: .destructive) { viewModel.delete(id: notebook.id) }
+        } message: { notebook in
+            Text("\"\(notebook.title)\" y todas sus hojas se borrarán para siempre.")
         }
         .background {
             // Segunda alerta en otra vista: dos `.alert` en la misma no conviven bien.
@@ -74,30 +74,30 @@ struct GalleryScreen: View {
 
     @ViewBuilder
     private var content: some View {
-        if viewModel.drawings.isEmpty {
+        if viewModel.notebooks.isEmpty {
             ContentUnavailableView(
-                "Aún no hay dibujos",
-                systemImage: "scribble.variable",
+                "Aún no hay cuadernos",
+                systemImage: "book.closed",
                 description: Text("Toca + para crear el primero.")
             )
         } else {
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 24) {
-                    ForEach(viewModel.drawings) { drawing in
-                        Button { open(drawing.id) } label: {
-                            DrawingCard(drawing: drawing)
+                    ForEach(viewModel.notebooks) { notebook in
+                        Button { open(notebook.id) } label: {
+                            NotebookCard(notebook: notebook)
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel(drawing.title)
+                        .accessibilityLabel(notebook.title)
                         .contextMenu {
                             Button {
-                                newTitle = drawing.title
-                                drawingToRename = drawing
+                                newTitle = notebook.title
+                                notebookToRename = notebook
                             } label: {
                                 Label("Renombrar", systemImage: "pencil")
                             }
                             Button(role: .destructive) {
-                                drawingToDelete = drawing
+                                notebookToDelete = notebook
                             } label: {
                                 Label("Eliminar", systemImage: "trash")
                             }
@@ -112,7 +112,7 @@ struct GalleryScreen: View {
     // MARK: - Acciones
 
     private func open(_ id: UUID) {
-        openCanvas = makeCanvas(id)
+        openNotebook = makeNotebook(id)
     }
 
     private func createAndOpen() {
@@ -123,11 +123,11 @@ struct GalleryScreen: View {
     // MARK: - Enlaces para alertas y diálogos
 
     private var isRenaming: Binding<Bool> {
-        Binding(get: { drawingToRename != nil }, set: { if !$0 { drawingToRename = nil } })
+        Binding(get: { notebookToRename != nil }, set: { if !$0 { notebookToRename = nil } })
     }
 
     private var isDeleting: Binding<Bool> {
-        Binding(get: { drawingToDelete != nil }, set: { if !$0 { drawingToDelete = nil } })
+        Binding(get: { notebookToDelete != nil }, set: { if !$0 { notebookToDelete = nil } })
     }
 
     private var isShowingError: Binding<Bool> {
