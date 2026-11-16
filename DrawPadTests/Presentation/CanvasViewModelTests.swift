@@ -6,6 +6,7 @@ final class CanvasViewModelTests: XCTestCase {
     private var canvas: FakeDrawingCanvas!
     private var repository: InMemoryDrawingRepository!
     private var library: SpyImageLibrary!
+    private var exportStore: SpyExportFileStore!
     /// El dibujo abierto en la pantalla; ya existe en el repositorio.
     private var drawing: Drawing!
 
@@ -14,6 +15,7 @@ final class CanvasViewModelTests: XCTestCase {
         canvas = FakeDrawingCanvas()
         repository = InMemoryDrawingRepository([drawing])
         library = SpyImageLibrary()
+        exportStore = SpyExportFileStore()
     }
 
     private var stored: Drawing? { repository.drawings[drawing.id] }
@@ -26,6 +28,7 @@ final class CanvasViewModelTests: XCTestCase {
             saveDrawing: SaveDrawingUseCase(repository: repository),
             changeBackground: ChangeBackgroundUseCase(repository: repository),
             exportDrawing: ExportDrawingUseCase(library: library),
+            prepareShareFile: PrepareShareFileUseCase(store: exportStore),
             autosaveDelay: autosaveDelay
         )
     }
@@ -260,6 +263,54 @@ final class CanvasViewModelTests: XCTestCase {
 
         XCTAssertEqual(viewModel.alert, AlertMessage(error: DrawingError.photoLibraryAccessDenied))
         XCTAssertFalse(viewModel.isExporting)
+    }
+
+    // MARK: - Compartir
+
+    func testShareAsPDFWritesAFileNamedAfterTheDrawingAndOpensTheSheet() {
+        let viewModel = makeViewModel()
+        viewModel.onAppear()
+        canvas.simulateStroke()
+
+        viewModel.share(as: .pdf)
+
+        XCTAssertEqual(exportStore.written.map(\.fileName), ["Gato.pdf"])
+        XCTAssertEqual(exportStore.written.first?.data, Data("pdf".utf8))
+        XCTAssertEqual(viewModel.sharedFile?.url.lastPathComponent, "Gato.pdf")
+    }
+
+    func testShareAsPNGUsesThePNGRender() {
+        let viewModel = makeViewModel()
+        viewModel.onAppear()
+        canvas.simulateStroke()
+
+        viewModel.share(as: .png)
+
+        XCTAssertEqual(exportStore.written.map(\.fileName), ["Gato.png"])
+        XCTAssertEqual(exportStore.written.first?.data, Data("png".utf8))
+    }
+
+    func testShareWithAnEmptyCanvasShowsAnAlertAndNoSheet() {
+        let viewModel = makeViewModel()
+        viewModel.onAppear()
+
+        viewModel.share(as: .png)
+
+        XCTAssertNil(viewModel.sharedFile)
+        XCTAssertTrue(exportStore.written.isEmpty)
+        XCTAssertEqual(viewModel.alert, AlertMessage(error: DrawingError.emptyDrawing))
+    }
+
+    func testShareShowsAnAlertWhenTheFileCannotBeWritten() {
+        exportStore.error = .shareFailed
+        let viewModel = makeViewModel()
+        viewModel.onAppear()
+        canvas.simulateStroke()
+
+        viewModel.share(as: .pdf)
+
+        XCTAssertNil(viewModel.sharedFile)
+        XCTAssertEqual(viewModel.alert, AlertMessage(error: DrawingError.shareFailed))
     }
 
     // MARK: - Utilidades

@@ -16,6 +16,10 @@ Glosario para estudiar el código. Cada entrada dice qué es y dónde verlo.
 | `Menu` + `Picker` | Menú desplegable con una opción marcada. | Menú "Fondo" en `CanvasScreen` |
 | `UIColor(patternImage:)` | Un "color" que en realidad es una imagen pequeña repetida. | `CanvasBackgroundPattern.swift` |
 | `UIGraphicsImageRenderer` | Dibuja en una imagen con Core Graphics. | Baldosas de fondo y exportación |
+| `UIGraphicsPDFRenderer` | Lo mismo, pero el resultado es un PDF. | `renderPDF()` en `PencilKitCanvas` |
+| `UIActivityViewController` | La hoja de compartir del sistema. | `ActivityView.swift` |
+| `UIViewControllerRepresentable` | Como `UIViewRepresentable`, para un controlador de UIKit. | `ActivityView.swift` |
+| `.sheet(item:)` | Presenta una hoja mientras un valor opcional no sea `nil`. | Hoja de compartir en `CanvasScreen` |
 | `protocol` | Contrato sin implementación. Base de la inversión de dependencias. | `DrawingRepository`, `ImageLibrary`, `DrawingCanvas` |
 | `async` / `await` | Código asíncrono que se lee como secuencial. | `export()` en el ViewModel |
 | `Task` | Unidad de trabajo asíncrono; se puede cancelar. | Autoguardado en `CanvasViewModel` |

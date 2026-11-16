@@ -23,6 +23,8 @@ final class CanvasViewModel {
     private(set) var theme = CanvasTheme.light
     private(set) var isExporting = false
     var alert: AlertMessage?
+    /// Archivo listo para compartir; la vista muestra la hoja mientras no sea `nil`.
+    var sharedFile: SharedFile?
 
     private let drawingID: UUID
     private let canvas: DrawingCanvas
@@ -30,6 +32,7 @@ final class CanvasViewModel {
     private let saveDrawing: SaveDrawingUseCase
     private let changeBackground: ChangeBackgroundUseCase
     private let exportDrawing: ExportDrawingUseCase
+    private let prepareShareFile: PrepareShareFileUseCase
     private let autosaveDelay: Duration
 
     @ObservationIgnored private var pendingSave: Task<Void, Never>?
@@ -43,6 +46,7 @@ final class CanvasViewModel {
         saveDrawing: SaveDrawingUseCase,
         changeBackground: ChangeBackgroundUseCase,
         exportDrawing: ExportDrawingUseCase,
+        prepareShareFile: PrepareShareFileUseCase,
         autosaveDelay: Duration = .seconds(1)
     ) {
         self.drawingID = drawingID
@@ -51,6 +55,7 @@ final class CanvasViewModel {
         self.saveDrawing = saveDrawing
         self.changeBackground = changeBackground
         self.exportDrawing = exportDrawing
+        self.prepareShareFile = prepareShareFile
         self.autosaveDelay = autosaveDelay
         canvas.onDrawingChanged = { [weak self] in
             self?.drawingDidChange()
@@ -140,6 +145,22 @@ final class CanvasViewModel {
         do {
             try await exportDrawing.execute(pngData: png)
             alert = .exportSucceeded
+        } catch {
+            alert = AlertMessage(error: error)
+        }
+    }
+
+    /// Genera el archivo en el formato elegido y abre la hoja de compartir.
+    func share(as format: ExportFormat) {
+        let data: Data?
+        switch format {
+        case .png: data = canvas.renderPNG()
+        case .pdf: data = canvas.renderPDF()
+        }
+        do {
+            guard !canvas.isEmpty, let data else { throw DrawingError.emptyDrawing }
+            let url = try prepareShareFile.execute(title: title, format: format, data: data)
+            sharedFile = SharedFile(url: url)
         } catch {
             alert = AlertMessage(error: error)
         }

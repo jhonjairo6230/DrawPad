@@ -23,13 +23,14 @@ flowchart TB
         P4["PencilKitCanvas<br/>PencilCanvasView"]
     end
     subgraph DOM["Domain — Swift puro"]
-        D1["Casos de uso<br/>List / Create / Load / Save<br/>Rename / Delete / ChangeBackground / Export"]
+        D1["Casos de uso<br/>List / Create / Load / Save<br/>Rename / Delete / ChangeBackground<br/>Export / PrepareShareFile"]
         D2["Drawing · DrawingSummary<br/>CanvasBackground · CanvasTheme<br/>DrawingError"]
-        D3["DrawingRepository<br/>ImageLibrary<br/>(protocolos)"]
+        D3["DrawingRepository<br/>ImageLibrary<br/>ExportFileStore<br/>(protocolos)"]
     end
     subgraph DATA["Data — detalles técnicos"]
         T1["SwiftDataDrawingRepository<br/>DrawingRecord"]
         T2["PhotoLibraryImageExporter<br/>(Photos)"]
+        T4["TemporaryExportFileStore<br/>(archivos temporales)"]
         T3[("Base de datos local<br/>SwiftData")]
     end
 
@@ -42,6 +43,7 @@ flowchart TB
     D1 --> D3
     T1 -. implementa .-> D3
     T2 -. implementa .-> D3
+    T4 -. implementa .-> D3
     T1 --> T3
     A1 --> A2
     A2 --> G1
@@ -49,6 +51,7 @@ flowchart TB
     A2 --> P4
     A2 --> T1
     A2 --> T2
+    A2 --> T4
 ```
 
 Las flechas continuas son "usa"; las punteadas, "implementa". Fíjate en que
@@ -86,11 +89,13 @@ DrawPad/
 │   │   ├── Drawing.swift           El dibujo completo: título, trazos, miniatura, fondo, fechas
 │   │   ├── CanvasBackground.swift  Patrón del papel: blanco, cuadrícula, líneas, puntos
 │   │   ├── CanvasTheme.swift       Papel claro u oscuro
+│   │   ├── ExportFormat.swift      Formatos para compartir: PNG o PDF
 │   │   └── DrawingSummary.swift    Lo justo para la galería (sin trazos)
 │   ├── Errors/DrawingError.swift   Errores con mensaje para el usuario
 │   ├── Repositories/               Puertos (protocolos)
 │   │   ├── DrawingRepository.swift
-│   │   └── ImageLibrary.swift
+│   │   ├── ImageLibrary.swift
+│   │   └── ExportFileStore.swift
 │   └── UseCases/                   Una acción de negocio por archivo
 │       ├── ListDrawingsUseCase.swift
 │       ├── CreateDrawingUseCase.swift
@@ -99,13 +104,16 @@ DrawPad/
 │       ├── RenameDrawingUseCase.swift
 │       ├── DeleteDrawingUseCase.swift
 │       ├── ChangeBackgroundUseCase.swift
-│       └── ExportDrawingUseCase.swift
+│       ├── ExportDrawingUseCase.swift
+│       └── PrepareShareFileUseCase.swift
 ├── Data/
 │   ├── Persistence/
 │   │   ├── DrawingRecord.swift               Modelo de SwiftData (@Model)
 │   │   └── LegacyDrawingFileImporter.swift   Importa el dibujo de la versión sin galería
 │   ├── Repositories/SwiftDataDrawingRepository.swift
-│   └── Gateways/PhotoLibraryImageExporter.swift
+│   └── Gateways/
+│       ├── PhotoLibraryImageExporter.swift
+│       └── TemporaryExportFileStore.swift
 ├── Presentation/
 │   ├── Gallery/
 │   │   ├── GalleryScreen.swift     Cuadrícula de dibujos y navegación
@@ -120,7 +128,10 @@ DrawPad/
 │   │   ├── CanvasBackgroundPattern.swift        Dibuja la baldosa de cada papel
 │   │   ├── CanvasBackground+Presentation.swift  Título e icono de cada papel
 │   │   └── PencilCanvasView.swift  Puente SwiftUI ↔ UIKit
-│   └── Common/AlertMessage.swift
+│   └── Common/
+│       ├── AlertMessage.swift
+│       ├── SharedFile.swift        Archivo listo para la hoja de compartir
+│       └── ActivityView.swift      Hoja de compartir de iOS
 └── Resources/Assets.xcassets       Icono de la app
 
 DrawPadTests/
@@ -128,7 +139,8 @@ DrawPadTests/
 ├── Domain/UseCasesTests.swift
 ├── Data/
 │   ├── SwiftDataDrawingRepositoryTests.swift   Base de datos real en memoria
-│   └── LegacyDrawingFileImporterTests.swift
+│   ├── LegacyDrawingFileImporterTests.swift
+│   └── TemporaryExportFileStoreTests.swift
 └── Presentation/
     ├── CanvasViewModelTests.swift
     └── GalleryViewModelTests.swift
@@ -171,6 +183,7 @@ classDiagram
         +theme CanvasTheme
         +isExporting Bool
         +alert AlertMessage?
+        +sharedFile SharedFile?
         +onAppear()
         +undo()
         +redo()
@@ -179,6 +192,7 @@ classDiagram
         +setTheme(CanvasTheme)
         +clear()
         +export()
+        +share(ExportFormat)
         +flushPendingSave()
     }
     class DrawingCanvas {
@@ -193,6 +207,7 @@ classDiagram
         +setFingerDrawingEnabled(Bool)
         +setBackground(CanvasBackground, CanvasTheme)
         +renderPNG() Data?
+        +renderPDF() Data?
         +renderThumbnail() Data?
     }
     class PencilKitCanvas {
@@ -209,6 +224,7 @@ classDiagram
         DeleteDrawing
         ChangeBackground
         ExportDrawing
+        PrepareShareFile
     }
     class DrawingRepository {
         <<protocol>>
@@ -221,6 +237,11 @@ classDiagram
         <<protocol>>
         +addPNG(Data)
     }
+    class ExportFileStore {
+        <<protocol>>
+        +write(Data, fileName) URL
+    }
+    class TemporaryExportFileStore
     class Drawing {
         <<struct>>
         +id UUID
@@ -257,6 +278,8 @@ classDiagram
     PencilKitCanvas ..|> DrawingCanvas
     UseCases --> DrawingRepository
     UseCases --> ImageLibrary
+    UseCases --> ExportFileStore
+    TemporaryExportFileStore ..|> ExportFileStore
     DrawingRepository ..> Drawing
     DrawingRepository ..> DrawingSummary
     SwiftDataDrawingRepository ..|> DrawingRepository
@@ -512,6 +535,44 @@ sequenceDiagram
     end
 ```
 
+### 5.8 Compartir como imagen o PDF
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Usuario
+    participant V as CanvasScreen
+    participant VM as CanvasViewModel
+    participant K as PencilKitCanvas
+    participant UC as PrepareShareFileUseCase
+    participant S as TemporaryExportFileStore
+    participant iOS as Hoja de compartir
+
+    U->>V: menú "Compartir", elige "Compartir como PDF"
+    V->>VM: share(as: .pdf)
+    VM->>K: renderPDF()
+    alt lienzo vacío
+        K-->>VM: nil
+        VM-->>V: alerta "El lienzo está vacío…"
+    else hay trazos
+        K-->>VM: PDF con papel y trazos
+        VM->>UC: execute(título, .pdf, datos)
+        UC->>UC: nombre de archivo seguro: "Gato.pdf"
+        UC->>S: write(datos, "Gato.pdf")
+        alt se escribió
+            S-->>UC: URL en la carpeta temporal
+            UC-->>VM: URL
+            VM->>VM: sharedFile = SharedFile(url)
+            V->>iOS: presenta ActivityView con el archivo
+            U->>iOS: AirDrop, Guardar en Archivos, Imprimir…
+        else falla la escritura
+            S-->>UC: lanza shareFailed
+            UC-->>VM: lanza shareFailed
+            VM-->>V: alerta con el error
+        end
+    end
+```
+
 ## 6. Decisiones de diseño que conviene entender
 
 **El dominio no conoce PencilKit.** `Drawing.strokesData` es `Data` opaco.
@@ -526,6 +587,16 @@ vive en Presentation. Existe para poder probar el ViewModel con
 **La exportación recibe un PNG ya hecho.** Convertir trazos en imagen
 necesita PencilKit y UIKit, por eso lo hace el lienzo. El caso de uso solo
 valida y delega en `ImageLibrary`.
+
+**Compartir pasa por un archivo temporal.** La hoja de compartir de iOS
+necesita un archivo con nombre y extensión para ofrecer "Guardar en
+Archivos" o AirDrop con un nombre útil. El caso de uso decide el nombre (a
+partir del título, sin caracteres prohibidos) y el puerto `ExportFileStore`
+lo escribe; la carpeta temporal se vacía en cada exportación.
+
+**El PDF lleva una imagen, no vectores.** PencilKit no expone los trazos
+como curvas vectoriales, así que la página del PDF contiene el dibujo a
+triple resolución sobre su papel.
 
 **Inyección de dependencias manual.** Con dos pantallas no hace falta una
 librería: `AppContainer` crea todo y lo pasa por los `init`.
@@ -579,6 +650,7 @@ la interfaz va en el hilo principal). El temporizador de autoguardado es una
 | ------------- | ------- | ---- |
 | Casos de uso | `Domain/UseCasesTests.swift` | Repositorio en memoria y biblioteca espía. |
 | Repositorio SwiftData | `Data/SwiftDataDrawingRepositoryTests.swift` | Base de datos real, en memoria. |
+| Archivos para compartir | `Data/TemporaryExportFileStoreTests.swift` | Carpeta temporal real. |
 | Importador del archivo antiguo | `Data/LegacyDrawingFileImporterTests.swift` | Archivo temporal real. |
 | ViewModel del lienzo | `Presentation/CanvasViewModelTests.swift` | Lienzo falso; el autoguardado se prueba con un retardo de milisegundos. |
 | ViewModel de la galería | `Presentation/GalleryViewModelTests.swift` | Repositorio en memoria. |

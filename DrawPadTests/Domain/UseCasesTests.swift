@@ -148,6 +148,36 @@ final class UseCasesTests: XCTestCase {
         XCTAssertTrue(repository.drawings.isEmpty)
     }
 
+    // MARK: - Compartir
+
+    func testPrepareShareFileNamesTheFileAfterTheDrawing() throws {
+        let store = SpyExportFileStore()
+        let useCase = PrepareShareFileUseCase(store: store)
+
+        let url = try useCase.execute(title: "Gato", format: .pdf, data: Data("pdf".utf8))
+
+        XCTAssertEqual(url.lastPathComponent, "Gato.pdf")
+        XCTAssertEqual(store.written.map(\.fileName), ["Gato.pdf"])
+        XCTAssertEqual(store.written.first?.data, Data("pdf".utf8))
+    }
+
+    func testPrepareShareFileRejectsEmptyData() {
+        let store = SpyExportFileStore()
+        let useCase = PrepareShareFileUseCase(store: store)
+
+        XCTAssertThrowsError(try useCase.execute(title: "Gato", format: .png, data: Data())) { error in
+            XCTAssertEqual(error as? DrawingError, .emptyDrawing)
+        }
+        XCTAssertTrue(store.written.isEmpty)
+    }
+
+    func testSafeFileNameReplacesForbiddenCharacters() {
+        XCTAssertEqual(PrepareShareFileUseCase.safeFileName(from: "Plano: casa/jardín"), "Plano- casa-jardín")
+        XCTAssertEqual(PrepareShareFileUseCase.safeFileName(from: "  ...  "), "Dibujo")
+        XCTAssertEqual(PrepareShareFileUseCase.safeFileName(from: ""), "Dibujo")
+        XCTAssertEqual(PrepareShareFileUseCase.safeFileName(from: "Línea 1\nLínea 2"), "Línea 1-Línea 2")
+    }
+
     // MARK: - Exportar
 
     func testExportAddsThePNGToTheLibrary() async throws {
