@@ -10,6 +10,10 @@ import Observation
 ///   través de los casos de uso; nunca con PencilKit, SwiftData ni Fotos.
 /// - Publica estado observable (`background`, `isExporting`, `alert`…).
 ///
+/// **Textos e imágenes:** además de los trazos, la hoja tiene elementos
+/// (``PageElement``). Se guardan al momento, cada uno por separado, y se
+/// mueven en un modo aparte (`isArrangingElements`) en el que no se dibuja.
+///
 /// **Autoguardado:** cada cambio de trazos reinicia un temporizador
 /// (`autosaveDelay`). Cuando pasa ese tiempo sin cambios se guarda una sola
 /// vez (*debounce*). Al salir de la hoja o de la app se guarda lo pendiente de
@@ -25,6 +29,14 @@ final class CanvasViewModel {
     /// Archivo listo para compartir; la vista muestra la hoja mientras no sea `nil`.
     var sharedFile: SharedFile?
 
+    /// Textos e imágenes de la hoja, del fondo hacia arriba.
+    private(set) var elements: [PageElement] = []
+    private(set) var selectedElementID: UUID?
+    /// `true`: los toques mueven textos e imágenes en lugar de dibujar.
+    private(set) var isArrangingElements = false
+    /// Editor de texto abierto; la vista lo muestra mientras no sea `nil`.
+    var textEditor: TextEditorRequest?
+
     private let drawingID: UUID
     /// Nombre de la hoja para el archivo al compartir ("Cuaderno 1 - Hoja 2").
     private let shareName: String
@@ -35,6 +47,7 @@ final class CanvasViewModel {
     private let changeBackground: ChangeBackgroundUseCase
     private let exportDrawing: ExportDrawingUseCase
     private let prepareShareFile: PrepareShareFileUseCase
+    private let elementUseCases: PageElementUseCases
     private let autosaveDelay: Duration
 
     @ObservationIgnored private var pendingSave: Task<Void, Never>?
@@ -51,6 +64,7 @@ final class CanvasViewModel {
         changeBackground: ChangeBackgroundUseCase,
         exportDrawing: ExportDrawingUseCase,
         prepareShareFile: PrepareShareFileUseCase,
+        elementUseCases: PageElementUseCases,
         autosaveDelay: Duration = .seconds(1)
     ) {
         self.drawingID = drawingID
@@ -62,9 +76,16 @@ final class CanvasViewModel {
         self.changeBackground = changeBackground
         self.exportDrawing = exportDrawing
         self.prepareShareFile = prepareShareFile
+        self.elementUseCases = elementUseCases
         self.autosaveDelay = autosaveDelay
         canvas.onDrawingChanged = { [weak self] in
             self?.drawingDidChange()
+        }
+        canvas.onElementMoved = { [weak self] id, frame in
+            self?.elementMoved(id: id, to: frame)
+        }
+        canvas.onElementSelected = { [weak self] id in
+            self?.selectElement(id)
         }
     }
 
@@ -87,6 +108,8 @@ final class CanvasViewModel {
             isRestoring = true
             defer { isRestoring = false }
             try canvas.load(drawing.strokesData)
+            elements = try elementUseCases.list.execute(pageID: drawingID)
+            refreshCanvasElements()
         } catch {
             alert = AlertMessage(error: error)
         }
@@ -113,7 +136,7 @@ final class CanvasViewModel {
     /// Reduce el temblor de los trazos de la hoja. El cambio entra por el
     /// autoguardado, como cualquier otro, y se puede deshacer.
     func smoothStrokes() {
-        guard !canvas.isEmpty else { return }
+        guard canvas.hasStrokes else { return }
         canvas.smoothStrokes()
     }
 
@@ -182,6 +205,118 @@ final class CanvasViewModel {
         } catch {
             alert = AlertMessage(error: error)
         }
+    }
+
+    // MARK: - Textos e imágenes
+
+    var selectedElement: PageElement? {
+        elements.first { $0.id == selectedElementID }
+    }
+
+    /// Abre el editor para escribir un cuadro de texto nuevo.
+    func beginNewText() {
+        textEditor = TextEditorRequest(elementID: nil, text: "")
+    }
+
+    /// Abre el editor con el texto del cuadro seleccionado.
+    func beginEditingSelectedText() {
+        guard let element = selectedElement, case .text(let text) = element.content else { return }
+        textEditor = TextEditorRequest(elementID: element.id, text: text)
+    }
+
+    /// Guarda lo escrito en el editor: crea el cuadro o cambia el existente.
+    func commitText(_ text: String, for request: TextEditorRequest) {
+        performOnElements {
+            if let elementID = request.elementID {
+                let updated = try elementUseCases.updateText.execute(id: elementID, text: text)
+                replaceElement(updated)
+            } else {
+                let added = try elementUseCases.addText.execute(
+                    pageID: drawingID, text: text, centeredAt: canvas.visibleCenter
+                )
+                insertAndSelect(added)
+            }
+        }
+    }
+
+    /// Pega el texto o la imagen del portapapeles en el centro de lo visible.
+    func paste() {
+        performOnElements {
+            let viewport = canvas.viewportSize
+            let added = try elementUseCases.paste.execute(
+                pageID: drawingID,
+                centeredAt: canvas.visibleCenter,
+                // Recién pegada, una imagen ocupa como mucho el 60 % de la pantalla.
+                maxImageSize: CGSize(width: viewport.width * 0.6, height: viewport.height * 0.6)
+            )
+            insertAndSelect(added)
+        }
+    }
+
+    /// Entra o sale del modo en que los toques mueven textos e imágenes.
+    func setArrangingElements(_ enabled: Bool) {
+        guard enabled != isArrangingElements else { return }
+        isArrangingElements = enabled
+        if !enabled { selectedElementID = nil }
+        canvas.setArrangingElements(enabled)
+        refreshCanvasElements()
+    }
+
+    func deleteSelectedElement() {
+        guard let id = selectedElementID else { return }
+        performOnElements {
+            try elementUseCases.delete.execute(id: id)
+            elements.removeAll { $0.id == id }
+            selectedElementID = nil
+        }
+    }
+
+    /// El usuario tocó un elemento (o el fondo) en el modo de mover.
+    private func selectElement(_ id: UUID?) {
+        selectedElementID = id
+        refreshCanvasElements()
+    }
+
+    /// El usuario soltó un elemento en otro sitio o con otro tamaño.
+    private func elementMoved(id: UUID, to frame: CGRect) {
+        performOnElements {
+            let moved = try elementUseCases.move.execute(id: id, frame: frame)
+            replaceElement(moved)
+            selectedElementID = id
+        }
+    }
+
+    /// Recién añadido, un elemento queda seleccionado y listo para moverlo:
+    /// casi nunca cae justo donde se quería.
+    private func insertAndSelect(_ element: PageElement) {
+        elements.append(element)
+        selectedElementID = element.id
+        if !isArrangingElements {
+            isArrangingElements = true
+            canvas.setArrangingElements(true)
+        }
+    }
+
+    private func replaceElement(_ element: PageElement) {
+        guard let index = elements.firstIndex(where: { $0.id == element.id }) else { return }
+        elements[index] = element
+    }
+
+    /// Ejecuta un cambio en los elementos; después repinta el lienzo (también
+    /// si falló, para deshacer lo que el gesto dejó a medias) y programa un
+    /// guardado, porque la miniatura de la hoja incluye los elementos.
+    private func performOnElements(_ operation: () throws -> Void) {
+        do {
+            try operation()
+            scheduleAutosave()
+        } catch {
+            alert = AlertMessage(error: error)
+        }
+        refreshCanvasElements()
+    }
+
+    private func refreshCanvasElements() {
+        canvas.showElements(elements, selectedID: selectedElementID)
     }
 
     // MARK: - Autoguardado

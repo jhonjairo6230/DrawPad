@@ -5,6 +5,13 @@ import Foundation
 @MainActor
 final class FakeDrawingCanvas: DrawingCanvas {
     var onDrawingChanged: (() -> Void)?
+    var onElementMoved: ((UUID, CGRect) -> Void)?
+    var onElementSelected: ((UUID?) -> Void)?
+    var visibleCenter = CGPoint(x: 400, y: 300)
+    var viewportSize = CGSize(width: 800, height: 600)
+    private(set) var shownElements: [PageElement] = []
+    private(set) var shownSelectedID: UUID?
+    private(set) var isArrangingElements = false
     var strokes = Data()
     var png: Data? = Data("png".utf8)
     var pdf: Data? = Data("pdf".utf8)
@@ -16,7 +23,18 @@ final class FakeDrawingCanvas: DrawingCanvas {
     private(set) var smoothCount = 0
     private(set) var redoCount = 0
 
-    var isEmpty: Bool { strokes.isEmpty }
+    var isEmpty: Bool { strokes.isEmpty && shownElements.isEmpty }
+
+    var hasStrokes: Bool { !strokes.isEmpty }
+
+    func showElements(_ elements: [PageElement], selectedID: UUID?) {
+        shownElements = elements
+        shownSelectedID = selectedID
+    }
+
+    func setArrangingElements(_ enabled: Bool) {
+        isArrangingElements = enabled
+    }
 
     func currentData() -> Data { strokes }
 

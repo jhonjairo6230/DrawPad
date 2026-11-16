@@ -21,6 +21,12 @@ enum DrawingError: Error, Equatable {
     case exportFailed
     /// No se pudo preparar el archivo para compartir.
     case shareFailed
+    /// Se intentó guardar un cuadro de texto vacío.
+    case emptyText
+    /// No hay texto ni imágenes en el portapapeles.
+    case clipboardEmpty
+    /// El texto o la imagen ya no existe en la hoja.
+    case elementNotFound
     /// Se intentó exportar una hoja sin trazos.
     case emptyDrawing
 }
@@ -44,6 +50,12 @@ extension DrawingError: LocalizedError {
             return "No se pudo guardar la imagen en Fotos."
         case .shareFailed:
             return "No se pudo preparar el archivo para compartir."
+        case .emptyText:
+            return "Escribe algo antes de guardar."
+        case .clipboardEmpty:
+            return "No hay texto ni imágenes en el portapapeles. Copia algo primero."
+        case .elementNotFound:
+            return "Ese elemento ya no está en la hoja."
         case .emptyDrawing:
             return "La hoja está vacía: dibuja algo antes de exportar o compartir."
         }

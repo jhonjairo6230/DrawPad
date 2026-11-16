@@ -20,6 +20,8 @@ desde Windows. No está pensada para publicarse en el App Store.
 - **Papel de fondo** por hoja: blanco, cuadrícula, líneas o puntos, en
   claro u **oscuro**. La app sigue el modo claro/oscuro del iPad.
 - **Zoom** con pellizco (hasta 4×) y desplazamiento por la hoja.
+- **Texto e imágenes** en la hoja: cuadros de texto escritos con el teclado
+  y texto o imágenes pegados del portapapeles, para dibujar encima.
 - **Suavizar trazos**: quita el temblor de lo dibujado (se puede deshacer).
 - Deshacer y rehacer.
 - **Dibujar con el dedo** (opcional; por defecto solo dibuja el Pencil).

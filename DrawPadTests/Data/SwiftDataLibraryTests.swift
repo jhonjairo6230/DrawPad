@@ -195,6 +195,86 @@ final class SwiftDataLibraryTests: XCTestCase {
         XCTAssertEqual(try another.findDrawing(id: drawing.id), drawing)
     }
 
+    // MARK: - Textos e imágenes
+
+    func testSaveThenFindReturnsTheSameElements() throws {
+        let text = PageElement.sampleText("Hola", frame: CGRect(x: 1, y: 2, width: 320, height: 28))
+        let image = PageElement.sampleImage(frame: CGRect(x: 10.5, y: 20.25, width: 200, height: 100))
+
+        try library.save(text)
+        try library.save(image)
+
+        XCTAssertEqual(try library.findElement(id: text.id), text)
+        XCTAssertEqual(try library.findElement(id: image.id), image)
+        XCTAssertNil(try library.findElement(id: UUID()))
+    }
+
+    func testSavingAnExistingElementReplacesItsContentAndFrame() throws {
+        var element = PageElement.sampleText("Viejo")
+        try library.save(element)
+
+        element.content = .text("Nuevo")
+        element.frame = CGRect(x: 99, y: 88, width: 320, height: 56)
+        try library.save(element)
+
+        XCTAssertEqual(try library.listElements(pageID: element.pageID), [element])
+    }
+
+    func testListElementsReturnsOnlyThatPageOldestFirst() throws {
+        let pageID = UUID()
+        let first = PageElement.sampleText(pageID: pageID, "uno", createdAt: date(1))
+        let second = PageElement.sampleImage(pageID: pageID, createdAt: date(2))
+        try library.save(second)
+        try library.save(first)
+        try library.save(PageElement.sampleText("otra hoja"))
+
+        XCTAssertEqual(try library.listElements(pageID: pageID), [first, second])
+    }
+
+    func testDeleteElementRemovesOnlyThatElement() throws {
+        let pageID = UUID()
+        let kept = PageElement.sampleText(pageID: pageID, "se queda")
+        let removed = PageElement.sampleImage(pageID: pageID, createdAt: date(1))
+        try library.save(kept)
+        try library.save(removed)
+
+        try library.deleteElement(id: removed.id)
+
+        XCTAssertEqual(try library.listElements(pageID: pageID), [kept])
+    }
+
+    func testDeletingAPageDeletesItsElements() throws {
+        let page = Drawing.sample()
+        let element = PageElement.sampleText(pageID: page.id)
+        let outsider = PageElement.sampleText("otra hoja")
+        try library.save(page)
+        try library.save(element)
+        try library.save(outsider)
+
+        try library.deleteDrawing(id: page.id)
+
+        XCTAssertNil(try library.findElement(id: element.id))
+        XCTAssertEqual(try library.findElement(id: outsider.id), outsider)
+    }
+
+    func testDeletingANotebookDeletesTheElementsOfAllItsPages() throws {
+        let notebook = Notebook.sample()
+        let first = Drawing.sample(notebookID: notebook.id, createdAt: date(1))
+        let second = Drawing.sample(notebookID: notebook.id, createdAt: date(2))
+        let onFirst = PageElement.sampleText(pageID: first.id)
+        let onSecond = PageElement.sampleImage(pageID: second.id)
+        try library.save(notebook)
+        try library.save(first)
+        try library.save(second)
+        try library.save(onFirst)
+        try library.save(onSecond)
+
+        try library.deleteNotebook(id: notebook.id)
+
+        XCTAssertNil(try library.findElement(id: onFirst.id))
+        XCTAssertNil(try library.findElement(id: onSecond.id))
+    }
+
     // MARK: - Migración de dibujos sin cuaderno
 
     /// Deja la base de datos como la de una versión anterior a los cuadernos.

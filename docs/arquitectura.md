@@ -24,14 +24,15 @@ flowchart TB
         P4["PencilKitCanvas<br/>PencilCanvasView"]
     end
     subgraph DOM["Domain — Swift puro"]
-        D1["Casos de uso<br/>cuadernos · hojas · papel<br/>exportar · compartir"]
-        D2["Notebook · Drawing<br/>CanvasBackground · CanvasTheme<br/>DrawingError"]
-        D3["NotebookRepository<br/>DrawingRepository<br/>ImageLibrary · ExportFileStore<br/>(protocolos)"]
+        D1["Casos de uso<br/>cuadernos · hojas · papel<br/>textos e imágenes<br/>exportar · compartir"]
+        D2["Notebook · Drawing · PageElement<br/>CanvasBackground · CanvasTheme<br/>DrawingError"]
+        D3["NotebookRepository · DrawingRepository<br/>PageElementRepository<br/>ImageLibrary · ExportFileStore · Clipboard<br/>(protocolos)"]
     end
     subgraph DATA["Data — detalles técnicos"]
-        T1["SwiftDataLibrary<br/>NotebookRecord · DrawingRecord"]
+        T1["SwiftDataLibrary<br/>NotebookRecord · DrawingRecord<br/>PageElementRecord"]
         T2["PhotoLibraryImageExporter<br/>(Photos)"]
         T4["TemporaryExportFileStore<br/>(archivos temporales)"]
+        T5["SystemClipboard<br/>(UIPasteboard)"]
         T3[("Base de datos local<br/>SwiftData")]
     end
 
@@ -48,6 +49,7 @@ flowchart TB
     T1 -. implementa .-> D3
     T2 -. implementa .-> D3
     T4 -. implementa .-> D3
+    T5 -. implementa .-> D3
     T1 --> T3
     A1 --> A2
     A2 --> G1
@@ -57,6 +59,7 @@ flowchart TB
     A2 --> T1
     A2 --> T2
     A2 --> T4
+    A2 --> T5
 ```
 
 Las flechas continuas son "usa"; las punteadas, "implementa". Fíjate en que
@@ -96,6 +99,8 @@ DrawPad/
 │   │   ├── NotebookSummary.swift   Lo justo para la galería: tapa, hojas, actividad
 │   │   ├── Drawing.swift           Una hoja: trazos, miniatura, papel, fechas
 │   │   ├── DrawingSummary.swift    Lo justo para listar hojas (sin trazos)
+│   │   ├── PageElement.swift       Un texto o una imagen colocados en una hoja
+│   │   ├── ClipboardContent.swift  Lo que se puede pegar: texto o imagen
 │   │   ├── CanvasBackground.swift  Patrón del papel: blanco, cuadrícula, líneas, puntos
 │   │   ├── CanvasTheme.swift       Papel claro u oscuro
 │   │   └── ExportFormat.swift      Formatos para compartir: PNG o PDF
@@ -103,6 +108,8 @@ DrawPad/
 │   ├── Repositories/               Puertos (protocolos)
 │   │   ├── NotebookRepository.swift
 │   │   ├── DrawingRepository.swift
+│   │   ├── PageElementRepository.swift
+│   │   ├── Clipboard.swift
 │   │   ├── ImageLibrary.swift
 │   │   └── ExportFileStore.swift
 │   └── UseCases/                   Una acción de negocio por archivo
@@ -118,16 +125,26 @@ DrawPad/
 │       ├── LoadDrawingUseCase.swift
 │       ├── SaveDrawingUseCase.swift
 │       ├── ChangeBackgroundUseCase.swift
+│       ├── ListPageElementsUseCase.swift
+│       ├── AddTextElementUseCase.swift
+│       ├── AddImageElementUseCase.swift
+│       ├── PasteElementUseCase.swift
+│       ├── UpdateElementTextUseCase.swift
+│       ├── MoveElementUseCase.swift
+│       ├── DeleteElementUseCase.swift
 │       ├── ExportDrawingUseCase.swift
 │       └── PrepareShareFileUseCase.swift
 ├── Data/
 │   ├── Persistence/
 │   │   ├── NotebookRecord.swift    Modelo de SwiftData de un cuaderno (@Model)
-│   │   └── DrawingRecord.swift     Modelo de SwiftData de una hoja (@Model)
-│   ├── Repositories/SwiftDataLibrary.swift   Los dos repositorios, una base de datos
+│   │   ├── DrawingRecord.swift     Modelo de SwiftData de una hoja (@Model)
+│   │   └── PageElementRecord.swift Modelo de SwiftData de un texto o una imagen (@Model)
+│   ├── Repositories/SwiftDataLibrary.swift   Los tres repositorios, una base de datos
 │   └── Gateways/
 │       ├── PhotoLibraryImageExporter.swift
-│       └── TemporaryExportFileStore.swift
+│       ├── TemporaryExportFileStore.swift
+│       ├── SystemClipboard.swift   Portapapeles del sistema
+│       └── FixedClipboard.swift    Portapapeles fijo para las pruebas de interfaz
 ├── Presentation/
 │   ├── Gallery/
 │   │   ├── GalleryScreen.swift     Cuadrícula de cuadernos y navegación
@@ -149,6 +166,11 @@ DrawPad/
 │   │   ├── PencilKitCanvas.swift   Adaptador de PencilKit
 │   │   ├── CanvasGeometry.swift    Cuentas del zoom: tamaño de hoja y posición del papel
 │   │   ├── StrokeSmoother.swift    Suavizado de trazos (media móvil sobre puntos)
+│   │   ├── PageElementsLayer.swift Capa de textos e imágenes bajo los trazos
+│   │   ├── PageElementStyle.swift  Tipografía de los textos y dibujo al exportar
+│   │   ├── PageElementUseCases.swift       Casos de uso de elementos, agrupados
+│   │   ├── TextEditorRequest.swift         Petición de abrir el editor de texto
+│   │   ├── TextElementEditorSheet.swift    Escribir un cuadro de texto con el teclado
 │   │   ├── CanvasBackgroundPattern.swift        Dibuja la baldosa de cada papel
 │   │   ├── CanvasBackground+Presentation.swift  Título e icono de cada papel
 │   │   └── PencilCanvasView.swift  Puente SwiftUI ↔ UIKit
@@ -160,7 +182,9 @@ DrawPad/
 
 DrawPadTests/
 ├── Doubles/                        Falsos: biblioteca, lienzo, hoja abierta, Fotos, archivos
-├── Domain/UseCasesTests.swift
+├── Domain/
+│   ├── UseCasesTests.swift
+│   └── PageElementUseCasesTests.swift
 ├── Data/
 │   ├── SwiftDataLibraryTests.swift             Base de datos real en memoria
 │   └── TemporaryExportFileStoreTests.swift
@@ -237,6 +261,16 @@ classDiagram
         +isExporting Bool
         +alert AlertMessage?
         +sharedFile SharedFile?
+        +elements PageElement[]
+        +selectedElementID UUID?
+        +isArrangingElements Bool
+        +textEditor TextEditorRequest?
+        +beginNewText()
+        +commitText(text, request)
+        +paste()
+        +setArrangingElements(Bool)
+        +beginEditingSelectedText()
+        +deleteSelectedElement()
         +onAppear()
         +undo()
         +redo()
@@ -257,7 +291,12 @@ classDiagram
     class DrawingCanvas {
         <<protocol>>
         +onDrawingChanged
+        +onElementMoved
+        +onElementSelected
         +isEmpty Bool
+        +visibleCenter CGPoint
+        +showElements(elements, selectedID)
+        +setArrangingElements(Bool)
         +currentData() Data
         +load(Data)
         +clear()
@@ -282,6 +321,8 @@ classDiagram
         ListPages · AddPage · DeletePage
         LoadDrawing · SaveDrawing
         ChangeBackground
+        ListPageElements · AddText · AddImage
+        Paste · UpdateText · Move · DeleteElement
         ExportDrawing · PrepareShareFile
     }
     class NotebookRepository {
@@ -298,6 +339,29 @@ classDiagram
         +save(Drawing)
         +deleteDrawing(id)
     }
+    class PageElementRepository {
+        <<protocol>>
+        +listElements(pageID) PageElement[]
+        +findElement(id) PageElement?
+        +save(PageElement)
+        +deleteElement(id)
+    }
+    class Clipboard {
+        <<protocol>>
+        +content() ClipboardContent?
+    }
+    class PageElement {
+        <<struct>>
+        +id UUID
+        +pageID UUID
+        +frame CGRect
+        +content text | image
+        +createdAt Date
+    }
+    class PageElementsLayer {
+        <<UIView>>
+    }
+    class SystemClipboard
     class ImageLibrary {
         <<protocol>>
         +addPNG(Data)
@@ -359,6 +423,13 @@ classDiagram
     PencilKitCanvas ..|> DrawingCanvas
     UseCases --> NotebookRepository
     UseCases --> DrawingRepository
+    UseCases --> PageElementRepository
+    UseCases --> Clipboard
+    PageElementRepository ..> PageElement
+    PageElement --> Drawing : pageID
+    PencilKitCanvas --> PageElementsLayer
+    SwiftDataLibrary ..|> PageElementRepository
+    SystemClipboard ..|> Clipboard
     UseCases --> ImageLibrary
     UseCases --> ExportFileStore
     NotebookRepository ..> Notebook
@@ -736,6 +807,64 @@ sequenceDiagram
     end
 ```
 
+### 5.10 Insertar texto, pegar y mover elementos
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Usuario
+    participant V as CanvasScreen
+    participant VM as CanvasViewModel
+    participant UC as Casos de uso de elementos
+    participant CB as Clipboard
+    participant R as PageElementRepository
+    participant K as PencilKitCanvas
+    participant L as PageElementsLayer
+
+    alt cuadro de texto
+        U->>V: menú "Insertar", "Cuadro de texto"
+        V->>VM: beginNewText()
+        VM-->>V: textEditor = petición, se abre el editor con el teclado
+        U->>V: escribe y toca "Guardar"
+        V->>VM: commitText(texto, petición)
+        VM->>K: visibleCenter
+        VM->>UC: AddTextElementUseCase(hoja, texto, centro visible)
+        UC->>R: save(elemento)
+    else pegar
+        U->>V: menú "Insertar", "Pegar"
+        V->>VM: paste()
+        VM->>UC: PasteElementUseCase(hoja, centro, tamaño máximo)
+        UC->>CB: content()
+        alt hay imagen o texto
+            CB-->>UC: imagen o texto
+            UC->>R: save(elemento, la imagen reducida si no cabe)
+        else portapapeles vacío
+            CB-->>UC: nil
+            UC-->>VM: lanza clipboardEmpty
+            VM-->>V: alerta "No hay texto ni imágenes…"
+        end
+    end
+    VM->>VM: selecciona el elemento nuevo y entra en modo mover
+    VM->>K: setArrangingElements(true)
+    K->>K: el lienzo deja de atender toques
+    VM->>K: showElements(elementos, seleccionado)
+    K->>L: show(...)
+    V-->>U: barra "Editar texto · Eliminar · Listo"
+
+    opt mueve o cambia el tamaño
+        U->>L: arrastra (o pellizca una imagen)
+        L->>K: onElementMoved(id, marco)
+        K->>VM: elementMoved
+        VM->>UC: MoveElementUseCase(id, marco)
+        UC->>R: save(marco corregido para no salirse de la hoja)
+        VM->>K: showElements(...)
+    end
+    U->>V: "Listo"
+    V->>VM: setArrangingElements(false)
+    VM->>K: setArrangingElements(false)
+    Note over K,L: el lienzo vuelve a recibir los toques,<br/>los trazos se dibujan por encima
+```
+
 ## 6. Decisiones de diseño que conviene entender
 
 **El dominio no conoce PencilKit.** `Drawing.strokesData` es `Data` opaco.
@@ -777,6 +906,21 @@ el `PKCanvasView` transparente. Cambiar de papel no toca el dibujo, y al
 exportar se pinta primero el papel y luego los trazos. Las miniaturas van
 sobre papel liso: el patrón reducido las ensucia.
 
+**Textos e imágenes van en una capa bajo los trazos.** `PencilKitCanvas`
+apila tres vistas: papel, `PageElementsLayer` y el `PKCanvasView`
+transparente. Los elementos se ven a través del lienzo y lo que se dibuja
+queda encima. Como el lienzo se lleva todos los toques, mover elementos es
+un **modo aparte**: mientras dura, el lienzo no atiende toques y los recibe
+la capa. Los elementos no son trazos: cada uno es una fila de la base de
+datos y se guarda al momento, no con el autoguardado
+(ver [ADR 0013](adr/0013-textos-e-imagenes.md)).
+
+**El portapapeles es un puerto.** `PasteElementUseCase` no sabe qué es
+`UIPasteboard`: pide a `Clipboard` "qué hay copiado". Así la lógica de pegar
+(texto o imagen, reducir si no cabe, qué hacer si está vacío) se prueba con
+un portapapeles falso, y las pruebas de interfaz usan uno fijo para no
+depender del aviso de permiso de iOS.
+
 **Suavizar es una operación del lienzo, con el algoritmo aparte.** El
 ViewModel solo pide `smoothStrokes()`; cómo se recorre y reconstruye cada
 trazo es asunto de PencilKit y vive en el adaptador. La matemática (una
@@ -815,10 +959,11 @@ crea su primera hoja, y `DeletePageUseCase` se niega a borrar la última:
 esas dos reglas están en los casos de uso, no en las vistas
 (ver [ADR 0010](adr/0010-cuadernos-y-hojas.md)).
 
-**Una sola clase para los dos repositorios.** `SwiftDataLibrary` implementa
-`NotebookRepository` y `DrawingRepository` porque comparten un mismo
-`ModelContext`: dos contextos no ven al momento los cambios del otro, y
-borrar un cuaderno toca las dos tablas. Los casos de uso siguen pidiendo
+**Una sola clase para los tres repositorios.** `SwiftDataLibrary` implementa
+`NotebookRepository`, `DrawingRepository` y `PageElementRepository` porque
+comparten un mismo `ModelContext`: dos contextos no ven al momento los
+cambios del otro, y borrar un cuaderno toca las tres tablas (sus hojas y los
+elementos de cada hoja). Los casos de uso siguen pidiendo
 solo el puerto que necesitan.
 
 **El cuaderno no conoce el lienzo.** `NotebookViewModel` decide qué hoja se
@@ -862,7 +1007,7 @@ la interfaz va en el hilo principal). El temporizador de autoguardado es una
 
 | Qué se prueba | Archivo | Cómo |
 | ------------- | ------- | ---- |
-| Casos de uso | `Domain/UseCasesTests.swift` | Biblioteca en memoria y dobles espía. |
+| Casos de uso | `Domain/UseCasesTests.swift`, `Domain/PageElementUseCasesTests.swift` | Biblioteca en memoria, portapapeles falso y dobles espía. |
 | Biblioteca SwiftData | `Data/SwiftDataLibraryTests.swift` | Base de datos real, en memoria. Incluye la migración de dibujos sin cuaderno. |
 | Archivos para compartir | `Data/TemporaryExportFileStoreTests.swift` | Carpeta temporal real. |
 | ViewModel del lienzo | `Presentation/CanvasViewModelTests.swift` | Lienzo falso; el autoguardado se prueba con un retardo de milisegundos. |

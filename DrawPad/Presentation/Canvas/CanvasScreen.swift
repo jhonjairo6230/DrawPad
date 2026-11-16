@@ -31,6 +31,16 @@ struct CanvasScreen: View {
             .sheet(item: $viewModel.sharedFile) { file in
                 ActivityView(items: [file.url])
             }
+            .sheet(item: $viewModel.textEditor) { request in
+                TextElementEditorSheet(request: request) { text in
+                    viewModel.commitText(text, for: request)
+                }
+            }
+            .overlay(alignment: .top) {
+                if viewModel.isArrangingElements {
+                    arrangingBar
+                }
+            }
             .alert(
                 viewModel.alert?.title ?? "",
                 isPresented: isShowingAlert,
@@ -46,6 +56,29 @@ struct CanvasScreen: View {
         PencilCanvasView(canvas: canvas)
             .ignoresSafeArea(edges: .bottom)
             .toolbar { toolbarContent }
+    }
+
+    /// Barra del modo "mover texto e imágenes": qué hacer con lo seleccionado
+    /// y cómo volver a dibujar.
+    private var arrangingBar: some View {
+        HStack(spacing: 20) {
+            Text(viewModel.selectedElement == nil ? "Toca un texto o una imagen" : "Arrastra para mover")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            if viewModel.selectedElement?.isText == true {
+                Button("Editar texto") { viewModel.beginEditingSelectedText() }
+            }
+            if viewModel.selectedElement != nil {
+                Button("Eliminar", role: .destructive) { viewModel.deleteSelectedElement() }
+            }
+            Button("Listo") { viewModel.setArrangingElements(false) }
+                .fontWeight(.semibold)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+        .background(.regularMaterial, in: Capsule())
+        .padding(.top, 12)
     }
 
     /// Adapta `alert: AlertMessage?` al `Bool` que pide `.alert`.
@@ -67,13 +100,21 @@ struct CanvasScreen: View {
             }
         }
         ToolbarItemGroup(placement: .topBarTrailing) {
-            Toggle(isOn: Binding(
-                get: { viewModel.isFingerDrawingEnabled },
-                set: { _ in viewModel.toggleFingerDrawing() }
-            )) {
-                Label("Dibujar con el dedo", systemImage: "hand.draw")
+            Menu {
+                Button { viewModel.beginNewText() } label: {
+                    Label("Cuadro de texto", systemImage: "character.textbox")
+                }
+                Button { viewModel.paste() } label: {
+                    Label("Pegar", systemImage: "doc.on.clipboard")
+                }
+                Divider()
+                Button { viewModel.setArrangingElements(true) } label: {
+                    Label("Mover texto e imágenes", systemImage: "arrow.up.and.down.and.arrow.left.and.right")
+                }
+                .disabled(viewModel.elements.isEmpty)
+            } label: {
+                Label("Insertar", systemImage: "plus.rectangle.on.rectangle")
             }
-            .toggleStyle(.button)
 
             Menu {
                 Picker("Fondo", selection: Binding(
@@ -97,6 +138,12 @@ struct CanvasScreen: View {
             }
 
             Menu {
+                Toggle(isOn: Binding(
+                    get: { viewModel.isFingerDrawingEnabled },
+                    set: { _ in viewModel.toggleFingerDrawing() }
+                )) {
+                    Label("Dibujar con el dedo", systemImage: "hand.draw")
+                }
                 Button { viewModel.smoothStrokes() } label: {
                     Label("Suavizar trazos", systemImage: "wand.and.stars")
                 }

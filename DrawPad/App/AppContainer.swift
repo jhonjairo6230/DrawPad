@@ -16,6 +16,8 @@ final class AppContainer {
     /// Argumento de lanzamiento que usan las pruebas de interfaz para arrancar
     /// con una base de datos vacía y en memoria.
     static let uiTestingArgument = "-uiTesting"
+    /// Lo que "hay en el portapapeles" durante las pruebas de interfaz.
+    static let uiTestingClipboardText = "Texto pegado"
 
     private let isUITesting = ProcessInfo.processInfo.arguments.contains(AppContainer.uiTestingArgument)
 
@@ -54,7 +56,8 @@ final class AppContainer {
             saveDrawing: SaveDrawingUseCase(repository: library),
             changeBackground: ChangeBackgroundUseCase(repository: library),
             exportDrawing: ExportDrawingUseCase(library: imageLibrary),
-            prepareShareFile: PrepareShareFileUseCase(store: exportFileStore)
+            prepareShareFile: PrepareShareFileUseCase(store: exportFileStore),
+            elementUseCases: PageElementUseCases(elements: library, clipboard: clipboard)
         )
         return CanvasModule(viewModel: viewModel, canvas: canvas)
     }
@@ -78,4 +81,9 @@ final class AppContainer {
     private lazy var canvasPreferences = CanvasPreferences()
     private lazy var imageLibrary: ImageLibrary = PhotoLibraryImageExporter()
     private lazy var exportFileStore: ExportFileStore = TemporaryExportFileStore.live()
+    /// En las pruebas de interfaz, un portapapeles fijo: leer el del sistema
+    /// muestra un aviso de permiso de iOS que una prueba no puede aceptar.
+    private lazy var clipboard: Clipboard = isUITesting
+        ? FixedClipboard(content: .text(AppContainer.uiTestingClipboardText))
+        : SystemClipboard()
 }
