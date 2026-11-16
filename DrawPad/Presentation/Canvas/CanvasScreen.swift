@@ -96,8 +96,16 @@ struct CanvasScreen: View {
                 Label("Fondo", systemImage: "square.grid.3x3")
             }
 
-            Button(role: .destructive) { isConfirmingClear = true } label: {
-                Label("Borrar todo", systemImage: "trash")
+            Menu {
+                Button { viewModel.smoothStrokes() } label: {
+                    Label("Suavizar trazos", systemImage: "wand.and.stars")
+                }
+                Divider()
+                Button(role: .destructive) { isConfirmingClear = true } label: {
+                    Label("Borrar todo", systemImage: "trash")
+                }
+            } label: {
+                Label("Más", systemImage: "ellipsis.circle")
             }
 
             if viewModel.isExporting {

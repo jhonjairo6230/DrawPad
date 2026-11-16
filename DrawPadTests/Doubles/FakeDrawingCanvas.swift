@@ -13,6 +13,7 @@ final class FakeDrawingCanvas: DrawingCanvas {
     private(set) var background: CanvasBackground?
     private(set) var theme: CanvasTheme?
     private(set) var undoCount = 0
+    private(set) var smoothCount = 0
     private(set) var redoCount = 0
 
     var isEmpty: Bool { strokes.isEmpty }
@@ -30,6 +31,11 @@ final class FakeDrawingCanvas: DrawingCanvas {
     }
 
     func undo() { undoCount += 1 }
+
+    func smoothStrokes() {
+        smoothCount += 1
+        onDrawingChanged?() // Suavizar cambia el dibujo, como un trazo más.
+    }
 
     func redo() { redoCount += 1 }
 

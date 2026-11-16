@@ -110,6 +110,13 @@ final class CanvasViewModel {
 
     func redo() { canvas.redo() }
 
+    /// Reduce el temblor de los trazos de la hoja. El cambio entra por el
+    /// autoguardado, como cualquier otro, y se puede deshacer.
+    func smoothStrokes() {
+        guard !canvas.isEmpty else { return }
+        canvas.smoothStrokes()
+    }
+
     func toggleFingerDrawing() {
         preferences.isFingerDrawingEnabled.toggle()
         canvas.setFingerDrawingEnabled(isFingerDrawingEnabled)

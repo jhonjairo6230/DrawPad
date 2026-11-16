@@ -58,6 +58,7 @@ Detalles que conviene saber:
 | ---- | ------- |
 | `brew install xcodegen` + `xcodegen generate` | El `.xcodeproj` no está en git; se crea a partir de `project.yml`. |
 | `scripts/pick_ipad_simulator.py` | Los nombres de los simuladores cambian con cada Xcode; el script elige un iPad que exista. |
+| `simctl boot` + `bootstatus -b` | Arranca el simulador y espera a que esté listo; si la primera prueba de interfaz lo pilla arrancando, falla al lanzar la app. |
 | `CODE_SIGNING_ALLOWED=NO` | En el runner no hay certificados de Apple. La firma la hace Sideloadly después. |
 | `Payload/` + `zip` | Un `.ipa` es simplemente un `.zip` con la app dentro de una carpeta `Payload`. |
 
