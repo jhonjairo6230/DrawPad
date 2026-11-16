@@ -30,7 +30,9 @@ final class SwiftDataLibraryTests: XCTestCase {
     }
 
     func testSaveThenFindReturnsTheSameNotebook() throws {
-        let notebook = Notebook.sample(title: "Física", createdAt: date(5))
+        let notebook = Notebook.sample(
+            title: "Física", createdAt: date(5), cover: NotebookCover(color: .purple, style: .spine)
+        )
 
         try library.save(notebook)
 
@@ -42,14 +44,16 @@ final class SwiftDataLibraryTests: XCTestCase {
         try library.save(notebook)
 
         notebook.title = "Nuevo"
+        notebook.cover = NotebookCover(color: .orange, style: .plain)
         try library.save(notebook)
 
         XCTAssertEqual(try library.listNotebooks().map(\.title), ["Nuevo"])
+        XCTAssertEqual(try library.findNotebook(id: notebook.id), notebook)
     }
 
     func testListNotebooksSummarizesPagesAndOrdersByLastActivity() throws {
         let quiet = Notebook.sample(title: "Quieto", createdAt: date(10))
-        let active = Notebook.sample(title: "Activo", createdAt: date(1))
+        let active = Notebook.sample(title: "Activo", createdAt: date(1), cover: NotebookCover(color: .red, style: .plain))
         try library.save(quiet)
         try library.save(active)
         try library.save(Drawing.sample(notebookID: active.id, thumbnail: "portada", createdAt: date(1), updatedAt: date(2)))
@@ -59,14 +63,33 @@ final class SwiftDataLibraryTests: XCTestCase {
 
         XCTAssertEqual(summaries, [
             NotebookSummary(
-                id: active.id, title: "Activo", pageCount: 2,
-                coverThumbnailData: Data("portada".utf8), lastActivityAt: date(99)
+                id: active.id, title: "Activo", cover: NotebookCover(color: .red, style: .plain),
+                pageCount: 2, lastActivityAt: date(99)
             ),
             NotebookSummary(
-                id: quiet.id, title: "Quieto", pageCount: 0,
-                coverThumbnailData: nil, lastActivityAt: date(10)
+                id: quiet.id, title: "Quieto", cover: .standard,
+                pageCount: 0, lastActivityAt: date(10)
             ),
         ])
+    }
+
+    func testCoverColumnsThatAreEmptyOrUnknownAreReadAsTheStandardCover() throws {
+        // Vacías: cuadernos guardados antes de que existieran las tapas.
+        let empty = UUID()
+        let unknown = UUID()
+        let context = ModelContext(container)
+        context.insert(NotebookRecord(
+            id: empty, title: "Antiguo", createdAt: date(1), coverColorRaw: nil, coverStyleRaw: nil
+        ))
+        context.insert(NotebookRecord(
+            id: unknown, title: "Raro", createdAt: date(2), coverColorRaw: "fucsia", coverStyleRaw: "anillas"
+        ))
+        try context.save()
+
+        for id in [empty, unknown] {
+            XCTAssertEqual(try library.findNotebook(id: id)?.cover, .standard)
+        }
+        XCTAssertEqual(try library.listNotebooks().map(\.cover), [.standard, .standard])
     }
 
     func testDeleteNotebookRemovesItsPagesButNotOthers() throws {

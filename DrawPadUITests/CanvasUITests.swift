@@ -48,6 +48,39 @@ final class CanvasUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Cuaderno 2"].exists)
     }
 
+    // MARK: - Portada
+
+    func testChangingTheCoverIsRememberedByTheEditor() {
+        openNewNotebook()
+        goBackToGallery()
+
+        openCoverEditor(of: "Cuaderno 1")
+        app.buttons["Rojo"].tap()
+        app.buttons["Lomo"].tap()
+        app.buttons["Guardar"].tap()
+        XCTAssertTrue(app.buttons["Cuaderno 1"].waitForExistence(timeout: 5))
+
+        openCoverEditor(of: "Cuaderno 1")
+        XCTAssertTrue(app.buttons["Rojo"].isSelected)
+        XCTAssertFalse(app.buttons["Azul"].isSelected)
+        app.buttons["Cancelar"].tap()
+        assertAppIsRunning()
+    }
+
+    func testCancellingTheCoverEditorKeepsTheOldCover() {
+        openNewNotebook()
+        goBackToGallery()
+
+        openCoverEditor(of: "Cuaderno 1")
+        app.buttons["Verde"].tap()
+        app.buttons["Cancelar"].tap()
+
+        openCoverEditor(of: "Cuaderno 1")
+        // El primer cuaderno nace con la primera tapa de la lista: azul.
+        XCTAssertTrue(app.buttons["Azul"].isSelected)
+        XCTAssertFalse(app.buttons["Verde"].isSelected)
+    }
+
     // MARK: - Hojas
 
     func testAddingPagesMovingBetweenThemAndDeletingOne() {
@@ -273,6 +306,17 @@ final class CanvasUITests: XCTestCase {
     private func goBackToGallery() {
         app.navigationBars.buttons["Cuadernos"].tap()
         XCTAssertTrue(app.buttons["Nuevo cuaderno"].waitForExistence(timeout: 5))
+    }
+
+    /// Mantiene pulsada la tarjeta de un cuaderno y elige "Cambiar portada".
+    private func openCoverEditor(of notebook: String) {
+        let card = app.buttons[notebook]
+        XCTAssertTrue(card.waitForExistence(timeout: 5))
+        card.press(forDuration: 1.2)
+        let action = app.buttons["Cambiar portada"]
+        XCTAssertTrue(action.waitForExistence(timeout: 5))
+        action.tap()
+        XCTAssertTrue(app.buttons["Guardar"].waitForExistence(timeout: 5))
     }
 
     /// Abre el menú "Más" del lienzo y elige una acción.

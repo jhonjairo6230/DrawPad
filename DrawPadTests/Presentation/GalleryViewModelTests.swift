@@ -11,7 +11,8 @@ final class GalleryViewModelTests: XCTestCase {
             listNotebooks: ListNotebooksUseCase(notebooks: library),
             createNotebook: CreateNotebookUseCase(notebooks: library, drawings: library),
             renameNotebook: RenameNotebookUseCase(notebooks: library),
-            deleteNotebook: DeleteNotebookUseCase(notebooks: library)
+            deleteNotebook: DeleteNotebookUseCase(notebooks: library),
+            changeCover: ChangeCoverUseCase(notebooks: library)
         )
     }
 
@@ -73,6 +74,30 @@ final class GalleryViewModelTests: XCTestCase {
 
         XCTAssertEqual(viewModel.alert, AlertMessage(error: DrawingError.invalidTitle))
         XCTAssertEqual(viewModel.notebooks.map(\.title), ["Viejo"])
+    }
+
+    func testChangeCoverUpdatesTheList() {
+        let notebook = Notebook.sample(title: "Física")
+        let viewModel = makeViewModel([notebook])
+        viewModel.load()
+        let cover = NotebookCover(color: .teal, style: .spine)
+
+        viewModel.changeCover(id: notebook.id, to: cover)
+
+        XCTAssertEqual(viewModel.notebooks.map(\.cover), [cover])
+        XCTAssertEqual(viewModel.notebooks.map(\.title), ["Física"])
+    }
+
+    func testChangeCoverShowsAnAlertWhenStorageFails() {
+        let notebook = Notebook.sample()
+        let viewModel = makeViewModel([notebook])
+        viewModel.load()
+        library.error = .storageFailed
+
+        viewModel.changeCover(id: notebook.id, to: NotebookCover(color: .red, style: .plain))
+
+        XCTAssertEqual(viewModel.alert, AlertMessage(error: DrawingError.storageFailed))
+        XCTAssertEqual(viewModel.notebooks.map(\.cover), [.standard])
     }
 
     func testDeleteRemovesTheNotebookFromTheList() {

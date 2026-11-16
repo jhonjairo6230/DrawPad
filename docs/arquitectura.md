@@ -91,8 +91,9 @@ DrawPad/
 │   └── AppContainer.swift          Crea y conecta las dependencias
 ├── Domain/
 │   ├── Entities/
-│   │   ├── Notebook.swift          Un cuaderno: título y fecha
-│   │   ├── NotebookSummary.swift   Lo justo para la galería: hojas, portada, actividad
+│   │   ├── Notebook.swift          Un cuaderno: título, fecha y tapa
+│   │   ├── NotebookCover.swift     La tapa: color y estilo
+│   │   ├── NotebookSummary.swift   Lo justo para la galería: tapa, hojas, actividad
 │   │   ├── Drawing.swift           Una hoja: trazos, miniatura, papel, fechas
 │   │   ├── DrawingSummary.swift    Lo justo para listar hojas (sin trazos)
 │   │   ├── CanvasBackground.swift  Patrón del papel: blanco, cuadrícula, líneas, puntos
@@ -110,6 +111,7 @@ DrawPad/
 │       ├── LoadNotebookUseCase.swift
 │       ├── RenameNotebookUseCase.swift
 │       ├── DeleteNotebookUseCase.swift
+│       ├── ChangeCoverUseCase.swift
 │       ├── ListPagesUseCase.swift
 │       ├── AddPageUseCase.swift
 │       ├── DeletePageUseCase.swift
@@ -130,7 +132,10 @@ DrawPad/
 │   ├── Gallery/
 │   │   ├── GalleryScreen.swift     Cuadrícula de cuadernos y navegación
 │   │   ├── GalleryViewModel.swift  Listar, crear, renombrar, eliminar cuadernos
-│   │   └── NotebookCard.swift      Tarjeta con portada
+│   │   ├── NotebookCard.swift      Tarjeta: tapa, hojas y fecha
+│   │   ├── NotebookCoverView.swift Dibuja la tapa a partir de color, estilo y título
+│   │   ├── CoverEditorSheet.swift  Elegir estilo y color de la tapa
+│   │   └── NotebookCover+Presentation.swift  Nombre y tono de cada color y estilo
 │   ├── Notebook/
 │   │   ├── NotebookScreen.swift    Cuaderno abierto: hoja actual y controles de hojas
 │   │   └── NotebookViewModel.swift Pasar, añadir y eliminar hojas
@@ -192,6 +197,7 @@ classDiagram
         +load()
         +create() UUID?
         +rename(id, title)
+        +changeCover(id, cover)
         +delete(id)
     }
     class NotebookScreen {
@@ -272,7 +278,7 @@ classDiagram
         <<Domain>>
         ListNotebooks · CreateNotebook
         LoadNotebook · RenameNotebook
-        DeleteNotebook
+        DeleteNotebook · ChangeCover
         ListPages · AddPage · DeletePage
         LoadDrawing · SaveDrawing
         ChangeBackground
@@ -305,6 +311,12 @@ classDiagram
         +id UUID
         +title String
         +createdAt Date
+        +cover NotebookCover
+    }
+    class NotebookCover {
+        <<struct>>
+        +color CoverColor
+        +style CoverStyle
     }
     class Drawing {
         <<struct>>
@@ -350,6 +362,7 @@ classDiagram
     UseCases --> ImageLibrary
     UseCases --> ExportFileStore
     NotebookRepository ..> Notebook
+    Notebook --> NotebookCover
     DrawingRepository ..> Drawing
     Drawing --> Notebook : notebookID
     SwiftDataLibrary ..|> NotebookRepository
@@ -446,8 +459,7 @@ sequenceDiagram
 
 Cada trazo reinicia un temporizador de 1 segundo. Solo cuando el usuario deja
 de dibujar durante ese tiempo se guarda, **una vez** (*debounce*). Con los
-trazos se guarda también la miniatura (la de la primera hoja es la portada
-del cuaderno en la galería).
+trazos se guarda también la miniatura de la hoja.
 
 ```mermaid
 sequenceDiagram
@@ -529,7 +541,7 @@ sequenceDiagram
     end
 ```
 
-### 5.5 Volver a la galería, salir de la app, renombrar y eliminar cuadernos
+### 5.5 Volver a la galería, salir de la app y acciones sobre un cuaderno
 
 ```mermaid
 sequenceDiagram
@@ -548,7 +560,7 @@ sequenceDiagram
         G->>NVM: flushPendingSave()
         NVM->>VM: flushPendingSave() de la hoja abierta
         G->>GVM: load()
-        Note over G,GVM: en ese orden, para que la portada<br/>nueva ya esté guardada al listar
+        Note over G,GVM: en ese orden, para que la fecha de<br/>última actividad ya esté guardada al listar
     else sale de la app
         U->>V: scenePhase deja de ser active
         V->>VM: flushPendingSave()
@@ -560,6 +572,12 @@ sequenceDiagram
         else título válido
             GVM->>R: RenameNotebookUseCase, luego vuelve a listar
         end
+    else cambia la portada
+        U->>G: mantiene pulsada la tarjeta, "Cambiar portada"
+        G-->>U: CoverEditorSheet con vista previa, estilo y color
+        U->>G: elige y toca "Guardar"
+        G->>GVM: changeCover(id, tapa)
+        GVM->>R: ChangeCoverUseCase, luego vuelve a listar
     else elimina un cuaderno
         U->>G: mantiene pulsada la tarjeta, "Eliminar", confirma
         G->>GVM: delete(id)
@@ -784,7 +802,8 @@ al exportar se fija el mismo aspecto para que la imagen sea lo que se ve
 
 **Las columnas añadidas después son opcionales en la base de datos.**
 `DrawingRecord` guarda `backgroundRaw`, `themeRaw` y `notebookID` como
-opcionales. Al serlo, SwiftData la añade sola a
+opcionales, y `NotebookRecord` hace lo mismo con el color y el estilo de la
+tapa. Al serlo, SwiftData la añade sola a
 las bases de datos ya instaladas (migración ligera); los dibujos antiguos las
 tienen vacías: el papel se lee como blanco liso, y a cada dibujo sin
 cuaderno se le crea uno al arrancar (`adoptOrphanDrawings`).
@@ -812,8 +831,14 @@ se crean de nuevo. Lo que debe sobrevivir al cambio vive fuera:
 `CanvasPreferences` (dibujar con el dedo) y una única paleta de herramientas
 compartida (lápiz y color elegidos).
 
-**Resúmenes para listar.** La galería usa `NotebookSummary` (título, número
-de hojas, portada, última actividad) y el cuaderno usa `DrawingSummary`: ni
+**La tapa es un dato, no un dibujo.** `NotebookCover` son dos valores (color
+y estilo); `NotebookCoverView` la pinta con el título encima. La misma vista
+sirve para la tarjeta de la galería y para la vista previa del editor. Los
+nombres y los tonos de cada color viven en Presentation
+(ver [ADR 0012](adr/0012-portada-disenada.md)).
+
+**Resúmenes para listar.** La galería usa `NotebookSummary` (título, tapa,
+número de hojas, última actividad) y el cuaderno usa `DrawingSummary`: ni
 una ni otro cargan los trazos.
 
 **La navegación vive en `GalleryScreen`.** Guarda el `NotebookViewModel`

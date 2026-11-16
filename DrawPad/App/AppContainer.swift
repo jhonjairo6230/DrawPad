@@ -23,7 +23,8 @@ final class AppContainer {
         listNotebooks: ListNotebooksUseCase(notebooks: library),
         createNotebook: CreateNotebookUseCase(notebooks: library, drawings: library),
         renameNotebook: RenameNotebookUseCase(notebooks: library),
-        deleteNotebook: DeleteNotebookUseCase(notebooks: library)
+        deleteNotebook: DeleteNotebookUseCase(notebooks: library),
+        changeCover: ChangeCoverUseCase(notebooks: library)
     )
 
     /// Monta un cuaderno abierto. Cada hoja que muestre la crea con

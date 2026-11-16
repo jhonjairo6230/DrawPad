@@ -29,8 +29,8 @@ final class InMemoryLibrary: NotebookRepository, DrawingRepository {
                 return NotebookSummary(
                     id: notebook.id,
                     title: notebook.title,
+                    cover: notebook.cover,
                     pageCount: pages.count,
-                    coverThumbnailData: pages.first?.thumbnailData,
                     lastActivityAt: max(pages.map(\.updatedAt).max() ?? notebook.createdAt, notebook.createdAt)
                 )
             }
@@ -92,9 +92,10 @@ extension Notebook {
     static func sample(
         id: UUID = UUID(),
         title: String = "Cuaderno",
-        createdAt: Date = Date(timeIntervalSince1970: 0)
+        createdAt: Date = Date(timeIntervalSince1970: 0),
+        cover: NotebookCover = .standard
     ) -> Notebook {
-        Notebook(id: id, title: title, createdAt: createdAt)
+        Notebook(id: id, title: title, createdAt: createdAt, cover: cover)
     }
 }
 

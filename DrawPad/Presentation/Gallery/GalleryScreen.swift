@@ -13,8 +13,9 @@ struct GalleryScreen: View {
     @State private var notebookToRename: NotebookSummary?
     @State private var newTitle = ""
     @State private var notebookToDelete: NotebookSummary?
+    @State private var notebookToRestyle: NotebookSummary?
 
-    private let columns = [GridItem(.adaptive(minimum: 220), spacing: 24)]
+    private let columns = [GridItem(.adaptive(minimum: 170), spacing: 28)]
 
     var body: some View {
         NavigationStack {
@@ -38,6 +39,11 @@ struct GalleryScreen: View {
             guard opened == nil else { return }
             closed?.flushPendingSave()
             viewModel.load()
+        }
+        .sheet(item: $notebookToRestyle) { notebook in
+            CoverEditorSheet(title: notebook.title, cover: notebook.cover) { cover in
+                viewModel.changeCover(id: notebook.id, to: cover)
+            }
         }
         .alert("Renombrar cuaderno", isPresented: isRenaming) {
             TextField("Título", text: $newTitle)
@@ -95,6 +101,11 @@ struct GalleryScreen: View {
                                 notebookToRename = notebook
                             } label: {
                                 Label("Renombrar", systemImage: "pencil")
+                            }
+                            Button {
+                                notebookToRestyle = notebook
+                            } label: {
+                                Label("Cambiar portada", systemImage: "paintpalette")
                             }
                             Button(role: .destructive) {
                                 notebookToDelete = notebook

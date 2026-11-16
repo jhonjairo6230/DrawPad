@@ -18,6 +18,7 @@ entienda **por qué** el código es como es.
 | [0009](0009-zoom-y-tamano-de-hoja.md) | Zoom y tamaño de la hoja | Aceptada |
 | [0010](0010-cuadernos-y-hojas.md) | Cuadernos con hojas | Aceptada |
 | [0011](0011-suavizar-trazos.md) | Suavizar trazos con un algoritmo propio | Aceptada |
+| [0012](0012-portada-disenada.md) | Portada del cuaderno como tapa diseñada | Aceptada |
 
 ## Cómo añadir un ADR
 

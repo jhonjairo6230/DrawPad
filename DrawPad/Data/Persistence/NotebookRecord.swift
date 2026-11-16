@@ -11,10 +11,17 @@ final class NotebookRecord {
     @Attribute(.unique) var id: UUID
     var title: String
     var createdAt: Date
+    /// `CoverColor.rawValue`. Opcional: los cuadernos creados antes de las
+    /// tapas no tienen esta columna (ver ``DrawingRecord``).
+    var coverColorRaw: String?
+    /// `CoverStyle.rawValue`. Opcional por el mismo motivo.
+    var coverStyleRaw: String?
 
-    init(id: UUID, title: String, createdAt: Date) {
+    init(id: UUID, title: String, createdAt: Date, coverColorRaw: String?, coverStyleRaw: String?) {
         self.id = id
         self.title = title
         self.createdAt = createdAt
+        self.coverColorRaw = coverColorRaw
+        self.coverStyleRaw = coverStyleRaw
     }
 }

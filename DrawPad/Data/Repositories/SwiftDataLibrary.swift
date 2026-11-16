@@ -41,8 +41,8 @@ final class SwiftDataLibrary: NotebookRepository, DrawingRepository {
                     return NotebookSummary(
                         id: notebook.id,
                         title: notebook.title,
+                        cover: Self.cover(of: notebook),
                         pageCount: pages.count,
-                        coverThumbnailData: pages.first?.thumbnailData,
                         lastActivityAt: pages.map(\.updatedAt).max().map { max($0, notebook.createdAt) }
                             ?? notebook.createdAt
                     )
@@ -54,7 +54,7 @@ final class SwiftDataLibrary: NotebookRepository, DrawingRepository {
     func findNotebook(id: UUID) throws -> Notebook? {
         try storage {
             try notebookRecord(id: id).map {
-                Notebook(id: $0.id, title: $0.title, createdAt: $0.createdAt)
+                Notebook(id: $0.id, title: $0.title, createdAt: $0.createdAt, cover: Self.cover(of: $0))
             }
         }
     }
@@ -63,8 +63,16 @@ final class SwiftDataLibrary: NotebookRepository, DrawingRepository {
         try storage {
             if let existing = try notebookRecord(id: notebook.id) {
                 existing.title = notebook.title
+                existing.coverColorRaw = notebook.cover.color.rawValue
+                existing.coverStyleRaw = notebook.cover.style.rawValue
             } else {
-                context.insert(NotebookRecord(id: notebook.id, title: notebook.title, createdAt: notebook.createdAt))
+                context.insert(NotebookRecord(
+                    id: notebook.id,
+                    title: notebook.title,
+                    createdAt: notebook.createdAt,
+                    coverColorRaw: notebook.cover.color.rawValue,
+                    coverStyleRaw: notebook.cover.style.rawValue
+                ))
             }
             try context.save()
         }
@@ -158,7 +166,9 @@ final class SwiftDataLibrary: NotebookRepository, DrawingRepository {
                 let notebook = NotebookRecord(
                     id: UUID(),
                     title: drawing.title.isEmpty ? "Cuaderno" : drawing.title,
-                    createdAt: drawing.createdAt
+                    createdAt: drawing.createdAt,
+                    coverColorRaw: nil,
+                    coverStyleRaw: nil
                 )
                 context.insert(notebook)
                 drawing.notebookID = notebook.id
@@ -168,6 +178,15 @@ final class SwiftDataLibrary: NotebookRepository, DrawingRepository {
     }
 
     // MARK: - Privado
+
+    /// La tapa guardada. Sin valor (cuaderno anterior a las tapas) o con un
+    /// valor desconocido, la tapa estándar.
+    private static func cover(of record: NotebookRecord) -> NotebookCover {
+        NotebookCover(
+            color: record.coverColorRaw.flatMap(CoverColor.init(rawValue:)) ?? NotebookCover.standard.color,
+            style: record.coverStyleRaw.flatMap(CoverStyle.init(rawValue:)) ?? NotebookCover.standard.style
+        )
+    }
 
     private func notebookRecord(id: UUID) throws -> NotebookRecord? {
         var descriptor = FetchDescriptor<NotebookRecord>(predicate: #Predicate<NotebookRecord> { $0.id == id })
