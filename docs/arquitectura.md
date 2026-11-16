@@ -482,8 +482,11 @@ sequenceDiagram
 
 ### 5.4 Pasar de hoja, añadir y eliminar
 
-El título de la barra (`‹ Cuaderno 1 · Hoja 2 de 5 ›`) lleva las flechas y un
-menú con "Nueva hoja" y "Eliminar esta hoja".
+La barra muestra `‹ Cuaderno 1 · Hoja 2 de 5 ⌄ › +`: las flechas pasan de
+hoja, el **+** añade una al final y el título abre un menú con "Eliminar
+esta hoja". "Nueva hoja" es un botón a la vista y no una opción del menú:
+con una sola hoja las flechas están desactivadas, y sin el + no se veía cómo
+añadir la segunda.
 
 ```mermaid
 sequenceDiagram
@@ -503,7 +506,7 @@ sequenceDiagram
         C-->>NVM: otra PageSession
         NVM-->>N: session cambia, se monta su CanvasScreen
     else añade una hoja
-        U->>N: menú, "Nueva hoja"
+        U->>N: toca el botón +
         N->>NVM: addPage()
         NVM->>UC: AddPageUseCase.execute(notebookID)
         Note over UC: hoja en blanco al final,<br/>con el papel de la última

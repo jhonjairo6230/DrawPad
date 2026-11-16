@@ -56,7 +56,7 @@ final class CanvasUITests: XCTestCase {
         XCTAssertFalse(app.buttons["Hoja anterior"].isEnabled)
         XCTAssertFalse(app.buttons["Hoja siguiente"].isEnabled)
 
-        choosePageAction("Nueva hoja")
+        app.buttons["Nueva hoja"].tap()
         assertPageLabel(contains: "Hoja 2 de 2")
         app.buttons["Dibujar con el dedo"].tap()
         dragOnCanvas()
@@ -81,7 +81,7 @@ final class CanvasUITests: XCTestCase {
         openNewNotebook()
         chooseBackground("Cuadrícula")
 
-        choosePageAction("Nueva hoja")
+        app.buttons["Nueva hoja"].tap()
         assertPageLabel(contains: "Hoja 2 de 2")
 
         app.buttons["Fondo"].tap()
