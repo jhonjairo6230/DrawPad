@@ -10,8 +10,8 @@ GitHub y un PC con Windows. El porqué de cada pieza está en
 flowchart LR
     A["Código Swift<br/>+ project.yml"] -->|git push| B["GitHub Actions<br/>(Mac en la nube)"]
     B -->|XcodeGen| C["DrawPad.xcodeproj"]
-    C -->|xcodebuild test| D["Pruebas en<br/>simulador de iPad"]
-    D -->|xcodebuild build| E["DrawPad.app<br/>sin firmar"]
+    C -->|xcodebuild test<br/>en paralelo| D["Pruebas en<br/>simulador de iPad"]
+    C -->|xcodebuild build| E["DrawPad.app<br/>sin firmar"]
     E -->|zip| F["DrawPad-unsigned.ipa<br/>(artefacto)"]
     F -->|descarga| G["PC con Windows<br/>Sideloadly"]
     G -->|firma con tu Apple ID<br/>e instala por USB| H["iPad"]
@@ -23,32 +23,47 @@ Archivo: [`.github/workflows/build.yml`](../.github/workflows/build.yml).
 Se ejecuta en cada `push` a las ramas de Git Flow, en cada pull request y a
 mano (pestaña **Actions → Compilar IPA → Run workflow**).
 
+Tiene **dos trabajos que corren a la vez**, cada uno en su propio Mac:
+
+- **IPA** (unos 3 minutos): compila y publica el `.ipa`.
+- **Pruebas** (unos 15 minutos): unitarias y de interfaz en un simulador.
+
+El `.ipa` no espera a las pruebas: se puede descargar e instalar mientras
+terminan. Que haya `.ipa` significa que la app **compila**, no que las
+pruebas hayan pasado: eso lo dice el otro trabajo.
+
 ```mermaid
 sequenceDiagram
     autonumber
     actor Dev as Tú
     participant GH as GitHub
-    participant Mac as Runner macOS
-    participant XG as XcodeGen
-    participant XB as xcodebuild
+    participant M1 as Mac del trabajo IPA
+    participant M2 as Mac del trabajo Pruebas
     participant Sim as Simulador de iPad
 
     Dev->>GH: git push
-    GH->>Mac: arranca el workflow "Compilar IPA"
-    Mac->>Mac: descarga el código (checkout)
-    Mac->>XG: xcodegen generate
-    XG-->>Mac: DrawPad.xcodeproj + Info.plist
-    Mac->>XB: xcodebuild test
-    XB->>Sim: instala la app y ejecuta DrawPadTests
-    Sim-->>XB: resultados
-    alt alguna prueba falla
-        XB-->>GH: el workflow termina en rojo, no hay .ipa
-    else todo en verde
-        Mac->>XB: xcodebuild build (Release, iOS, sin firmar)
-        XB-->>Mac: DrawPad.app
-        Mac->>Mac: Payload/DrawPad.app, zip, DrawPad-unsigned.ipa
-        Mac->>GH: sube el artefacto "DrawPad-ipa"
-        GH-->>Dev: .ipa listo para descargar (30 días)
+    par trabajo IPA (unos 3 min)
+        GH->>M1: arranca
+        M1->>M1: checkout y xcodegen generate
+        M1->>M1: xcodebuild build (Release, iOS, sin firmar)
+        alt compila
+            M1->>M1: Payload/DrawPad.app, zip, DrawPad-unsigned.ipa
+            M1->>GH: sube el artefacto "DrawPad-ipa"
+            GH-->>Dev: .ipa listo para descargar (30 días)
+        else error de compilación
+            M1-->>GH: IPA en rojo, no hay .ipa
+        end
+    and trabajo Pruebas (unos 15 min)
+        GH->>M2: arranca
+        M2->>M2: checkout y xcodegen generate
+        M2->>Sim: arranca el simulador y espera a que esté listo
+        M2->>Sim: xcodebuild test (unitarias y de interfaz)
+        Sim-->>M2: resultados
+        alt alguna prueba falla
+            M2-->>GH: Pruebas en rojo, con el informe de cierre si la app se cayó
+        else todo pasa
+            M2-->>GH: Pruebas en verde
+        end
     end
 ```
 
@@ -131,7 +146,8 @@ encendido en la misma red. Con una cuenta de pago de Apple Developer
 | Sideloadly no ve el iPad | Falta iTunes de apple.com, o no se tocó **Confiar** en el iPad. |
 | "Unable to install" / la app no abre | Falta activar el **Modo de desarrollador** o **Confiar** en el Apple ID (paso 5). |
 | "No se puede verificar la app" a los días | Caducó la firma de 7 días: reinstala con Sideloadly. |
-| El workflow falla en "Pruebas unitarias" | Abre el log: dice qué prueba falló. No se genera `.ipa` hasta que pasen. |
+| El trabajo "Pruebas" falla | Abre el log: dice qué prueba falló. El `.ipa` se genera igual (trabajo "IPA"), pero hay algo roto que corregir. |
+| El trabajo "IPA" falla | Error de compilación: el log del paso "Compilar para iPad" dice el archivo y la línea. No hay `.ipa`. |
 | El workflow falla en "Generar DrawPad.xcodeproj" | Error de sintaxis en `project.yml`. |
 | "Guardar en Fotos" da error de permiso | Ajustes → DrawPad → Fotos → permitir añadir fotos. |
 
