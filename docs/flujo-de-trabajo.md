@@ -8,8 +8,7 @@ Decisión registrada en [ADR 0002](adr/0002-git-flow.md).
 | ---- | ------- | ------------- | -------- |
 | `main` | — | — | Versiones publicadas. Cada commit es una versión que funcionó en el iPad. |
 | `develop` | `main` | — | Integración: lo próximo que saldrá. |
-| `feature/<nombre>` | `develop` | `develop` | Funcionalidad nueva o documentación. |
-| `fix/<nombre>` | `develop` | `develop` | Corregir un fallo de algo que ya está en `develop` (todavía no publicado en `main`). |
+| `feature/<nombre>` | `develop` | `develop` | Cualquier funcionalidad, arreglo o documentación. |
 | `release/<x.y.z>` | `develop` | `main` | Preparar una versión: subir el número y arreglos de última hora. |
 | `backport/<x.y.z>` | `main` (tras la release) | `develop` | Llevar a `develop` lo que cambió en la release. |
 | `hotfix/<x.y.z>` | `main` | `main` | Arreglo urgente de la versión publicada. Después, `backport/<x.y.z>` a `develop`. |
@@ -20,14 +19,10 @@ Reglas:
   pull request.
 - **Nunca** se abre un pull request de `develop` a `main`: se pasa por una
   rama `release/`.
-- Solo esos prefijos, en minúsculas y con guiones: `feature/elegir-fondo`,
-  `fix/texto-no-se-mueve`.
-- Antes de fusionar a `develop`, el trabajo **IPA** del workflow tiene que
-  estar en verde (la app compila). El trabajo **Pruebas** puede terminar
-  después; lo que falle se corrige en una rama `fix/`.
-- Antes de fusionar una `release/` a `main`, **los dos trabajos** en verde.
-- `fix/` es para fallos en `develop`; un fallo en lo ya publicado en `main`
-  es un `hotfix/`.
+- Solo esos prefijos, en minúsculas y con guiones: `feature/elegir-fondo`.
+- Antes de fusionar, el workflow **Compilar IPA** tiene que estar en verde,
+  con sus dos trabajos: **IPA** y **Pruebas**.
+- Los pull requests se fusionan cuando el dueño lo pide.
 
 ```mermaid
 gitGraph

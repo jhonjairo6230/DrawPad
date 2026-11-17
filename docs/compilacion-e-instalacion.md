@@ -26,7 +26,7 @@ mano (pestaña **Actions → Compilar IPA → Run workflow**).
 Tiene **dos trabajos que corren a la vez**, cada uno en su propio Mac:
 
 - **IPA** (unos 3 minutos): compila y publica el `.ipa`.
-- **Pruebas** (unos 15 minutos): unitarias y de interfaz en un simulador.
+- **Pruebas** (unos 25 minutos): unitarias y de interfaz en un simulador.
 
 El `.ipa` no espera a las pruebas: se puede descargar e instalar mientras
 terminan. Que haya `.ipa` significa que la app **compila**, no que las
@@ -53,7 +53,7 @@ sequenceDiagram
         else error de compilación
             M1-->>GH: IPA en rojo, no hay .ipa
         end
-    and trabajo Pruebas (unos 15 min)
+    and trabajo Pruebas (unos 25 min)
         GH->>M2: arranca
         M2->>M2: checkout y xcodegen generate
         M2->>Sim: arranca el simulador y espera a que esté listo
