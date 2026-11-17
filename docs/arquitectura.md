@@ -24,14 +24,15 @@ flowchart TB
         P4["PencilKitCanvas<br/>PencilCanvasView"]
     end
     subgraph DOM["Domain — Swift puro"]
-        D1["Casos de uso<br/>cuadernos · hojas · papel<br/>exportar · compartir"]
-        D2["Notebook · Drawing<br/>CanvasBackground · CanvasTheme<br/>DrawingError"]
-        D3["NotebookRepository<br/>DrawingRepository<br/>ImageLibrary · ExportFileStore<br/>(protocolos)"]
+        D1["Casos de uso<br/>cuadernos · hojas · papel<br/>textos e imágenes<br/>exportar · compartir"]
+        D2["Notebook · Drawing · PageElement<br/>CanvasBackground · CanvasTheme<br/>DrawingError"]
+        D3["NotebookRepository · DrawingRepository<br/>PageElementRepository<br/>ImageLibrary · ExportFileStore · Clipboard<br/>(protocolos)"]
     end
     subgraph DATA["Data — detalles técnicos"]
-        T1["SwiftDataLibrary<br/>NotebookRecord · DrawingRecord"]
+        T1["SwiftDataLibrary<br/>NotebookRecord · DrawingRecord<br/>PageElementRecord"]
         T2["PhotoLibraryImageExporter<br/>(Photos)"]
         T4["TemporaryExportFileStore<br/>(archivos temporales)"]
+        T5["SystemClipboard<br/>(UIPasteboard)"]
         T3[("Base de datos local<br/>SwiftData")]
     end
 
@@ -48,6 +49,7 @@ flowchart TB
     T1 -. implementa .-> D3
     T2 -. implementa .-> D3
     T4 -. implementa .-> D3
+    T5 -. implementa .-> D3
     T1 --> T3
     A1 --> A2
     A2 --> G1
@@ -57,6 +59,7 @@ flowchart TB
     A2 --> T1
     A2 --> T2
     A2 --> T4
+    A2 --> T5
 ```
 
 Las flechas continuas son "usa"; las punteadas, "implementa". Fíjate en que
@@ -91,10 +94,13 @@ DrawPad/
 │   └── AppContainer.swift          Crea y conecta las dependencias
 ├── Domain/
 │   ├── Entities/
-│   │   ├── Notebook.swift          Un cuaderno: título y fecha
-│   │   ├── NotebookSummary.swift   Lo justo para la galería: hojas, portada, actividad
+│   │   ├── Notebook.swift          Un cuaderno: título, fecha y tapa
+│   │   ├── NotebookCover.swift     La tapa: color y estilo
+│   │   ├── NotebookSummary.swift   Lo justo para la galería: tapa, hojas, actividad
 │   │   ├── Drawing.swift           Una hoja: trazos, miniatura, papel, fechas
 │   │   ├── DrawingSummary.swift    Lo justo para listar hojas (sin trazos)
+│   │   ├── PageElement.swift       Un texto o una imagen colocados en una hoja
+│   │   ├── ClipboardContent.swift  Lo que se puede pegar: texto o imagen
 │   │   ├── CanvasBackground.swift  Patrón del papel: blanco, cuadrícula, líneas, puntos
 │   │   ├── CanvasTheme.swift       Papel claro u oscuro
 │   │   └── ExportFormat.swift      Formatos para compartir: PNG o PDF
@@ -102,6 +108,8 @@ DrawPad/
 │   ├── Repositories/               Puertos (protocolos)
 │   │   ├── NotebookRepository.swift
 │   │   ├── DrawingRepository.swift
+│   │   ├── PageElementRepository.swift
+│   │   ├── Clipboard.swift
 │   │   ├── ImageLibrary.swift
 │   │   └── ExportFileStore.swift
 │   └── UseCases/                   Una acción de negocio por archivo
@@ -110,27 +118,41 @@ DrawPad/
 │       ├── LoadNotebookUseCase.swift
 │       ├── RenameNotebookUseCase.swift
 │       ├── DeleteNotebookUseCase.swift
+│       ├── ChangeCoverUseCase.swift
 │       ├── ListPagesUseCase.swift
 │       ├── AddPageUseCase.swift
 │       ├── DeletePageUseCase.swift
 │       ├── LoadDrawingUseCase.swift
 │       ├── SaveDrawingUseCase.swift
 │       ├── ChangeBackgroundUseCase.swift
+│       ├── ListPageElementsUseCase.swift
+│       ├── AddTextElementUseCase.swift
+│       ├── AddImageElementUseCase.swift
+│       ├── PasteElementUseCase.swift
+│       ├── UpdateElementTextUseCase.swift
+│       ├── MoveElementUseCase.swift
+│       ├── DeleteElementUseCase.swift
 │       ├── ExportDrawingUseCase.swift
 │       └── PrepareShareFileUseCase.swift
 ├── Data/
 │   ├── Persistence/
 │   │   ├── NotebookRecord.swift    Modelo de SwiftData de un cuaderno (@Model)
-│   │   └── DrawingRecord.swift     Modelo de SwiftData de una hoja (@Model)
-│   ├── Repositories/SwiftDataLibrary.swift   Los dos repositorios, una base de datos
+│   │   ├── DrawingRecord.swift     Modelo de SwiftData de una hoja (@Model)
+│   │   └── PageElementRecord.swift Modelo de SwiftData de un texto o una imagen (@Model)
+│   ├── Repositories/SwiftDataLibrary.swift   Los tres repositorios, una base de datos
 │   └── Gateways/
 │       ├── PhotoLibraryImageExporter.swift
-│       └── TemporaryExportFileStore.swift
+│       ├── TemporaryExportFileStore.swift
+│       ├── SystemClipboard.swift   Portapapeles del sistema
+│       └── FixedClipboard.swift    Portapapeles fijo para las pruebas de interfaz
 ├── Presentation/
 │   ├── Gallery/
 │   │   ├── GalleryScreen.swift     Cuadrícula de cuadernos y navegación
 │   │   ├── GalleryViewModel.swift  Listar, crear, renombrar, eliminar cuadernos
-│   │   └── NotebookCard.swift      Tarjeta con portada
+│   │   ├── NotebookCard.swift      Tarjeta: tapa, hojas y fecha
+│   │   ├── NotebookCoverView.swift Dibuja la tapa a partir de color, estilo y título
+│   │   ├── CoverEditorSheet.swift  Elegir estilo y color de la tapa
+│   │   └── NotebookCover+Presentation.swift  Nombre y tono de cada color y estilo
 │   ├── Notebook/
 │   │   ├── NotebookScreen.swift    Cuaderno abierto: hoja actual y controles de hojas
 │   │   └── NotebookViewModel.swift Pasar, añadir y eliminar hojas
@@ -144,6 +166,11 @@ DrawPad/
 │   │   ├── PencilKitCanvas.swift   Adaptador de PencilKit
 │   │   ├── CanvasGeometry.swift    Cuentas del zoom: tamaño de hoja y posición del papel
 │   │   ├── StrokeSmoother.swift    Suavizado de trazos (media móvil sobre puntos)
+│   │   ├── PageElementsLayer.swift Capa de textos e imágenes bajo los trazos
+│   │   ├── PageElementStyle.swift  Tipografía de los textos y dibujo al exportar
+│   │   ├── PageElementUseCases.swift       Casos de uso de elementos, agrupados
+│   │   ├── TextEditorRequest.swift         Petición de abrir el editor de texto
+│   │   ├── TextElementEditorSheet.swift    Escribir un cuadro de texto con el teclado
 │   │   ├── CanvasBackgroundPattern.swift        Dibuja la baldosa de cada papel
 │   │   ├── CanvasBackground+Presentation.swift  Título e icono de cada papel
 │   │   └── PencilCanvasView.swift  Puente SwiftUI ↔ UIKit
@@ -155,7 +182,9 @@ DrawPad/
 
 DrawPadTests/
 ├── Doubles/                        Falsos: biblioteca, lienzo, hoja abierta, Fotos, archivos
-├── Domain/UseCasesTests.swift
+├── Domain/
+│   ├── UseCasesTests.swift
+│   └── PageElementUseCasesTests.swift
 ├── Data/
 │   ├── SwiftDataLibraryTests.swift             Base de datos real en memoria
 │   └── TemporaryExportFileStoreTests.swift
@@ -192,6 +221,7 @@ classDiagram
         +load()
         +create() UUID?
         +rename(id, title)
+        +changeCover(id, cover)
         +delete(id)
     }
     class NotebookScreen {
@@ -231,6 +261,16 @@ classDiagram
         +isExporting Bool
         +alert AlertMessage?
         +sharedFile SharedFile?
+        +elements PageElement[]
+        +selectedElementID UUID?
+        +isArrangingElements Bool
+        +textEditor TextEditorRequest?
+        +beginNewText()
+        +commitText(text, request)
+        +paste()
+        +setArrangingElements(Bool)
+        +beginEditingSelectedText()
+        +deleteSelectedElement()
         +onAppear()
         +undo()
         +redo()
@@ -251,7 +291,12 @@ classDiagram
     class DrawingCanvas {
         <<protocol>>
         +onDrawingChanged
+        +onElementMoved
+        +onElementSelected
         +isEmpty Bool
+        +visibleCenter CGPoint
+        +showElements(elements, selectedID)
+        +setArrangingElements(Bool)
         +currentData() Data
         +load(Data)
         +clear()
@@ -272,10 +317,12 @@ classDiagram
         <<Domain>>
         ListNotebooks · CreateNotebook
         LoadNotebook · RenameNotebook
-        DeleteNotebook
+        DeleteNotebook · ChangeCover
         ListPages · AddPage · DeletePage
         LoadDrawing · SaveDrawing
         ChangeBackground
+        ListPageElements · AddText · AddImage
+        Paste · UpdateText · Move · DeleteElement
         ExportDrawing · PrepareShareFile
     }
     class NotebookRepository {
@@ -292,6 +339,29 @@ classDiagram
         +save(Drawing)
         +deleteDrawing(id)
     }
+    class PageElementRepository {
+        <<protocol>>
+        +listElements(pageID) PageElement[]
+        +findElement(id) PageElement?
+        +save(PageElement)
+        +deleteElement(id)
+    }
+    class Clipboard {
+        <<protocol>>
+        +content() ClipboardContent?
+    }
+    class PageElement {
+        <<struct>>
+        +id UUID
+        +pageID UUID
+        +frame CGRect
+        +content text | image
+        +createdAt Date
+    }
+    class PageElementsLayer {
+        <<UIView>>
+    }
+    class SystemClipboard
     class ImageLibrary {
         <<protocol>>
         +addPNG(Data)
@@ -305,6 +375,12 @@ classDiagram
         +id UUID
         +title String
         +createdAt Date
+        +cover NotebookCover
+    }
+    class NotebookCover {
+        <<struct>>
+        +color CoverColor
+        +style CoverStyle
     }
     class Drawing {
         <<struct>>
@@ -347,9 +423,17 @@ classDiagram
     PencilKitCanvas ..|> DrawingCanvas
     UseCases --> NotebookRepository
     UseCases --> DrawingRepository
+    UseCases --> PageElementRepository
+    UseCases --> Clipboard
+    PageElementRepository ..> PageElement
+    PageElement --> Drawing : pageID
+    PencilKitCanvas --> PageElementsLayer
+    SwiftDataLibrary ..|> PageElementRepository
+    SystemClipboard ..|> Clipboard
     UseCases --> ImageLibrary
     UseCases --> ExportFileStore
     NotebookRepository ..> Notebook
+    Notebook --> NotebookCover
     DrawingRepository ..> Drawing
     Drawing --> Notebook : notebookID
     SwiftDataLibrary ..|> NotebookRepository
@@ -446,8 +530,7 @@ sequenceDiagram
 
 Cada trazo reinicia un temporizador de 1 segundo. Solo cuando el usuario deja
 de dibujar durante ese tiempo se guarda, **una vez** (*debounce*). Con los
-trazos se guarda también la miniatura (la de la primera hoja es la portada
-del cuaderno en la galería).
+trazos se guarda también la miniatura de la hoja.
 
 ```mermaid
 sequenceDiagram
@@ -482,8 +565,11 @@ sequenceDiagram
 
 ### 5.4 Pasar de hoja, añadir y eliminar
 
-El título de la barra (`‹ Cuaderno 1 · Hoja 2 de 5 ›`) lleva las flechas y un
-menú con "Nueva hoja" y "Eliminar esta hoja".
+La barra muestra `‹ Cuaderno 1 · Hoja 2 de 5 ⌄ › +`: las flechas pasan de
+hoja, el **+** añade una al final y el título abre un menú con "Eliminar
+esta hoja". "Nueva hoja" es un botón a la vista y no una opción del menú:
+con una sola hoja las flechas están desactivadas, y sin el + no se veía cómo
+añadir la segunda.
 
 ```mermaid
 sequenceDiagram
@@ -503,7 +589,7 @@ sequenceDiagram
         C-->>NVM: otra PageSession
         NVM-->>N: session cambia, se monta su CanvasScreen
     else añade una hoja
-        U->>N: menú, "Nueva hoja"
+        U->>N: toca el botón +
         N->>NVM: addPage()
         NVM->>UC: AddPageUseCase.execute(notebookID)
         Note over UC: hoja en blanco al final,<br/>con el papel de la última
@@ -526,7 +612,7 @@ sequenceDiagram
     end
 ```
 
-### 5.5 Volver a la galería, salir de la app, renombrar y eliminar cuadernos
+### 5.5 Volver a la galería, salir de la app y acciones sobre un cuaderno
 
 ```mermaid
 sequenceDiagram
@@ -545,7 +631,7 @@ sequenceDiagram
         G->>NVM: flushPendingSave()
         NVM->>VM: flushPendingSave() de la hoja abierta
         G->>GVM: load()
-        Note over G,GVM: en ese orden, para que la portada<br/>nueva ya esté guardada al listar
+        Note over G,GVM: en ese orden, para que la fecha de<br/>última actividad ya esté guardada al listar
     else sale de la app
         U->>V: scenePhase deja de ser active
         V->>VM: flushPendingSave()
@@ -557,6 +643,12 @@ sequenceDiagram
         else título válido
             GVM->>R: RenameNotebookUseCase, luego vuelve a listar
         end
+    else cambia la portada
+        U->>G: mantiene pulsada la tarjeta, "Cambiar portada"
+        G-->>U: CoverEditorSheet con vista previa, estilo y color
+        U->>G: elige y toca "Guardar"
+        G->>GVM: changeCover(id, tapa)
+        GVM->>R: ChangeCoverUseCase, luego vuelve a listar
     else elimina un cuaderno
         U->>G: mantiene pulsada la tarjeta, "Eliminar", confirma
         G->>GVM: delete(id)
@@ -715,6 +807,64 @@ sequenceDiagram
     end
 ```
 
+### 5.10 Insertar texto, pegar y mover elementos
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Usuario
+    participant V as CanvasScreen
+    participant VM as CanvasViewModel
+    participant UC as Casos de uso de elementos
+    participant CB as Clipboard
+    participant R as PageElementRepository
+    participant K as PencilKitCanvas
+    participant L as PageElementsLayer
+
+    alt cuadro de texto
+        U->>V: menú "Insertar", "Cuadro de texto"
+        V->>VM: beginNewText()
+        VM-->>V: textEditor = petición, se abre el editor con el teclado
+        U->>V: escribe y toca "Guardar"
+        V->>VM: commitText(texto, petición)
+        VM->>K: visibleCenter
+        VM->>UC: AddTextElementUseCase(hoja, texto, centro visible)
+        UC->>R: save(elemento)
+    else pegar
+        U->>V: menú "Insertar", "Pegar"
+        V->>VM: paste()
+        VM->>UC: PasteElementUseCase(hoja, centro, tamaño máximo)
+        UC->>CB: content()
+        alt hay imagen o texto
+            CB-->>UC: imagen o texto
+            UC->>R: save(elemento, la imagen reducida si no cabe)
+        else portapapeles vacío
+            CB-->>UC: nil
+            UC-->>VM: lanza clipboardEmpty
+            VM-->>V: alerta "No hay texto ni imágenes…"
+        end
+    end
+    VM->>VM: selecciona el elemento nuevo y entra en modo mover
+    VM->>K: setArrangingElements(true)
+    K->>K: el lienzo deja de atender toques
+    VM->>K: showElements(elementos, seleccionado)
+    K->>L: show(...)
+    V-->>U: barra "Editar texto · Eliminar · Listo"
+
+    opt mueve o cambia el tamaño
+        U->>L: arrastra (o pellizca una imagen)
+        L->>K: onElementMoved(id, marco)
+        K->>VM: elementMoved
+        VM->>UC: MoveElementUseCase(id, marco)
+        UC->>R: save(marco corregido para no salirse de la hoja)
+        VM->>K: showElements(...)
+    end
+    U->>V: "Listo"
+    V->>VM: setArrangingElements(false)
+    VM->>K: setArrangingElements(false)
+    Note over K,L: el lienzo vuelve a recibir los toques,<br/>los trazos se dibujan por encima
+```
+
 ## 6. Decisiones de diseño que conviene entender
 
 **El dominio no conoce PencilKit.** `Drawing.strokesData` es `Data` opaco.
@@ -756,6 +906,21 @@ el `PKCanvasView` transparente. Cambiar de papel no toca el dibujo, y al
 exportar se pinta primero el papel y luego los trazos. Las miniaturas van
 sobre papel liso: el patrón reducido las ensucia.
 
+**Textos e imágenes van en una capa bajo los trazos.** `PencilKitCanvas`
+apila tres vistas: papel, `PageElementsLayer` y el `PKCanvasView`
+transparente. Los elementos se ven a través del lienzo y lo que se dibuja
+queda encima. Como el lienzo se lleva todos los toques, mover elementos es
+un **modo aparte**: mientras dura, el lienzo no atiende toques y los recibe
+la capa. Los elementos no son trazos: cada uno es una fila de la base de
+datos y se guarda al momento, no con el autoguardado
+(ver [ADR 0013](adr/0013-textos-e-imagenes.md)).
+
+**El portapapeles es un puerto.** `PasteElementUseCase` no sabe qué es
+`UIPasteboard`: pide a `Clipboard` "qué hay copiado". Así la lógica de pegar
+(texto o imagen, reducir si no cabe, qué hacer si está vacío) se prueba con
+un portapapeles falso, y las pruebas de interfaz usan uno fijo para no
+depender del aviso de permiso de iOS.
+
 **Suavizar es una operación del lienzo, con el algoritmo aparte.** El
 ViewModel solo pide `smoothStrokes()`; cómo se recorre y reconstruye cada
 trazo es asunto de PencilKit y vive en el adaptador. La matemática (una
@@ -781,7 +946,8 @@ al exportar se fija el mismo aspecto para que la imagen sea lo que se ve
 
 **Las columnas añadidas después son opcionales en la base de datos.**
 `DrawingRecord` guarda `backgroundRaw`, `themeRaw` y `notebookID` como
-opcionales. Al serlo, SwiftData la añade sola a
+opcionales, y `NotebookRecord` hace lo mismo con el color y el estilo de la
+tapa. Al serlo, SwiftData la añade sola a
 las bases de datos ya instaladas (migración ligera); los dibujos antiguos las
 tienen vacías: el papel se lee como blanco liso, y a cada dibujo sin
 cuaderno se le crea uno al arrancar (`adoptOrphanDrawings`).
@@ -793,10 +959,11 @@ crea su primera hoja, y `DeletePageUseCase` se niega a borrar la última:
 esas dos reglas están en los casos de uso, no en las vistas
 (ver [ADR 0010](adr/0010-cuadernos-y-hojas.md)).
 
-**Una sola clase para los dos repositorios.** `SwiftDataLibrary` implementa
-`NotebookRepository` y `DrawingRepository` porque comparten un mismo
-`ModelContext`: dos contextos no ven al momento los cambios del otro, y
-borrar un cuaderno toca las dos tablas. Los casos de uso siguen pidiendo
+**Una sola clase para los tres repositorios.** `SwiftDataLibrary` implementa
+`NotebookRepository`, `DrawingRepository` y `PageElementRepository` porque
+comparten un mismo `ModelContext`: dos contextos no ven al momento los
+cambios del otro, y borrar un cuaderno toca las tres tablas (sus hojas y los
+elementos de cada hoja). Los casos de uso siguen pidiendo
 solo el puerto que necesitan.
 
 **El cuaderno no conoce el lienzo.** `NotebookViewModel` decide qué hoja se
@@ -809,8 +976,14 @@ se crean de nuevo. Lo que debe sobrevivir al cambio vive fuera:
 `CanvasPreferences` (dibujar con el dedo) y una única paleta de herramientas
 compartida (lápiz y color elegidos).
 
-**Resúmenes para listar.** La galería usa `NotebookSummary` (título, número
-de hojas, portada, última actividad) y el cuaderno usa `DrawingSummary`: ni
+**La tapa es un dato, no un dibujo.** `NotebookCover` son dos valores (color
+y estilo); `NotebookCoverView` la pinta con el título encima. La misma vista
+sirve para la tarjeta de la galería y para la vista previa del editor. Los
+nombres y los tonos de cada color viven en Presentation
+(ver [ADR 0012](adr/0012-portada-disenada.md)).
+
+**Resúmenes para listar.** La galería usa `NotebookSummary` (título, tapa,
+número de hojas, última actividad) y el cuaderno usa `DrawingSummary`: ni
 una ni otro cargan los trazos.
 
 **La navegación vive en `GalleryScreen`.** Guarda el `NotebookViewModel`
@@ -834,7 +1007,7 @@ la interfaz va en el hilo principal). El temporizador de autoguardado es una
 
 | Qué se prueba | Archivo | Cómo |
 | ------------- | ------- | ---- |
-| Casos de uso | `Domain/UseCasesTests.swift` | Biblioteca en memoria y dobles espía. |
+| Casos de uso | `Domain/UseCasesTests.swift`, `Domain/PageElementUseCasesTests.swift` | Biblioteca en memoria, portapapeles falso y dobles espía. |
 | Biblioteca SwiftData | `Data/SwiftDataLibraryTests.swift` | Base de datos real, en memoria. Incluye la migración de dibujos sin cuaderno. |
 | Archivos para compartir | `Data/TemporaryExportFileStoreTests.swift` | Carpeta temporal real. |
 | ViewModel del lienzo | `Presentation/CanvasViewModelTests.swift` | Lienzo falso; el autoguardado se prueba con un retardo de milisegundos. |

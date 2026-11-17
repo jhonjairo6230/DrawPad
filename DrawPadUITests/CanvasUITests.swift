@@ -26,7 +26,7 @@ final class CanvasUITests: XCTestCase {
 
     func testANewNotebookAppearsInTheGalleryAndCanBeReopened() {
         openNewNotebook()
-        app.buttons["Dibujar con el dedo"].tap()
+        enableFingerDrawing()
         dragOnCanvas()
 
         goBackToGallery()
@@ -48,6 +48,39 @@ final class CanvasUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Cuaderno 2"].exists)
     }
 
+    // MARK: - Portada
+
+    func testChangingTheCoverIsRememberedByTheEditor() {
+        openNewNotebook()
+        goBackToGallery()
+
+        openCoverEditor(of: "Cuaderno 1")
+        app.buttons["Rojo"].tap()
+        app.buttons["Lomo"].tap()
+        app.buttons["Guardar"].tap()
+        XCTAssertTrue(app.buttons["Cuaderno 1"].waitForExistence(timeout: 5))
+
+        openCoverEditor(of: "Cuaderno 1")
+        XCTAssertTrue(app.buttons["Rojo"].isSelected)
+        XCTAssertFalse(app.buttons["Azul"].isSelected)
+        app.buttons["Cancelar"].tap()
+        assertAppIsRunning()
+    }
+
+    func testCancellingTheCoverEditorKeepsTheOldCover() {
+        openNewNotebook()
+        goBackToGallery()
+
+        openCoverEditor(of: "Cuaderno 1")
+        app.buttons["Verde"].tap()
+        app.buttons["Cancelar"].tap()
+
+        openCoverEditor(of: "Cuaderno 1")
+        // El primer cuaderno nace con la primera tapa de la lista: azul.
+        XCTAssertTrue(app.buttons["Azul"].isSelected)
+        XCTAssertFalse(app.buttons["Verde"].isSelected)
+    }
+
     // MARK: - Hojas
 
     func testAddingPagesMovingBetweenThemAndDeletingOne() {
@@ -56,9 +89,9 @@ final class CanvasUITests: XCTestCase {
         XCTAssertFalse(app.buttons["Hoja anterior"].isEnabled)
         XCTAssertFalse(app.buttons["Hoja siguiente"].isEnabled)
 
-        choosePageAction("Nueva hoja")
+        app.buttons["Nueva hoja"].tap()
         assertPageLabel(contains: "Hoja 2 de 2")
-        app.buttons["Dibujar con el dedo"].tap()
+        enableFingerDrawing()
         dragOnCanvas()
 
         app.buttons["Hoja anterior"].tap()
@@ -81,7 +114,7 @@ final class CanvasUITests: XCTestCase {
         openNewNotebook()
         chooseBackground("Cuadrícula")
 
-        choosePageAction("Nueva hoja")
+        app.buttons["Nueva hoja"].tap()
         assertPageLabel(contains: "Hoja 2 de 2")
 
         app.buttons["Fondo"].tap()
@@ -105,7 +138,7 @@ final class CanvasUITests: XCTestCase {
 
     func testDrawingWithTheFingerEnabledDoesNotCrash() {
         openNewNotebook()
-        app.buttons["Dibujar con el dedo"].tap()
+        enableFingerDrawing()
 
         dragOnCanvas()
         tapCanvas()
@@ -115,7 +148,7 @@ final class CanvasUITests: XCTestCase {
 
     func testUndoRedoAndClearDoNotCrash() {
         openNewNotebook()
-        app.buttons["Dibujar con el dedo"].tap()
+        enableFingerDrawing()
         dragOnCanvas()
 
         app.buttons["Deshacer"].tap()
@@ -131,7 +164,7 @@ final class CanvasUITests: XCTestCase {
         openNewNotebook()
 
         chooseBackground("Cuadrícula")
-        app.buttons["Dibujar con el dedo"].tap()
+        enableFingerDrawing()
         dragOnCanvas()
         goBackToGallery()
         app.buttons["Cuaderno 1"].tap()
@@ -161,7 +194,7 @@ final class CanvasUITests: XCTestCase {
 
         chooseBackground("Papel oscuro")
         chooseBackground("Puntos")
-        app.buttons["Dibujar con el dedo"].tap()
+        enableFingerDrawing()
         dragOnCanvas()
         goBackToGallery()
         app.buttons["Cuaderno 1"].tap()
@@ -171,11 +204,75 @@ final class CanvasUITests: XCTestCase {
         assertAppIsRunning()
     }
 
+    // MARK: - Texto e imágenes
+
+    func testATextBoxCanBeTypedMovedEditedAndDeleted() {
+        openNewNotebook()
+
+        insertTextBox("Hola")
+        // Recién insertado queda seleccionado, en el modo de mover.
+        XCTAssertTrue(app.buttons["Listo"].waitForExistence(timeout: 5))
+        let box = app.staticTexts["Hola"]
+        box.press(forDuration: 0.2, thenDragTo: canvasPoint(0.3, 0.7))
+
+        app.buttons["Editar texto"].tap()
+        let editor = app.textViews.firstMatch
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        editor.tap()
+        editor.typeText(" mundo")
+        app.buttons["Guardar"].tap()
+        XCTAssertTrue(app.staticTexts["Hola mundo"].waitForExistence(timeout: 5))
+
+        app.buttons["Eliminar"].tap()
+        XCTAssertFalse(app.staticTexts["Hola mundo"].waitForExistence(timeout: 2))
+        app.buttons["Listo"].tap()
+        tapCanvas()
+        assertAppIsRunning()
+    }
+
+    func testTextStaysOnThePageAndCanBeDrawnOver() {
+        openNewNotebook()
+
+        insertTextBox("Apunte")
+        app.buttons["Listo"].tap()
+        enableFingerDrawing()
+        dragOnCanvas() // Fuera del modo de mover, el dedo dibuja por encima.
+        XCTAssertTrue(app.staticTexts["Apunte"].exists)
+
+        goBackToGallery()
+        app.buttons["Cuaderno 1"].tap()
+        XCTAssertTrue(app.staticTexts["Apunte"].waitForExistence(timeout: 5))
+        assertAppIsRunning()
+    }
+
+    func testPastingPutsTheClipboardTextOnThePage() {
+        openNewNotebook()
+
+        // En las pruebas el portapapeles es fijo (ver AppContainer).
+        chooseInsertAction("Pegar")
+
+        XCTAssertTrue(app.staticTexts["Texto pegado"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Listo"].exists)
+        assertAppIsRunning()
+    }
+
+    func testAPageWithOnlyTextCanBeSharedAsPDF() {
+        openNewNotebook()
+        insertTextBox("Solo texto")
+        app.buttons["Listo"].tap()
+
+        app.buttons["Compartir"].tap()
+        app.buttons["Compartir como PDF"].tap()
+
+        XCTAssertFalse(app.alerts["Algo salió mal"].waitForExistence(timeout: 3))
+        assertAppIsRunning()
+    }
+
     // MARK: - Suavizar
 
     func testSmoothingStrokesCanBeRepeatedAndUndone() {
         openNewNotebook()
-        app.buttons["Dibujar con el dedo"].tap()
+        enableFingerDrawing()
         dragOnCanvas()
         canvasPoint(0.3, 0.7).press(forDuration: 0.1, thenDragTo: canvasPoint(0.6, 0.3))
 
@@ -209,7 +306,7 @@ final class CanvasUITests: XCTestCase {
         window.pinch(withScale: 2.5, velocity: 2)
         dragOnCanvas() // Sin "dibujar con el dedo", un dedo desplaza la hoja.
         chooseBackground("Cuadrícula")
-        app.buttons["Dibujar con el dedo"].tap()
+        enableFingerDrawing()
         dragOnCanvas()
         window.pinch(withScale: 0.4, velocity: -2)
         tapCanvas()
@@ -244,7 +341,7 @@ final class CanvasUITests: XCTestCase {
     /// con comprobar que la app sigue viva y no mostró un error.
     private func shareDrawing(option: String) {
         openNewNotebook()
-        app.buttons["Dibujar con el dedo"].tap()
+        enableFingerDrawing()
         dragOnCanvas()
 
         app.buttons["Compartir"].tap()
@@ -275,12 +372,50 @@ final class CanvasUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Nuevo cuaderno"].waitForExistence(timeout: 5))
     }
 
-    /// Abre el menú "Más" del lienzo y elige una acción.
-    private func chooseMoreAction(_ title: String) {
-        app.buttons["Más"].tap()
-        let action = app.buttons[title]
+    /// Mantiene pulsada la tarjeta de un cuaderno y elige "Cambiar portada".
+    private func openCoverEditor(of notebook: String) {
+        let card = app.buttons[notebook]
+        XCTAssertTrue(card.waitForExistence(timeout: 5))
+        card.press(forDuration: 1.2)
+        let action = app.buttons["Cambiar portada"]
         XCTAssertTrue(action.waitForExistence(timeout: 5))
         action.tap()
+        XCTAssertTrue(app.buttons["Guardar"].waitForExistence(timeout: 5))
+    }
+
+    /// Abre el menú "Más" del lienzo y elige una acción.
+    private func chooseMoreAction(_ title: String) {
+        chooseMenuAction(title, inMenu: "Más")
+    }
+
+    /// Abre el menú "Insertar" del lienzo y elige una acción.
+    private func chooseInsertAction(_ title: String) {
+        chooseMenuAction(title, inMenu: "Insertar")
+    }
+
+    private func chooseMenuAction(_ title: String, inMenu menu: String) {
+        app.buttons[menu].tap()
+        // Un interruptor dentro de un menú puede ser un botón o un switch
+        // según la versión de iOS: se busca por nombre, sea del tipo que sea.
+        let action = app.descendants(matching: .any).matching(identifier: title).firstMatch
+        XCTAssertTrue(action.waitForExistence(timeout: 5))
+        action.tap()
+    }
+
+    /// "Dibujar con el dedo" está en el menú "Más".
+    private func enableFingerDrawing() {
+        chooseMoreAction("Dibujar con el dedo")
+    }
+
+    /// Inserta un cuadro de texto escribiendo con el teclado.
+    private func insertTextBox(_ text: String) {
+        chooseInsertAction("Cuadro de texto")
+        let editor = app.textViews.firstMatch
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        editor.tap()
+        editor.typeText(text)
+        app.buttons["Guardar"].tap()
+        XCTAssertTrue(app.staticTexts[text].waitForExistence(timeout: 5))
     }
 
     /// Abre el menú de hojas (el título de la barra) y elige una acción.

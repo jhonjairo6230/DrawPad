@@ -23,16 +23,17 @@ final class UseCasesTests: XCTestCase {
     }
 
     func testListNotebooksIncludesPageCountAndCover() throws {
-        let notebook = Notebook.sample()
+        let cover = NotebookCover(color: .red, style: .spine)
+        let notebook = Notebook.sample(cover: cover)
         let library = InMemoryLibrary(notebooks: [notebook], drawings: [
-            .sample(notebookID: notebook.id, thumbnail: "portada", createdAt: date(1)),
-            .sample(notebookID: notebook.id, thumbnail: "segunda", createdAt: date(2)),
+            .sample(notebookID: notebook.id, createdAt: date(1)),
+            .sample(notebookID: notebook.id, createdAt: date(2)),
         ])
 
         let summary = try XCTUnwrap(ListNotebooksUseCase(notebooks: library).execute().first)
 
         XCTAssertEqual(summary.pageCount, 2)
-        XCTAssertEqual(summary.coverThumbnailData, Data("portada".utf8))
+        XCTAssertEqual(summary.cover, cover)
     }
 
     // MARK: - Cuadernos: crear
@@ -51,6 +52,43 @@ final class UseCasesTests: XCTestCase {
         XCTAssertEqual(pages.count, 1)
         XCTAssertEqual(pages.first?.strokesData, Data())
         XCTAssertEqual(pages.first?.background, .blank)
+    }
+
+    func testEachNewNotebookGetsTheNextCoverColor() throws {
+        let library = InMemoryLibrary()
+        let useCase = CreateNotebookUseCase(notebooks: library, drawings: library)
+        let colors = CoverColor.allCases
+
+        let created = try (0...colors.count).map { _ in try useCase.execute() }
+
+        XCTAssertEqual(created.prefix(colors.count).map(\.cover.color), colors)
+        // Agotada la lista, vuelve a empezar.
+        XCTAssertEqual(created.last?.cover.color, colors.first)
+        XCTAssertEqual(Set(created.map(\.cover.style)), [NotebookCover.standard.style])
+    }
+
+    // MARK: - Cuadernos: portada
+
+    func testChangeCoverKeepsTitleAndPages() throws {
+        let notebook = Notebook.sample(title: "Física")
+        let page = Drawing.sample(notebookID: notebook.id)
+        let library = InMemoryLibrary(notebooks: [notebook], drawings: [page])
+        let cover = NotebookCover(color: .green, style: .plain)
+
+        try ChangeCoverUseCase(notebooks: library).execute(id: notebook.id, cover: cover)
+
+        var expected = notebook
+        expected.cover = cover
+        XCTAssertEqual(library.notebooks[notebook.id], expected)
+        XCTAssertEqual(library.drawings[page.id], page)
+    }
+
+    func testChangeCoverFailsWhenTheNotebookDoesNotExist() {
+        let useCase = ChangeCoverUseCase(notebooks: InMemoryLibrary())
+
+        XCTAssertThrowsError(try useCase.execute(id: UUID(), cover: .standard)) { error in
+            XCTAssertEqual(error as? DrawingError, .notebookNotFound)
+        }
     }
 
     // MARK: - Cuadernos: cargar, renombrar, eliminar

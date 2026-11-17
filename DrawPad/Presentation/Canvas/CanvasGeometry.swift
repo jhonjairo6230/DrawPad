@@ -11,8 +11,10 @@ enum CanvasGeometry {
     static let maximumZoom: CGFloat = 4
 
     /// Tamaño de la hoja, en coordenadas de dibujo: como mínimo lo que cabe en
-    /// pantalla y, si hay trazos más allá (por ejemplo, tras girar el iPad),
-    /// lo necesario para poder llegar hasta ellos.
+    /// pantalla y, si hay contenido más allá (por ejemplo, tras girar el iPad),
+    /// lo necesario para poder llegar hasta él.
+    /// - Parameter drawingBounds: rectángulo que ocupa todo el contenido de
+    ///   la hoja (trazos, textos e imágenes); `nil` si está vacía.
     static func pageSize(viewport: CGSize, drawingBounds: CGRect?) -> CGSize {
         guard let bounds = drawingBounds, !bounds.isNull, !bounds.isInfinite else { return viewport }
         return CGSize(
@@ -24,6 +26,23 @@ enum CanvasGeometry {
     /// Tamaño del contenido desplazable: la hoja ampliada por el zoom.
     static func contentSize(pageSize: CGSize, zoomScale: CGFloat) -> CGSize {
         CGSize(width: pageSize.width * zoomScale, height: pageSize.height * zoomScale)
+    }
+
+    /// El punto de la hoja que se ve en el centro de la pantalla: ahí se
+    /// colocan los textos e imágenes nuevos.
+    static func visibleCenter(viewport: CGSize, zoomScale: CGFloat, contentOffset: CGPoint) -> CGPoint {
+        guard zoomScale > 0 else { return CGPoint(x: viewport.width / 2, y: viewport.height / 2) }
+        return CGPoint(
+            x: (contentOffset.x + viewport.width / 2) / zoomScale,
+            y: (contentOffset.y + viewport.height / 2) / zoomScale
+        )
+    }
+
+    /// El rectángulo que abarca los trazos y los elementos; `nil` si no hay nada.
+    static func contentBounds(strokes: CGRect?, elements: [CGRect]) -> CGRect? {
+        let all = ([strokes].compactMap { $0 } + elements).filter { !$0.isNull && !$0.isInfinite }
+        guard let first = all.first else { return nil }
+        return all.dropFirst().reduce(first) { $0.union($1) }
     }
 
     /// Dónde va el centro del papel, en pantalla, para que acompañe a los

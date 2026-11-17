@@ -17,6 +17,10 @@ Glosario para estudiar el código. Cada entrada dice qué es y dónde verlo.
 | `UIColor(patternImage:)` | Un "color" que en realidad es una imagen pequeña repetida. | `CanvasBackgroundPattern.swift` |
 | `UIGraphicsImageRenderer` | Dibuja en una imagen con Core Graphics. | Baldosas de fondo y exportación |
 | `UIGraphicsPDFRenderer` | Lo mismo, pero el resultado es un PDF. | `renderPDF()` en `PencilKitCanvas` |
+| `UIPasteboard` | El portapapeles del sistema. Leerlo puede mostrar un aviso de permiso. | `SystemClipboard.swift` |
+| `UIGestureRecognizer` | Reconoce gestos (toque, arrastre, pellizco) sobre una vista de UIKit. | `PageElementsLayer.swift` |
+| `isUserInteractionEnabled` | Si es `false`, la vista ignora los toques y pasan a la que tiene debajo. | Modo "mover" en `PencilKitCanvas` |
+| `TextEditor` + `@FocusState` | Campo de texto de varias líneas, y control de si tiene el teclado. | `TextElementEditorSheet.swift` |
 | `UIActivityViewController` | La hoja de compartir del sistema. | `ActivityView.swift` |
 | `UIViewControllerRepresentable` | Como `UIViewRepresentable`, para un controlador de UIKit. | `ActivityView.swift` |
 | `.sheet(item:)` | Presenta una hoja mientras un valor opcional no sea `nil`. | Hoja de compartir en `CanvasScreen` |

@@ -1,5 +1,11 @@
 # Compila DrawPad en un Mac de GitHub y publica un .ipa SIN firmar.
 # Explicación paso a paso: docs/compilacion-e-instalacion.md
+#
+# Dos trabajos en paralelo:
+#   - ipa:   compila y publica el .ipa (unos 3 minutos).
+#   - tests: pruebas unitarias y de interfaz en un simulador (unos 15 minutos).
+# El .ipa no espera a las pruebas: se puede instalar y probar en el iPad
+# mientras terminan (ver docs/adr/0014-ramas-fix-e-ipa-sin-esperar-pruebas.md).
 name: Compilar IPA
 
 on:
@@ -8,6 +14,7 @@ on:
       - main
       - develop
       - "feature/**"
+      - "fix/**"
       - "release/**"
       - "hotfix/**"
       - "backport/**"
@@ -22,15 +29,57 @@ permissions:
   contents: read
 
 jobs:
-  build:
-    name: Pruebas e IPA
+  ipa:
+    name: IPA
     runs-on: macos-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
       - name: Versión de Xcode
         run: xcodebuild -version
+
+      - name: Instalar XcodeGen
+        run: brew install xcodegen
+
+      - name: Generar DrawPad.xcodeproj
+        run: xcodegen generate
+
+      - name: Compilar para iPad (sin firmar)
+        run: |
+          xcodebuild build \
+            -project DrawPad.xcodeproj \
+            -scheme DrawPad \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -derivedDataPath build/device \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+
+      - name: Empaquetar .ipa
+        run: |
+          # Un .ipa es un .zip con la app dentro de una carpeta "Payload".
+          mkdir -p build/ipa/Payload
+          cp -R build/device/Build/Products/Release-iphoneos/DrawPad.app build/ipa/Payload/
+          cd build/ipa
+          zip -qry DrawPad-unsigned.ipa Payload
+          ls -lh DrawPad-unsigned.ipa
+
+      - name: Publicar .ipa
+        uses: actions/upload-artifact@v4
+        with:
+          name: DrawPad-ipa
+          path: build/ipa/DrawPad-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 30
+
+  tests:
+    name: Pruebas
+    runs-on: macos-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
 
       - name: Instalar XcodeGen
         run: brew install xcodegen
@@ -63,32 +112,3 @@ jobs:
             head -c 20000 "$report"
             echo "::endgroup::"
           done
-
-      - name: Compilar para iPad (sin firmar)
-        run: |
-          xcodebuild build \
-            -project DrawPad.xcodeproj \
-            -scheme DrawPad \
-            -configuration Release \
-            -destination "generic/platform=iOS" \
-            -derivedDataPath build/device \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY=""
-
-      - name: Empaquetar .ipa
-        run: |
-          # Un .ipa es un .zip con la app dentro de una carpeta "Payload".
-          mkdir -p build/ipa/Payload
-          cp -R build/device/Build/Products/Release-iphoneos/DrawPad.app build/ipa/Payload/
-          cd build/ipa
-          zip -qry DrawPad-unsigned.ipa Payload
-          ls -lh DrawPad-unsigned.ipa
-
-      - name: Publicar .ipa
-        uses: actions/upload-artifact@v4
-        with:
-          name: DrawPad-ipa
-          path: build/ipa/DrawPad-unsigned.ipa
-          if-no-files-found: error
-          retention-days: 30

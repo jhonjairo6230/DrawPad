@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// Un cuaderno abierto: muestra la hoja actual y, en la barra, los controles
-/// para pasar de hoja, añadir una nueva o eliminar la que se ve.
+/// para pasar de hoja, añadir una nueva (botón +) o eliminar la que se ve
+/// (menú del título).
 ///
 /// El lienzo lo pinta ``CanvasScreen``; esta vista solo decide **qué hoja**.
 struct NotebookScreen: View {
@@ -50,7 +51,11 @@ struct NotebookScreen: View {
         }
     }
 
-    /// ‹  Cuaderno 1 · Hoja 2 de 5  ›
+    /// ‹  Cuaderno 1 · Hoja 2 de 5 ⌄  ›  +
+    ///
+    /// "Nueva hoja" es un botón a la vista y no una opción del menú: con una
+    /// sola hoja las flechas están desactivadas, y sin el + no se veía cómo
+    /// añadir la segunda.
     private var pageControls: some View {
         HStack(spacing: 12) {
             Button { viewModel.goToPreviousPage() } label: {
@@ -59,17 +64,19 @@ struct NotebookScreen: View {
             .disabled(!viewModel.canGoToPreviousPage)
 
             Menu {
-                Button { viewModel.addPage() } label: {
-                    Label("Nueva hoja", systemImage: "plus")
-                }
                 Button(role: .destructive) { isConfirmingDelete = true } label: {
                     Label("Eliminar esta hoja", systemImage: "trash")
                 }
                 .disabled(!viewModel.canDeletePage)
             } label: {
-                Text("\(viewModel.title) · \(viewModel.pageLabel)")
-                    .font(.headline)
-                    .lineLimit(1)
+                HStack(spacing: 4) {
+                    Text("\(viewModel.title) · \(viewModel.pageLabel)")
+                        .font(.headline)
+                        .lineLimit(1)
+                    // Indica que el título se puede tocar.
+                    Image(systemName: "chevron.down")
+                        .font(.caption.weight(.semibold))
+                }
             }
             .accessibilityIdentifier("Hojas")
 
@@ -77,6 +84,10 @@ struct NotebookScreen: View {
                 Label("Hoja siguiente", systemImage: "chevron.right")
             }
             .disabled(!viewModel.canGoToNextPage)
+
+            Button { viewModel.addPage() } label: {
+                Label("Nueva hoja", systemImage: "plus")
+            }
         }
         .labelStyle(.iconOnly)
     }

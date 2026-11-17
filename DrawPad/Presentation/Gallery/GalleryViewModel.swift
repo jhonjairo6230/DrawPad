@@ -13,17 +13,20 @@ final class GalleryViewModel {
     private let createNotebook: CreateNotebookUseCase
     private let renameNotebook: RenameNotebookUseCase
     private let deleteNotebook: DeleteNotebookUseCase
+    private let changeCover: ChangeCoverUseCase
 
     init(
         listNotebooks: ListNotebooksUseCase,
         createNotebook: CreateNotebookUseCase,
         renameNotebook: RenameNotebookUseCase,
-        deleteNotebook: DeleteNotebookUseCase
+        deleteNotebook: DeleteNotebookUseCase,
+        changeCover: ChangeCoverUseCase
     ) {
         self.listNotebooks = listNotebooks
         self.createNotebook = createNotebook
         self.renameNotebook = renameNotebook
         self.deleteNotebook = deleteNotebook
+        self.changeCover = changeCover
     }
 
     /// Vuelve a leer la lista (al aparecer y al volver de un cuaderno).
@@ -45,6 +48,13 @@ final class GalleryViewModel {
     func rename(id: UUID, to title: String) {
         perform {
             try renameNotebook.execute(id: id, title: title)
+            notebooks = try listNotebooks.execute()
+        }
+    }
+
+    func changeCover(id: UUID, to cover: NotebookCover) {
+        perform {
+            try changeCover.execute(id: id, cover: cover)
             notebooks = try listNotebooks.execute()
         }
     }

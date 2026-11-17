@@ -8,6 +8,7 @@ final class CanvasViewModelTests: XCTestCase {
     private var preferences: CanvasPreferences!
     private var library: SpyImageLibrary!
     private var exportStore: SpyExportFileStore!
+    private var clipboard: FakeClipboard!
     /// El dibujo abierto en la pantalla; ya existe en el repositorio.
     private var drawing: Drawing!
 
@@ -18,6 +19,7 @@ final class CanvasViewModelTests: XCTestCase {
         preferences = CanvasPreferences()
         library = SpyImageLibrary()
         exportStore = SpyExportFileStore()
+        clipboard = FakeClipboard()
     }
 
     private var stored: Drawing? { repository.drawings[drawing.id] }
@@ -33,6 +35,7 @@ final class CanvasViewModelTests: XCTestCase {
             changeBackground: ChangeBackgroundUseCase(repository: repository),
             exportDrawing: ExportDrawingUseCase(library: library),
             prepareShareFile: PrepareShareFileUseCase(store: exportStore),
+            elementUseCases: PageElementUseCases(elements: repository, clipboard: clipboard),
             autosaveDelay: autosaveDelay
         )
     }
@@ -258,6 +261,192 @@ final class CanvasViewModelTests: XCTestCase {
 
         XCTAssertEqual(canvas.undoCount, 1)
         XCTAssertEqual(canvas.redoCount, 2)
+    }
+
+    // MARK: - Textos e imágenes
+
+    /// Un ViewModel ya cargado sobre una hoja con estos elementos.
+    private func makeLoadedViewModel(elements: [PageElement] = []) throws -> CanvasViewModel {
+        for element in elements {
+            try repository.save(element)
+        }
+        let viewModel = makeViewModel()
+        viewModel.onAppear()
+        return viewModel
+    }
+
+    func testOnAppearShowsTheSavedElementsUnderTheStrokes() throws {
+        let text = PageElement.sampleText(pageID: drawing.id, "Hola")
+
+        let viewModel = try makeLoadedViewModel(elements: [text, .sampleText("otra hoja")])
+
+        XCTAssertEqual(viewModel.elements, [text])
+        XCTAssertEqual(canvas.shownElements, [text])
+        XCTAssertFalse(viewModel.isArrangingElements)
+        XCTAssertFalse(viewModel.hasPendingChanges)
+    }
+
+    func testCommittingANewTextAddsItAtTheVisibleCenterSelectedAndReadyToMove() throws {
+        let viewModel = try makeLoadedViewModel()
+        canvas.visibleCenter = CGPoint(x: 500, y: 400)
+        viewModel.beginNewText()
+        let request = try XCTUnwrap(viewModel.textEditor)
+        XCTAssertTrue(request.isNew)
+
+        viewModel.commitText("Hola", for: request)
+
+        let added = try XCTUnwrap(viewModel.elements.first)
+        XCTAssertEqual(added.content, .text("Hola"))
+        XCTAssertEqual(added.frame.midX, 500, accuracy: 0.001)
+        XCTAssertEqual(repository.elements[added.id], added)
+        XCTAssertEqual(viewModel.selectedElementID, added.id)
+        XCTAssertTrue(viewModel.isArrangingElements)
+        XCTAssertTrue(canvas.isArrangingElements)
+        XCTAssertEqual(canvas.shownElements, [added])
+        XCTAssertEqual(canvas.shownSelectedID, added.id)
+    }
+
+    func testCommittingABlankTextShowsAnAlertAndAddsNothing() throws {
+        let viewModel = try makeLoadedViewModel()
+        viewModel.beginNewText()
+        let request = try XCTUnwrap(viewModel.textEditor)
+
+        viewModel.commitText("   ", for: request)
+
+        XCTAssertTrue(viewModel.elements.isEmpty)
+        XCTAssertFalse(viewModel.isArrangingElements)
+        XCTAssertEqual(viewModel.alert, AlertMessage(error: DrawingError.emptyText))
+    }
+
+    func testEditingTheSelectedTextChangesIt() throws {
+        let text = PageElement.sampleText(pageID: drawing.id, "Viejo")
+        let viewModel = try makeLoadedViewModel(elements: [text])
+        viewModel.setArrangingElements(true)
+        canvas.onElementSelected?(text.id)
+
+        viewModel.beginEditingSelectedText()
+        let request = try XCTUnwrap(viewModel.textEditor)
+        XCTAssertEqual(request.text, "Viejo")
+        XCTAssertFalse(request.isNew)
+        viewModel.commitText("Nuevo", for: request)
+
+        XCTAssertEqual(viewModel.elements.map(\.content), [.text("Nuevo")])
+        XCTAssertEqual(repository.elements[text.id]?.content, .text("Nuevo"))
+        XCTAssertEqual(canvas.shownElements.map(\.content), [.text("Nuevo")])
+    }
+
+    func testBeginEditingDoesNothingWhenAnImageIsSelected() throws {
+        let image = PageElement.sampleImage(pageID: drawing.id)
+        let viewModel = try makeLoadedViewModel(elements: [image])
+        viewModel.setArrangingElements(true)
+        canvas.onElementSelected?(image.id)
+
+        viewModel.beginEditingSelectedText()
+
+        XCTAssertNil(viewModel.textEditor)
+    }
+
+    func testPasteAddsTheClipboardImageNoBiggerThanSixtyPercentOfTheScreen() throws {
+        let viewModel = try makeLoadedViewModel()
+        canvas.viewportSize = CGSize(width: 1000, height: 800)
+        clipboard.current = .image(data: Data("img".utf8), size: CGSize(width: 3000, height: 1500))
+
+        viewModel.paste()
+
+        let added = try XCTUnwrap(viewModel.elements.first)
+        XCTAssertEqual(added.content, .image(Data("img".utf8)))
+        XCTAssertEqual(added.frame.width, 600, accuracy: 0.001)
+        XCTAssertEqual(added.frame.height, 300, accuracy: 0.001)
+        XCTAssertEqual(viewModel.selectedElementID, added.id)
+        XCTAssertTrue(viewModel.isArrangingElements)
+    }
+
+    func testPasteWithAnEmptyClipboardShowsAnAlert() throws {
+        let viewModel = try makeLoadedViewModel()
+
+        viewModel.paste()
+
+        XCTAssertTrue(viewModel.elements.isEmpty)
+        XCTAssertEqual(viewModel.alert, AlertMessage(error: DrawingError.clipboardEmpty))
+        XCTAssertFalse(viewModel.isArrangingElements)
+    }
+
+    func testMovingAnElementOnTheCanvasSavesItsNewFrame() throws {
+        let image = PageElement.sampleImage(pageID: drawing.id)
+        let viewModel = try makeLoadedViewModel(elements: [image])
+        viewModel.setArrangingElements(true)
+        let frame = CGRect(x: 300, y: 200, width: 400, height: 200)
+
+        canvas.onElementMoved?(image.id, frame)
+
+        XCTAssertEqual(viewModel.elements.first?.frame, frame)
+        XCTAssertEqual(repository.elements[image.id]?.frame, frame)
+        XCTAssertEqual(canvas.shownElements.first?.frame, frame)
+        XCTAssertEqual(viewModel.selectedElementID, image.id)
+    }
+
+    func testAnElementDraggedOffThePageSnapsBackInside() throws {
+        let image = PageElement.sampleImage(pageID: drawing.id)
+        let viewModel = try makeLoadedViewModel(elements: [image])
+
+        canvas.onElementMoved?(image.id, CGRect(x: -50, y: -20, width: 200, height: 100))
+
+        XCTAssertEqual(canvas.shownElements.first?.frame.origin, .zero)
+        XCTAssertEqual(viewModel.elements.first?.frame.origin, .zero)
+    }
+
+    func testDeletingTheSelectedElementRemovesIt() throws {
+        let kept = PageElement.sampleText(pageID: drawing.id, "se queda", createdAt: Date(timeIntervalSince1970: 1))
+        let removed = PageElement.sampleImage(pageID: drawing.id, createdAt: Date(timeIntervalSince1970: 2))
+        let viewModel = try makeLoadedViewModel(elements: [kept, removed])
+        viewModel.setArrangingElements(true)
+        canvas.onElementSelected?(removed.id)
+
+        viewModel.deleteSelectedElement()
+
+        XCTAssertEqual(viewModel.elements, [kept])
+        XCTAssertNil(repository.elements[removed.id])
+        XCTAssertNil(viewModel.selectedElementID)
+        XCTAssertEqual(canvas.shownElements, [kept])
+        XCTAssertNil(canvas.shownSelectedID)
+    }
+
+    func testLeavingArrangeModeClearsTheSelectionAndRestoresDrawing() throws {
+        let text = PageElement.sampleText(pageID: drawing.id)
+        let viewModel = try makeLoadedViewModel(elements: [text])
+        viewModel.setArrangingElements(true)
+        canvas.onElementSelected?(text.id)
+
+        viewModel.setArrangingElements(false)
+
+        XCTAssertFalse(viewModel.isArrangingElements)
+        XCTAssertFalse(canvas.isArrangingElements)
+        XCTAssertNil(viewModel.selectedElementID)
+        XCTAssertNil(canvas.shownSelectedID)
+    }
+
+    func testChangingElementsSchedulesASaveSoTheThumbnailIncludesThem() throws {
+        let viewModel = try makeLoadedViewModel()
+        viewModel.beginNewText()
+        let request = try XCTUnwrap(viewModel.textEditor)
+        let savesBefore = repository.saveCount
+
+        viewModel.commitText("Hola", for: request)
+        XCTAssertTrue(viewModel.hasPendingChanges)
+        viewModel.flushPendingSave()
+
+        XCTAssertEqual(repository.saveCount, savesBefore + 1)
+        XCTAssertEqual(stored?.thumbnailData, Data("mini".utf8))
+    }
+
+    func testAPageWithOnlyTextCanBeShared() throws {
+        let text = PageElement.sampleText(pageID: drawing.id)
+        let viewModel = try makeLoadedViewModel(elements: [text])
+
+        viewModel.share(as: .png)
+
+        XCTAssertNotNil(viewModel.sharedFile)
+        XCTAssertNil(viewModel.alert)
     }
 
     // MARK: - Suavizar
