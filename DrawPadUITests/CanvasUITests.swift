@@ -213,7 +213,10 @@ final class CanvasUITests: XCTestCase {
         // Recién insertado queda seleccionado, en el modo de mover.
         XCTAssertTrue(app.buttons["Listo"].waitForExistence(timeout: 5))
         let box = app.staticTexts["Hola"]
-        box.press(forDuration: 0.2, thenDragTo: canvasPoint(0.3, 0.7))
+        // `XCUIElement` solo arrastra hasta otro elemento; hasta un punto de la
+        // pantalla hay que arrastrar desde una coordenada.
+        box.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .press(forDuration: 0.2, thenDragTo: canvasPoint(0.3, 0.7))
 
         app.buttons["Editar texto"].tap()
         let editor = app.textViews.firstMatch
