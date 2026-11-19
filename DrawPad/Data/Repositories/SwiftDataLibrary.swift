@@ -66,14 +66,19 @@ final class SwiftDataLibrary: NotebookRepository, DrawingRepository, PageElement
                 existing.title = notebook.title
                 existing.coverColorRaw = notebook.cover.color.rawValue
                 existing.coverStyleRaw = notebook.cover.style.rawValue
+                existing.coverStrokesData = notebook.cover.drawing?.strokesData
+                existing.coverImageData = notebook.cover.drawing?.imageData
             } else {
-                context.insert(NotebookRecord(
+                let record = NotebookRecord(
                     id: notebook.id,
                     title: notebook.title,
                     createdAt: notebook.createdAt,
                     coverColorRaw: notebook.cover.color.rawValue,
                     coverStyleRaw: notebook.cover.style.rawValue
-                ))
+                )
+                record.coverStrokesData = notebook.cover.drawing?.strokesData
+                record.coverImageData = notebook.cover.drawing?.imageData
+                context.insert(record)
             }
             try context.save()
         }
@@ -244,9 +249,14 @@ final class SwiftDataLibrary: NotebookRepository, DrawingRepository, PageElement
     /// La tapa guardada. Sin valor (cuaderno anterior a las tapas) o con un
     /// valor desconocido, la tapa estándar.
     private static func cover(of record: NotebookRecord) -> NotebookCover {
-        NotebookCover(
+        var drawing: CoverDrawing?
+        if let strokes = record.coverStrokesData, let image = record.coverImageData {
+            drawing = CoverDrawing(strokesData: strokes, imageData: image)
+        }
+        return NotebookCover(
             color: record.coverColorRaw.flatMap(CoverColor.init(rawValue:)) ?? NotebookCover.standard.color,
-            style: record.coverStyleRaw.flatMap(CoverStyle.init(rawValue:)) ?? NotebookCover.standard.style
+            style: record.coverStyleRaw.flatMap(CoverStyle.init(rawValue:)) ?? NotebookCover.standard.style,
+            drawing: drawing
         )
     }
 

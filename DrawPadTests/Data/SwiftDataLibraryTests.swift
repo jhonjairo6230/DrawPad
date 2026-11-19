@@ -73,6 +73,20 @@ final class SwiftDataLibraryTests: XCTestCase {
         ])
     }
 
+    func testADrawnCoverIsSavedAndCanBeRemoved() throws {
+        let drawing = CoverDrawing(strokesData: Data("trazos".utf8), imageData: Data("png".utf8))
+        var notebook = Notebook.sample(cover: NotebookCover(color: .green, style: .drawn, drawing: drawing))
+        try library.save(notebook)
+
+        XCTAssertEqual(try library.findNotebook(id: notebook.id)?.cover.drawing, drawing)
+        XCTAssertEqual(try library.listNotebooks().first?.cover, notebook.cover)
+
+        notebook.cover.drawing = nil
+        try library.save(notebook)
+
+        XCTAssertNil(try library.findNotebook(id: notebook.id)?.cover.drawing)
+    }
+
     func testCoverColumnsThatAreEmptyOrUnknownAreReadAsTheStandardCover() throws {
         // Vacías: cuadernos guardados antes de que existieran las tapas.
         let empty = UUID()

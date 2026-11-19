@@ -12,7 +12,8 @@ struct DrawPadApp: App {
         WindowGroup {
             GalleryScreen(
                 viewModel: container.galleryViewModel,
-                makeNotebook: container.makeNotebookViewModel(notebookID:)
+                makeNotebook: container.makeNotebookViewModel(notebookID:),
+                makeCoverDrawing: container.makeCoverDrawingModule(initialDrawing:color:)
             )
         }
     }

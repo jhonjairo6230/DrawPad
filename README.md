@@ -12,7 +12,8 @@ desde Windows. No está pensada para publicarse en el App Store.
   de Apple (lápiz, rotulador, borrador, regla, colores, grosor).
 - **Cuadernos**: cada cuaderno agrupa sus hojas. Se crean, renombran y
   eliminan desde la galería.
-- **Portada** de cada cuaderno: tres estilos de tapa y ocho colores.
+- **Portada** de cada cuaderno: ocho colores y cuatro estilos, uno de ellos
+  un **dibujo tuyo** hecho con el Pencil.
 - **Hojas a demanda**: dentro de un cuaderno se añaden hojas, se pasa de una
   a otra y se eliminan.
 - **Base de datos local** (SwiftData): todo se guarda en el iPad, con

@@ -16,6 +16,11 @@ final class NotebookRecord {
     var coverColorRaw: String?
     /// `CoverStyle.rawValue`. Opcional por el mismo motivo.
     var coverStyleRaw: String?
+    /// Trazos del dibujo de la tapa. Solo hay dibujo si esta columna y la
+    /// siguiente tienen valor.
+    @Attribute(.externalStorage) var coverStrokesData: Data?
+    /// Imagen PNG del dibujo de la tapa.
+    @Attribute(.externalStorage) var coverImageData: Data?
 
     init(id: UUID, title: String, createdAt: Date, coverColorRaw: String?, coverStyleRaw: String?) {
         self.id = id

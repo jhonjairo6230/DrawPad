@@ -83,6 +83,19 @@ final class UseCasesTests: XCTestCase {
         XCTAssertEqual(library.drawings[page.id], page)
     }
 
+    func testChangeCoverKeepsTheDrawingEvenWithAnotherStyle() throws {
+        let notebook = Notebook.sample()
+        let library = InMemoryLibrary(notebooks: [notebook])
+        let drawing = CoverDrawing(strokesData: Data("t".utf8), imageData: Data("i".utf8))
+        let useCase = ChangeCoverUseCase(notebooks: library)
+
+        try useCase.execute(id: notebook.id, cover: NotebookCover(color: .red, style: .drawn, drawing: drawing))
+        try useCase.execute(id: notebook.id, cover: NotebookCover(color: .red, style: .label, drawing: drawing))
+
+        XCTAssertEqual(library.notebooks[notebook.id]?.cover.style, .label)
+        XCTAssertEqual(library.notebooks[notebook.id]?.cover.drawing, drawing)
+    }
+
     func testChangeCoverFailsWhenTheNotebookDoesNotExist() {
         let useCase = ChangeCoverUseCase(notebooks: InMemoryLibrary())
 

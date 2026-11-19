@@ -153,6 +153,17 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
         renderImage(scale: canvasView.traitCollection.displayScale, paper: background)?.pngData()
     }
 
+    func setPaperColor(_ color: CoverColor) {
+        paperView.backgroundColor = color.uiColor
+    }
+
+    func renderStrokesPNG() -> Data? {
+        guard hasStrokes else { return nil }
+        let rect = renderRect
+        guard rect.width > 0, rect.height > 0 else { return nil }
+        return strokesImage(in: rect, scale: Self.coverImageScale).pngData()
+    }
+
     func renderPDF() -> Data? {
         guard let rect = nonEmptyRenderRect else { return nil }
         // PencilKit no ofrece los trazos como vectores: el PDF lleva una
@@ -180,6 +191,8 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
 
     private static let thumbnailMaxSide: CGFloat = 480
     private static let pdfImageScale: CGFloat = 3
+    /// Resolución de la imagen de una portada dibujada.
+    private static let coverImageScale: CGFloat = 2
 
     private var interfaceStyle: UIUserInterfaceStyle {
         theme == .dark ? .dark : .light
