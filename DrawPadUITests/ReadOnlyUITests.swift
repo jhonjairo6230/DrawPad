@@ -65,7 +65,8 @@ final class ReadOnlyUITests: XCTestCase {
         window.pinch(withScale: 2, velocity: 2)
         window.pinch(withScale: 0.5, velocity: -2)
 
-        XCTAssertTrue(app.staticTexts["Hola desde el iPad"].exists)
+        // El zoom termina con una animación: se espera a que se asiente.
+        XCTAssertTrue(app.staticTexts["Hola desde el iPad"].waitForExistence(timeout: 5))
         _ = app.wait(for: .notRunning, timeout: 2)
         XCTAssertEqual(app.state, .runningForeground, "La app se cerró")
     }
