@@ -59,16 +59,29 @@ final class ReadOnlyUITests: XCTestCase {
     func testScrollingAndZoomingAPageDoesNotDrawOrCrash() {
         openSampleNotebook()
         let window = app.windows.firstMatch
+        assertSampleTextIsShown(after: "abrir la hoja")
 
         window.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.4))
             .press(forDuration: 0.1, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.7, dy: 0.6)))
-        window.pinch(withScale: 2, velocity: 2)
-        window.pinch(withScale: 0.5, velocity: -2)
+        assertSampleTextIsShown(after: "arrastrar")
 
-        // El zoom termina con una animación: se espera a que se asiente.
-        XCTAssertTrue(app.staticTexts["Hola desde el iPad"].waitForExistence(timeout: 5))
+        window.pinch(withScale: 2, velocity: 2)
+        assertSampleTextIsShown(after: "ampliar")
+
+        window.pinch(withScale: 0.5, velocity: -2)
+        assertSampleTextIsShown(after: "reducir")
+
         _ = app.wait(for: .notRunning, timeout: 2)
         XCTAssertEqual(app.state, .runningForeground, "La app se cerró")
+    }
+
+    /// El texto de ejemplo sigue en la hoja. Si no, deja en el log el árbol
+    /// de elementos de la pantalla, para ver qué pasó.
+    private func assertSampleTextIsShown(after step: String, file: StaticString = #filePath, line: UInt = #line) {
+        // El zoom termina con una animación: se espera a que se asiente.
+        if app.staticTexts["Hola desde el iPad"].waitForExistence(timeout: 5) { return }
+        print("Árbol de elementos tras \(step):\n\(app.debugDescription)")
+        XCTFail("El texto de ejemplo no está tras \(step)", file: file, line: line)
     }
 
     // MARK: - Utilidades
