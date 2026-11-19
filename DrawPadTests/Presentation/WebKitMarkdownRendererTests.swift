@@ -46,7 +46,8 @@ final class WebKitMarkdownRendererTests: XCTestCase {
         ```
         """
 
-        let summary = try XCTUnwrap(await renderer.render(markdown))
+        let rendered = await renderer.render(markdown)
+        let summary = try XCTUnwrap(rendered)
 
         XCTAssertEqual(summary.headings, 2)
         XCTAssertEqual(summary.tables, 1)
@@ -58,7 +59,8 @@ final class WebKitMarkdownRendererTests: XCTestCase {
     func testHTMLInsideTheDocumentIsShownAsTextNotRun() async throws {
         let renderer = makeRenderer()
 
-        let summary = try XCTUnwrap(await renderer.render("Hola\n\n<script>alert('x')</script>\n"))
+        let rendered = await renderer.render("Hola\n\n<script>alert('x')</script>\n")
+        let summary = try XCTUnwrap(rendered)
 
         XCTAssertEqual(summary.scripts, 0)
     }
@@ -66,7 +68,8 @@ final class WebKitMarkdownRendererTests: XCTestCase {
     func testABrokenDiagramIsReportedAndTheRestStillShows() async throws {
         let renderer = makeRenderer()
 
-        let summary = try XCTUnwrap(await renderer.render("# Título\n\n```mermaid\nflowchart LR\n  A -->\n```\n"))
+        let rendered = await renderer.render("# Título\n\n```mermaid\nflowchart LR\n  A -->\n```\n")
+        let summary = try XCTUnwrap(rendered)
 
         XCTAssertEqual(summary.headings, 1)
         XCTAssertEqual(summary.diagrams, 0)
