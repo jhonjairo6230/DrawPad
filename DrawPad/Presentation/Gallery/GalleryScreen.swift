@@ -18,7 +18,7 @@ struct GalleryScreen: View {
     @State private var notebookToDelete: NotebookSummary?
     @State private var notebookToRestyle: NotebookSummary?
     @State private var isImporting = false
-    @Environment(\.canEdit) private var canEdit
+    @Environment(\.editing) private var editing
 
     private let columns = [GridItem(.adaptive(minimum: 170), spacing: 28)]
 
@@ -31,7 +31,7 @@ struct GalleryScreen: View {
                         Button { isImporting = true } label: {
                             Label("Importar", systemImage: "square.and.arrow.down.on.square")
                         }
-                        if canEdit {
+                        if editing.canManageNotebooks {
                             Button { createAndOpen() } label: {
                                 Label("Nuevo cuaderno", systemImage: "plus")
                             }
@@ -112,7 +112,7 @@ struct GalleryScreen: View {
             ContentUnavailableView(
                 "Aún no hay cuadernos",
                 systemImage: "book.closed",
-                description: Text(canEdit
+                description: Text(editing.canManageNotebooks
                     ? "Toca + para crear el primero."
                     : "Exporta un cuaderno en el iPad y ábrelo aquí con Importar.")
             )
@@ -126,7 +126,7 @@ struct GalleryScreen: View {
                         .buttonStyle(.plain)
                         .accessibilityLabel(notebook.title)
                         .contextMenu {
-                            if canEdit {
+                            if editing.canManageNotebooks {
                                 Button {
                                     newTitle = notebook.title
                                     notebookToRename = notebook

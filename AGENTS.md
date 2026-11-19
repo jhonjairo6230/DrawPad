@@ -34,9 +34,13 @@ Documentación en `docs/`; decisiones en `docs/adr/`.
   `PageElementsLayer`, bajo los trazos. Se guardan al momento por sus casos
   de uso, no con el autoguardado. Borrar una hoja o un cuaderno debe borrar
   sus elementos; borrar un elemento, sus conexiones.
-- En el iPhone la app **solo lee** (`canEdit` en el entorno, false). Toda
-  acción nueva que edite debe esconderse cuando `canEdit` es false; las
-  pruebas de ese modo usan `-readOnly` en el simulador de iPad.
+- Lo que se puede cambiar depende del dispositivo: `EditingCapabilities` en
+  el entorno (`\.editing`). En el iPad, todo (`.full`); en el iPhone
+  (`.phone`), hojas Markdown y diagramas, sin trazos. Toda acción nueva que
+  edite se esconde según su permiso (`canManageNotebooks`, `canDraw`,
+  `canEditDiagrams`, `canWriteMarkdown`); un área nueva es un campo nuevo,
+  no un `if` suelto. Las pruebas de ese modo usan `-phoneMode` en el
+  simulador de iPad (`PhoneUITests`).
 - Cada tipo lleva un comentario `///` que explica su papel (el porqué).
 - Interfaz, comentarios y documentación en español; identificadores en inglés.
 - Lógica nueva → pruebas en `DrawPadTests` con los dobles de `Doubles/`.
