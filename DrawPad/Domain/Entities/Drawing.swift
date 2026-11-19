@@ -2,6 +2,10 @@ import Foundation
 
 /// Una hoja de un cuaderno, tal como la entiende el dominio.
 ///
+/// Puede ser una hoja de dibujo (``PageKind/drawing``: trazos, papel,
+/// elementos) o un documento Markdown (``PageKind/markdown``: solo
+/// `markdown`).
+///
 /// El dominio no sabe nada de PencilKit: los trazos viajan como datos opacos
 /// (`strokesData`). Hoy esos datos son `PKDrawing.dataRepresentation()`, pero
 /// si mañana cambiáramos de motor de dibujo, esta entidad no cambiaría.
@@ -22,4 +26,7 @@ struct Drawing: Equatable, Identifiable {
     var background: CanvasBackground = .blank
     /// Papel claro u oscuro.
     var theme: CanvasTheme = .light
+    var kind: PageKind = .drawing
+    /// Texto de una hoja Markdown; vacío en una hoja de dibujo.
+    var markdown: String = ""
 }

@@ -224,7 +224,9 @@ extension Drawing {
         createdAt: Date = Date(timeIntervalSince1970: 0),
         updatedAt: Date = Date(timeIntervalSince1970: 100),
         background: CanvasBackground = .blank,
-        theme: CanvasTheme = .light
+        theme: CanvasTheme = .light,
+        kind: PageKind = .drawing,
+        markdown: String = ""
     ) -> Drawing {
         Drawing(
             id: id,
@@ -234,7 +236,9 @@ extension Drawing {
             createdAt: createdAt,
             updatedAt: updatedAt,
             background: background,
-            theme: theme
+            theme: theme,
+            kind: kind,
+            markdown: markdown
         )
     }
 }

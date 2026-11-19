@@ -11,10 +11,12 @@ Documentación en `docs/`; decisiones en `docs/adr/`.
 - `Presentation` no conoce `Data`: el ViewModel recibe casos de uso.
 - PencilKit solo se toca en `PencilKitCanvas.swift` y `PencilCanvasView.swift`.
   El ViewModel usa el protocolo `DrawingCanvas`.
-- WebKit solo se toca en `Presentation/Mermaid/WebKitMermaidPreview.swift` y
-  `MermaidPreviewView.swift`; el ViewModel usa el protocolo `MermaidPreview`.
-  Mermaid va dentro de la app (`Resources/Mermaid`, versión 11.x fijada): no
-  se carga de internet.
+- WebKit solo se toca en `Presentation/Mermaid/WebKitMermaidPreview.swift`,
+  `MermaidPreviewView.swift`, `Presentation/Markdown/WebKitMarkdownRenderer.swift`
+  y `MarkdownWebView.swift`; el ViewModel de Mermaid usa el protocolo
+  `MermaidPreview`. Mermaid y marked van dentro de la app (`Resources/Mermaid`,
+  11.x; `Resources/Markdown`, 18.x; versiones fijadas): no se cargan de
+  internet. El HTML de un documento Markdown nunca se ejecuta.
 - Las implementaciones concretas solo se crean en `App/AppContainer.swift`.
 - No crees vistas de UIKit (`PKCanvasView`…) en `DrawPadApp.init()`: aún no
   existe `UIApplication` y la app se cierra al tocar. En `AppContainer` todo
@@ -26,6 +28,8 @@ Documentación en `docs/`; decisiones en `docs/adr/`.
   no abrirá (ver `docs/adr/0007-swiftdata.md`).
 - En la interfaz se dice **cuaderno** y **hoja**; en el código, `Notebook` y
   `Drawing`. Un cuaderno nunca se queda sin hojas (regla en los casos de uso).
+  Una hoja es de dibujo o Markdown (`Drawing.kind`); `AppContainer` elige su
+  pantalla en `makeSession`.
 - Textos, imágenes, figuras y conexiones (`PageElement`) van en
   `PageElementsLayer`, bajo los trazos. Se guardan al momento por sus casos
   de uso, no con el autoguardado. Borrar una hoja o un cuaderno debe borrar

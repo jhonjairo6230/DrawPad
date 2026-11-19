@@ -142,7 +142,7 @@ final class CanvasUITests: XCTestCase {
         XCTAssertFalse(app.buttons["Hoja anterior"].isEnabled)
         XCTAssertFalse(app.buttons["Hoja siguiente"].isEnabled)
 
-        app.buttons["Nueva hoja"].tap()
+        chooseMenuAction("Hoja de dibujo", inMenu: "Nueva hoja")
         assertPageLabel(contains: "Hoja 2 de 2")
         enableFingerDrawing()
         dragOnCanvas()
@@ -167,7 +167,7 @@ final class CanvasUITests: XCTestCase {
         openNewNotebook()
         chooseBackground("Cuadrícula")
 
-        app.buttons["Nueva hoja"].tap()
+        chooseMenuAction("Hoja de dibujo", inMenu: "Nueva hoja")
         assertPageLabel(contains: "Hoja 2 de 2")
 
         app.buttons["Fondo"].tap()
@@ -175,6 +175,30 @@ final class CanvasUITests: XCTestCase {
         XCTAssertTrue(grid.waitForExistence(timeout: 5))
         XCTAssertTrue(grid.isSelected)
         grid.tap()
+        assertAppIsRunning()
+    }
+
+    func testAMarkdownPageCanBeWrittenAndRead() {
+        openNewNotebook()
+        chooseMenuAction("Hoja Markdown", inMenu: "Nueva hoja")
+        assertPageLabel(contains: "Hoja 2 de 2")
+        // La plantilla ya trae un spec de ejemplo, formateado.
+        XCTAssertTrue(app.buttons["Editar"].waitForExistence(timeout: 5))
+
+        app.buttons["Editar"].tap()
+        let editor = app.textViews["Texto Markdown"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        editor.tap()
+        editor.typeText("\n# Notas de prueba\n")
+
+        app.buttons["Ver"].tap()
+        XCTAssertTrue(app.staticTexts["Notas de prueba"].waitForExistence(timeout: 10))
+
+        // Lo escrito sigue ahí al volver a la hoja.
+        app.buttons["Hoja anterior"].tap()
+        assertPageLabel(contains: "Hoja 1 de 2")
+        app.buttons["Hoja siguiente"].tap()
+        XCTAssertTrue(app.staticTexts["Notas de prueba"].waitForExistence(timeout: 10))
         assertAppIsRunning()
     }
 

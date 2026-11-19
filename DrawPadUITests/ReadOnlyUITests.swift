@@ -4,7 +4,8 @@ import XCTest
 ///
 /// Corren en el simulador de iPad con `-readOnly`, que hace que la app se
 /// comporte como en el iPhone, y con un cuaderno de ejemplo ("Cuaderno 1",
-/// dos hojas, "Hola desde el iPad" en la primera), porque en este modo no se
+/// tres hojas: "Hola desde el iPad" en la primera y una hoja Markdown al
+/// final), porque en este modo no se
 /// pueden crear cuadernos.
 final class ReadOnlyUITests: XCTestCase {
     private var app: XCUIApplication!
@@ -32,16 +33,27 @@ final class ReadOnlyUITests: XCTestCase {
         openSampleNotebook()
 
         XCTAssertTrue(app.staticTexts["Hola desde el iPad"].waitForExistence(timeout: 5))
-        assertTitle(contains: "Hoja 1 de 2")
+        assertTitle(contains: "Hoja 1 de 3")
         for editing in ["Insertar", "Deshacer", "Rehacer", "Fondo", "Más", "Nueva hoja"] {
             XCTAssertFalse(app.buttons[editing].exists, "No debería estar: \(editing)")
         }
         XCTAssertTrue(app.buttons["Compartir"].exists)
 
         app.buttons["Hoja siguiente"].tap()
-        assertTitle(contains: "Hoja 2 de 2")
+        assertTitle(contains: "Hoja 2 de 3")
         app.buttons["Hoja anterior"].tap()
-        assertTitle(contains: "Hoja 1 de 2")
+        assertTitle(contains: "Hoja 1 de 3")
+    }
+
+    func testAMarkdownPageCanBeReadButNotEdited() {
+        openSampleNotebook()
+        app.buttons["Hoja siguiente"].tap()
+        app.buttons["Hoja siguiente"].tap()
+        assertTitle(contains: "Hoja 3 de 3")
+
+        XCTAssertTrue(app.staticTexts["Hola Markdown"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["Editar"].exists)
+        XCTAssertTrue(app.buttons["Compartir"].exists)
     }
 
     func testScrollingAndZoomingAPageDoesNotDrawOrCrash() {

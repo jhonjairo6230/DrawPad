@@ -26,6 +26,7 @@ entienda **por qué** el código es como es.
 | [0017](0017-exportar-importar-cuadernos.md) | Exportar e importar cuadernos en archivos `.drawpad` | Aceptada |
 | [0018](0018-iphone-solo-lectura.md) | La app en el iPhone, en solo lectura | Aceptada |
 | [0019](0019-hojas-mermaid.md) | Diagramas Mermaid con WebKit, sin conexión | Aceptada |
+| [0020](0020-hojas-markdown.md) | Hojas Markdown con marked y WebKit | Aceptada |
 
 ## Cómo añadir un ADR
 
