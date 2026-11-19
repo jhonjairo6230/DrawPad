@@ -24,10 +24,11 @@ entienda **por qué** el código es como es.
 | [0015](0015-portada-dibujada.md) | Portada dibujada a mano | Aceptada |
 | [0016](0016-figuras-de-diagrama.md) | Figuras de diagrama unidas con flechas | Aceptada |
 | [0017](0017-exportar-importar-cuadernos.md) | Exportar e importar cuadernos en archivos `.drawpad` | Aceptada |
-| [0018](0018-iphone-solo-lectura.md) | La app en el iPhone, en solo lectura | Aceptada; cambiada por 0021 |
+| [0018](0018-iphone-solo-lectura.md) | La app en el iPhone, en solo lectura | Aceptada; cambiada por 0021 y 0022 |
 | [0019](0019-hojas-mermaid.md) | Diagramas Mermaid con WebKit, sin conexión | Aceptada |
 | [0020](0020-hojas-markdown.md) | Hojas Markdown con marked y WebKit | Aceptada |
 | [0021](0021-markdown-en-iphone.md) | Escribir hojas Markdown en el iPhone | Aceptada |
+| [0022](0022-diagramas-en-iphone.md) | Diagramas en el iPhone, sin trazos | Aceptada |
 
 ## Cómo añadir un ADR
 

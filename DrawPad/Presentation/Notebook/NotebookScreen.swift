@@ -112,7 +112,7 @@ struct NotebookScreen: View {
 
             if editing.canAddPages {
                 Menu {
-                    if editing.canDraw {
+                    if editing.canAddDrawingPages {
                         Button { viewModel.addPage(.drawing) } label: {
                             Label("Hoja de dibujo", systemImage: "pencil.and.scribble")
                         }
