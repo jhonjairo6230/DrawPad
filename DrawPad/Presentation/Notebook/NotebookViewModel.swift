@@ -58,6 +58,11 @@ final class NotebookViewModel {
         pages.isEmpty ? "" : "Hoja \(currentIndex + 1) de \(pages.count)"
     }
 
+    /// Tipo de la hoja que se ve; `nil` hasta que carga el cuaderno.
+    var currentPageKind: PageKind? {
+        pages.indices.contains(currentIndex) ? pages[currentIndex].kind : nil
+    }
+
     var canGoToPreviousPage: Bool { currentIndex > 0 }
 
     var canGoToNextPage: Bool { currentIndex < pages.count - 1 }
