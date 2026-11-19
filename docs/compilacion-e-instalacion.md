@@ -163,7 +163,25 @@ Developer); se pasa a mano por iCloud Drive:
    la galería.
 3. Si ese cuaderno ya estaba, se reemplaza por la versión nueva.
 
-## 8. Si algún día tienes un Mac
+## 8. Instalar en el iPhone (solo lectura)
+
+El mismo `.ipa` sirve para iPad y iPhone. En el iPhone la app **solo lee**:
+muestra los cuadernos importados, se pasa de hoja y se amplía, pero no se
+dibuja ni se edita.
+
+1. Conecta el iPhone al PC, desbloquéalo y toca **Confiar**.
+2. En el iPhone: **Ajustes → Privacidad y seguridad → Modo de desarrollador**
+   → activar (se reinicia).
+3. Instala `DrawPad-unsigned.ipa` con Sideloadly, con el mismo Apple ID.
+4. **Ajustes → General → VPN y gestión de dispositivos** → tu Apple ID →
+   **Confiar**.
+5. Para leer un cuaderno, sigue la sección 7: exportar en el iPad a iCloud
+   Drive y abrir el `.drawpad` en el iPhone.
+
+Los límites de la cuenta gratuita (sección 5) cuentan por dispositivo:
+también hay que reinstalar en el iPhone cada 7 días.
+
+## 9. Si algún día tienes un Mac
 
 ```bash
 brew install xcodegen

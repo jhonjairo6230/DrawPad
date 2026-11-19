@@ -26,6 +26,9 @@ Documentación en `docs/`; decisiones en `docs/adr/`.
   `PageElementsLayer`, bajo los trazos. Se guardan al momento por sus casos
   de uso, no con el autoguardado. Borrar una hoja o un cuaderno debe borrar
   sus elementos; borrar un elemento, sus conexiones.
+- En el iPhone la app **solo lee** (`canEdit` en el entorno, false). Toda
+  acción nueva que edite debe esconderse cuando `canEdit` es false; las
+  pruebas de ese modo usan `-readOnly` en el simulador de iPad.
 - Cada tipo lleva un comentario `///` que explica su papel (el porqué).
 - Interfaz, comentarios y documentación en español; identificadores en inglés.
 - Lógica nueva → pruebas en `DrawPadTests` con los dobles de `Doubles/`.

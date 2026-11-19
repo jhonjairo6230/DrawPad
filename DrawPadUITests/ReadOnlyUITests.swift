@@ -1,0 +1,75 @@
+import XCTest
+
+/// Pruebas del modo de solo lectura (el del iPhone).
+///
+/// Corren en el simulador de iPad con `-readOnly`, que hace que la app se
+/// comporte como en el iPhone, y con un cuaderno de ejemplo ("Cuaderno 1",
+/// dos hojas, "Hola desde el iPad" en la primera), porque en este modo no se
+/// pueden crear cuadernos.
+final class ReadOnlyUITests: XCTestCase {
+    private var app: XCUIApplication!
+
+    override func setUp() {
+        continueAfterFailure = false
+        app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-readOnly", "-uiTestingSampleNotebook"]
+        app.launch()
+    }
+
+    func testTheGalleryCanImportButNotCreateOrEditNotebooks() {
+        let card = app.buttons["Cuaderno 1"]
+        XCTAssertTrue(card.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Importar"].exists)
+        XCTAssertFalse(app.buttons["Nuevo cuaderno"].exists)
+
+        card.press(forDuration: 1.2)
+        XCTAssertTrue(app.buttons["Exportar"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Renombrar"].exists)
+        XCTAssertFalse(app.buttons["Cambiar portada"].exists)
+    }
+
+    func testANotebookCanBeReadPageByPageButNotEdited() {
+        openSampleNotebook()
+
+        XCTAssertTrue(app.staticTexts["Hola desde el iPad"].waitForExistence(timeout: 5))
+        assertTitle(contains: "Hoja 1 de 2")
+        for editing in ["Insertar", "Deshacer", "Rehacer", "Fondo", "Más", "Nueva hoja"] {
+            XCTAssertFalse(app.buttons[editing].exists, "No debería estar: \(editing)")
+        }
+        XCTAssertTrue(app.buttons["Compartir"].exists)
+
+        app.buttons["Hoja siguiente"].tap()
+        assertTitle(contains: "Hoja 2 de 2")
+        app.buttons["Hoja anterior"].tap()
+        assertTitle(contains: "Hoja 1 de 2")
+    }
+
+    func testScrollingAndZoomingAPageDoesNotDrawOrCrash() {
+        openSampleNotebook()
+        let window = app.windows.firstMatch
+
+        window.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.4))
+            .press(forDuration: 0.1, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.7, dy: 0.6)))
+        window.pinch(withScale: 2, velocity: 2)
+        window.pinch(withScale: 0.5, velocity: -2)
+
+        XCTAssertTrue(app.staticTexts["Hola desde el iPad"].exists)
+        _ = app.wait(for: .notRunning, timeout: 2)
+        XCTAssertEqual(app.state, .runningForeground, "La app se cerró")
+    }
+
+    // MARK: - Utilidades
+
+    private func openSampleNotebook() {
+        let card = app.buttons["Cuaderno 1"]
+        XCTAssertTrue(card.waitForExistence(timeout: 5))
+        card.tap()
+        XCTAssertTrue(app.buttons["Compartir"].waitForExistence(timeout: 5))
+    }
+
+    /// Espera a que el título de la barra diga, por ejemplo, "Hoja 2 de 2".
+    private func assertTitle(contains text: String, file: StaticString = #filePath, line: UInt = #line) {
+        let title = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
+        XCTAssertTrue(title.waitForExistence(timeout: 5), "El título no muestra \"\(text)\"", file: file, line: line)
+    }
+}

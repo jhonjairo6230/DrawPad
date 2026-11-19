@@ -111,6 +111,24 @@ final class CanvasGeometryTests: XCTestCase {
         )
     }
 
+    // MARK: - Ajustar al ancho (solo lectura)
+
+    func testAWidePageIsZoomedOutToFitTheWidth() {
+        let phone = CGSize(width: 390, height: 700)
+        let ipadPage = CGSize(width: 1170, height: 1400)
+
+        XCTAssertEqual(CanvasGeometry.fitWidthZoom(viewport: phone, pageSize: ipadPage), 1.0 / 3.0, accuracy: 0.0001)
+    }
+
+    func testANarrowPageIsNeverEnlarged() {
+        XCTAssertEqual(CanvasGeometry.fitWidthZoom(viewport: viewport, pageSize: CGSize(width: 400, height: 300)), 1)
+    }
+
+    func testFitWidthWithoutSizesIsOne() {
+        XCTAssertEqual(CanvasGeometry.fitWidthZoom(viewport: .zero, pageSize: viewport), 1)
+        XCTAssertEqual(CanvasGeometry.fitWidthZoom(viewport: viewport, pageSize: .zero), 1)
+    }
+
     func testZoomLimitsAllowZoomingInButNotOut() {
         XCTAssertEqual(CanvasGeometry.minimumZoom, 1)
         XCTAssertGreaterThan(CanvasGeometry.maximumZoom, 1)
