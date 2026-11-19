@@ -95,7 +95,7 @@ DrawPad/
 ├── Domain/
 │   ├── Entities/
 │   │   ├── Notebook.swift          Un cuaderno: título, fecha y tapa
-│   │   ├── NotebookCover.swift     La tapa: color y estilo
+│   │   ├── NotebookCover.swift     La tapa: color, estilo y dibujo (CoverDrawing)
 │   │   ├── NotebookSummary.swift   Lo justo para la galería: tapa, hojas, actividad
 │   │   ├── Drawing.swift           Una hoja: trazos, miniatura, papel, fechas
 │   │   ├── DrawingSummary.swift    Lo justo para listar hojas (sin trazos)
@@ -151,7 +151,10 @@ DrawPad/
 │   │   ├── GalleryViewModel.swift  Listar, crear, renombrar, eliminar cuadernos
 │   │   ├── NotebookCard.swift      Tarjeta: tapa, hojas y fecha
 │   │   ├── NotebookCoverView.swift Dibuja la tapa a partir de color, estilo y título
-│   │   ├── CoverEditorSheet.swift  Elegir estilo y color de la tapa
+│   │   ├── CoverEditorSheet.swift  Elegir estilo, color y dibujo de la tapa
+│   │   ├── CoverDrawingScreen.swift    Dibujar la portada con el Pencil
+│   │   ├── CoverDrawingViewModel.swift Estado de esa pantalla
+│   │   ├── CoverDrawingModule.swift    Su ViewModel y su lienzo, juntos
 │   │   └── NotebookCover+Presentation.swift  Nombre y tono de cada color y estilo
 │   ├── Notebook/
 │   │   ├── NotebookScreen.swift    Cuaderno abierto: hoja actual y controles de hojas
@@ -192,6 +195,7 @@ DrawPadTests/
     ├── GalleryViewModelTests.swift
     ├── NotebookViewModelTests.swift
     ├── CanvasViewModelTests.swift
+    ├── CoverDrawingViewModelTests.swift
     ├── CanvasGeometryTests.swift
     └── StrokeSmootherTests.swift
 
@@ -305,6 +309,8 @@ classDiagram
         +smoothStrokes()
         +setFingerDrawingEnabled(Bool)
         +setBackground(CanvasBackground, CanvasTheme)
+        +setPaperColor(CoverColor)
+        +renderStrokesPNG() Data?
         +renderPNG() Data?
         +renderPDF() Data?
         +renderThumbnail() Data?
@@ -381,6 +387,12 @@ classDiagram
         <<struct>>
         +color CoverColor
         +style CoverStyle
+        +drawing CoverDrawing?
+    }
+    class CoverDrawing {
+        <<struct>>
+        +strokesData Data
+        +imageData Data
     }
     class Drawing {
         <<struct>>
@@ -434,6 +446,7 @@ classDiagram
     UseCases --> ExportFileStore
     NotebookRepository ..> Notebook
     Notebook --> NotebookCover
+    NotebookCover --> CoverDrawing
     DrawingRepository ..> Drawing
     Drawing --> Notebook : notebookID
     SwiftDataLibrary ..|> NotebookRepository
@@ -865,6 +878,41 @@ sequenceDiagram
     Note over K,L: el lienzo vuelve a recibir los toques,<br/>los trazos se dibujan por encima
 ```
 
+### 5.11 Dibujar la portada
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Usuario
+    participant E as CoverEditorSheet
+    participant C as AppContainer
+    participant D as CoverDrawingScreen
+    participant VM as CoverDrawingViewModel
+    participant K as PencilKitCanvas
+    participant GVM as GalleryViewModel
+    participant R as NotebookRepository
+
+    U->>E: estilo "Dibujo", "Dibujar portada"
+    E->>C: makeCoverDrawingModule(dibujo actual, color)
+    C-->>E: CoverDrawingModule (lienzo nuevo + ViewModel)
+    E->>D: pantalla completa, lienzo fijo de 420 × 560
+    D->>VM: onAppear()
+    VM->>K: setPaperColor(color de la tapa)
+    opt ya había dibujo
+        VM->>K: load(trazos)
+    end
+    U->>K: dibuja con el Pencil
+    U->>D: "Usar dibujo"
+    D->>VM: finish()
+    VM->>K: currentData() y renderStrokesPNG()
+    K-->>VM: trazos + PNG transparente
+    VM-->>E: CoverDrawing (o nil si quedó vacío)
+    Note over E: solo cambia la copia del editor
+    U->>E: "Guardar"
+    E->>GVM: changeCover(id, tapa con dibujo)
+    GVM->>R: ChangeCoverUseCase, save(cuaderno)
+```
+
 ## 6. Decisiones de diseño que conviene entender
 
 **El dominio no conoce PencilKit.** `Drawing.strokesData` es `Data` opaco.
@@ -975,6 +1023,14 @@ pendiente" a través de `PageSession`. Quien implementa ese protocolo es
 se crean de nuevo. Lo que debe sobrevivir al cambio vive fuera:
 `CanvasPreferences` (dibujar con el dedo) y una única paleta de herramientas
 compartida (lápiz y color elegidos).
+
+**La portada dibujada se guarda dos veces.** Los trazos, para seguir
+editándola, y una imagen PNG transparente, para que la galería la muestre sin
+crear un lienzo de PencilKit por cada tarjeta. Al ser transparente, el color
+de la tapa se ve debajo y se puede cambiar sin volver a dibujar. El lienzo de
+la portada tiene un tamaño fijo, en la proporción de la tapa, para que el
+dibujo encaje igual en cualquier orientación
+(ver [ADR 0015](adr/0015-portada-dibujada.md)).
 
 **La tapa es un dato, no un dibujo.** `NotebookCover` son dos valores (color
 y estilo); `NotebookCoverView` la pinta con el título encima. La misma vista

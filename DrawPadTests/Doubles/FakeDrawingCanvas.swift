@@ -16,6 +16,11 @@ final class FakeDrawingCanvas: DrawingCanvas {
     var png: Data? = Data("png".utf8)
     var pdf: Data? = Data("pdf".utf8)
     var thumbnail: Data? = Data("mini".utf8)
+    var strokesPNG: Data? = Data("portada".utf8)
+    /// Si tiene valor, `load` lanza este error.
+    var loadError: Error?
+    private(set) var paperColor: CoverColor?
+    private(set) var clearCount = 0
     private(set) var isFingerDrawingEnabled: Bool?
     private(set) var background: CanvasBackground?
     private(set) var theme: CanvasTheme?
@@ -39,11 +44,13 @@ final class FakeDrawingCanvas: DrawingCanvas {
     func currentData() -> Data { strokes }
 
     func load(_ strokesData: Data) throws {
+        if let loadError { throw loadError }
         strokes = strokesData
         onDrawingChanged?() // PencilKit también avisa al cargar.
     }
 
     func clear() {
+        clearCount += 1
         strokes = Data()
         onDrawingChanged?()
     }
@@ -68,6 +75,14 @@ final class FakeDrawingCanvas: DrawingCanvas {
 
     func renderPNG() -> Data? {
         isEmpty ? nil : png
+    }
+
+    func setPaperColor(_ color: CoverColor) {
+        paperColor = color
+    }
+
+    func renderStrokesPNG() -> Data? {
+        hasStrokes ? strokesPNG : nil
     }
 
     func renderPDF() -> Data? {

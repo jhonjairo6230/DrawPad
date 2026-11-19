@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Dibuja la tapa de un cuaderno a partir de su color, su estilo y su título.
 ///
@@ -40,6 +41,24 @@ struct NotebookCoverView: View {
                     .padding(.horizontal, 18)
                     .padding(.top, 36)
                 Spacer()
+            }
+
+        case .drawn:
+            ZStack(alignment: .bottom) {
+                if let data = cover.drawing?.imageData, let image = UIImage(data: data) {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                }
+                // El título siempre a la vista, aunque el dibujo no lo tenga.
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .padding(.vertical, 6)
+                    .padding(.horizontal, 10)
+                    .frame(maxWidth: .infinity)
+                    .background(.black.opacity(0.35))
             }
 
         case .spine:

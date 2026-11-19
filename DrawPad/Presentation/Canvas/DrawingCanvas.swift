@@ -40,6 +40,11 @@ protocol DrawingCanvas: AnyObject {
     /// `true`: los toques mueven textos e imágenes y no se puede dibujar,
     /// ampliar ni desplazar. `false`: el lienzo funciona como siempre.
     func setArrangingElements(_ enabled: Bool)
+    /// Pinta el papel de un color de tapa (lienzo de la portada).
+    func setPaperColor(_ color: CoverColor)
+    /// Solo los trazos, con fondo transparente, como PNG; `nil` si no hay
+    /// trazos. Es la imagen de una portada dibujada.
+    func renderStrokesPNG() -> Data?
     /// Cambia el papel: su patrón y si es claro u oscuro. No modifica los
     /// trazos, aunque en papel oscuro la tinta negra se muestra blanca.
     func setBackground(_ background: CanvasBackground, theme: CanvasTheme)

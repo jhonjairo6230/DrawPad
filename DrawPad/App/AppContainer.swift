@@ -44,6 +44,18 @@ final class AppContainer {
         )
     }
 
+    /// Monta la pantalla para dibujar una portada: un lienzo nuevo y su ViewModel.
+    func makeCoverDrawingModule(initialDrawing: CoverDrawing?, color: CoverColor) -> CoverDrawingModule {
+        let canvas = PencilKitCanvas()
+        let viewModel = CoverDrawingViewModel(
+            canvas: canvas,
+            initialDrawing: initialDrawing,
+            color: color,
+            preferences: canvasPreferences
+        )
+        return CoverDrawingModule(viewModel: viewModel, canvas: canvas)
+    }
+
     /// Monta la pantalla de una hoja: un lienzo nuevo y su ViewModel.
     func makeCanvasModule(drawingID: UUID, shareName: String) -> CanvasModule {
         let canvas = PencilKitCanvas()

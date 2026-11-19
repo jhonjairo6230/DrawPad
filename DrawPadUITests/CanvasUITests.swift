@@ -81,6 +81,44 @@ final class CanvasUITests: XCTestCase {
         XCTAssertFalse(app.buttons["Verde"].isSelected)
     }
 
+    func testDrawingTheCoverAndKeepingItAfterReopeningTheEditor() {
+        openNewNotebook()
+        goBackToGallery()
+
+        openCoverEditor(of: "Cuaderno 1")
+        app.buttons["Dibujo"].tap()
+        app.buttons["Dibujar portada"].tap()
+        XCTAssertTrue(app.buttons["Usar dibujo"].waitForExistence(timeout: 5))
+        app.buttons["Dibujar con el dedo"].tap()
+        canvasPoint(0.45, 0.4).press(forDuration: 0.1, thenDragTo: canvasPoint(0.55, 0.55))
+        app.buttons["Usar dibujo"].tap()
+
+        // De vuelta en el editor, ya hay dibujo.
+        XCTAssertTrue(app.buttons["Editar dibujo"].waitForExistence(timeout: 5))
+        app.buttons["Guardar"].tap()
+        XCTAssertTrue(app.buttons["Cuaderno 1"].waitForExistence(timeout: 5))
+
+        openCoverEditor(of: "Cuaderno 1")
+        XCTAssertTrue(app.buttons["Editar dibujo"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Quitar dibujo"].exists)
+        app.buttons["Cancelar"].tap()
+        assertAppIsRunning()
+    }
+
+    func testCancellingTheCoverDrawingDoesNotAddADrawing() {
+        openNewNotebook()
+        goBackToGallery()
+
+        openCoverEditor(of: "Cuaderno 1")
+        app.buttons["Dibujo"].tap()
+        app.buttons["Dibujar portada"].tap()
+        XCTAssertTrue(app.buttons["Usar dibujo"].waitForExistence(timeout: 5))
+        app.buttons["Cancelar dibujo"].tap()
+
+        XCTAssertTrue(app.buttons["Dibujar portada"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Quitar dibujo"].exists)
+    }
+
     // MARK: - Hojas
 
     func testAddingPagesMovingBetweenThemAndDeletingOne() {

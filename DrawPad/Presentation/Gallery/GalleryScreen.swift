@@ -8,6 +8,8 @@ struct GalleryScreen: View {
     @Bindable var viewModel: GalleryViewModel
     /// Fábrica que monta un cuaderno abierto (la da ``AppContainer``).
     let makeNotebook: (UUID) -> NotebookViewModel
+    /// Fábrica de la pantalla para dibujar una portada (la da ``AppContainer``).
+    let makeCoverDrawing: (CoverDrawing?, CoverColor) -> CoverDrawingModule
 
     @State private var openNotebook: NotebookViewModel?
     @State private var notebookToRename: NotebookSummary?
@@ -41,7 +43,11 @@ struct GalleryScreen: View {
             viewModel.load()
         }
         .sheet(item: $notebookToRestyle) { notebook in
-            CoverEditorSheet(title: notebook.title, cover: notebook.cover) { cover in
+            CoverEditorSheet(
+                title: notebook.title,
+                cover: notebook.cover,
+                makeCoverDrawing: makeCoverDrawing
+            ) { cover in
                 viewModel.changeCover(id: notebook.id, to: cover)
             }
         }
