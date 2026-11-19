@@ -267,11 +267,13 @@ final class SwiftDataLibraryTests: XCTestCase {
         let connector = PageElement.sampleConnector(
             pageID: pageID, from: service.id, to: queue.id, style: .line, createdAt: date(3)
         )
+        let diagram = PageElement.sampleMermaid(pageID: pageID, createdAt: date(4))
         try library.save(queue)
         try library.save(service)
         try library.save(connector)
+        try library.save(diagram)
 
-        XCTAssertEqual(try library.listElements(pageID: pageID), [queue, service, connector])
+        XCTAssertEqual(try library.listElements(pageID: pageID), [queue, service, connector, diagram])
     }
 
     func testChangingAnElementKindClearsTheColumnsItNoLongerUses() throws {

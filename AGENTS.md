@@ -11,6 +11,10 @@ Documentación en `docs/`; decisiones en `docs/adr/`.
 - `Presentation` no conoce `Data`: el ViewModel recibe casos de uso.
 - PencilKit solo se toca en `PencilKitCanvas.swift` y `PencilCanvasView.swift`.
   El ViewModel usa el protocolo `DrawingCanvas`.
+- WebKit solo se toca en `Presentation/Mermaid/WebKitMermaidPreview.swift` y
+  `MermaidPreviewView.swift`; el ViewModel usa el protocolo `MermaidPreview`.
+  Mermaid va dentro de la app (`Resources/Mermaid`, versión 11.x fijada): no
+  se carga de internet.
 - Las implementaciones concretas solo se crean en `App/AppContainer.swift`.
 - No crees vistas de UIKit (`PKCanvasView`…) en `DrawPadApp.init()`: aún no
   existe `UIApplication` y la app se cierra al tocar. En `AppContainer` todo

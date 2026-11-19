@@ -32,6 +32,10 @@ Glosario para estudiar el código. Cada entrada dice qué es y dónde verlo.
 | `.fileImporter` | Abre el selector de archivos del sistema (Archivos, iCloud Drive). | `GalleryScreen` |
 | `.onOpenURL` | Recibe el archivo con el que se abrió la app. | `GalleryScreen` |
 | `startAccessingSecurityScopedResource` | Permiso temporal para leer un archivo de fuera de la app. | `SecurityScopedFileReader.swift` |
+| `WKWebView` | Una vista web (WebKit). Aquí ejecuta Mermaid sin conexión. | `WebKitMermaidPreview.swift` |
+| `WKUserScript` | JavaScript que se inyecta en la página al cargarla. | `mermaid.min.js` en `WebKitMermaidPreview` |
+| `callAsyncJavaScript` | Llama a JavaScript asíncrono desde Swift y espera su resultado. | `render(source:theme:)` |
+| `WKWebView.pdf(configuration:)` | PDF de una parte de la página; luego se convierte en PNG. | `snapshot()` |
 | `UIActivityViewController` | La hoja de compartir del sistema. | `ActivityView.swift` |
 | `UIViewControllerRepresentable` | Como `UIViewRepresentable`, para un controlador de UIKit. | `ActivityView.swift` |
 | `.sheet(item:)` | Presenta una hoja mientras un valor opcional no sea `nil`. | Hoja de compartir en `CanvasScreen` |

@@ -319,6 +319,10 @@ final class SwiftDataLibrary: NotebookRepository, DrawingRepository, PageElement
             record.text = shape.label
             record.shapeKindRaw = shape.kind.rawValue
             record.quarterTurns = shape.quarterTurns
+        case .mermaid(let diagram):
+            record.kindRaw = PageElementRecord.mermaidKind
+            record.text = diagram.source
+            record.imageData = diagram.image
         case .connector(let connector):
             record.kindRaw = PageElementRecord.connectorKind
             record.fromID = connector.fromID
@@ -345,6 +349,9 @@ final class SwiftDataLibrary: NotebookRepository, DrawingRepository, PageElement
                 label: record.text ?? "",
                 quarterTurns: ((record.quarterTurns ?? 0) % 4 + 4) % 4
             ))
+        case PageElementRecord.mermaidKind:
+            guard let source = record.text, let image = record.imageData else { return nil }
+            content = .mermaid(MermaidDiagram(source: source, image: image))
         case PageElementRecord.connectorKind:
             guard let fromID = record.fromID, let toID = record.toID else { return nil }
             content = .connector(Connector(

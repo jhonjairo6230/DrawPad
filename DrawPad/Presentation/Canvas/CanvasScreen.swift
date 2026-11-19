@@ -11,6 +11,7 @@ import SwiftUI
 struct CanvasScreen: View {
     @Bindable var viewModel: CanvasViewModel
     let canvas: PencilKitCanvas
+    let makeMermaidEditor: (String, CanvasTheme) -> MermaidEditorModule
 
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.canEdit) private var canEdit
@@ -32,6 +33,15 @@ struct CanvasScreen: View {
             }
             .sheet(item: $viewModel.sharedFile) { file in
                 ActivityView(items: [file.url])
+            }
+            .sheet(item: $viewModel.mermaidEditor) { request in
+                MermaidEditorHost(
+                    request: request,
+                    theme: viewModel.theme,
+                    makeEditor: makeMermaidEditor
+                ) { source, snapshot in
+                    viewModel.commitMermaid(source: source, snapshot: snapshot, for: request)
+                }
             }
             .sheet(item: $viewModel.textEditor) { request in
                 TextElementEditorSheet(request: request) { text in
@@ -102,6 +112,9 @@ struct CanvasScreen: View {
             if element.isText || element.isShape {
                 Button("Editar texto") { viewModel.beginEditingSelectedText() }
             }
+            if element.isMermaid {
+                Button("Editar diagrama") { viewModel.beginEditingSelectedMermaid() }
+            }
             if element.isShape {
                 Button("Girar") { viewModel.rotateSelectedShape() }
             }
@@ -141,6 +154,9 @@ struct CanvasScreen: View {
             Menu {
                 Button { viewModel.beginNewText() } label: {
                     Label("Cuadro de texto", systemImage: "character.textbox")
+                }
+                Button { viewModel.beginNewMermaid() } label: {
+                    Label("Diagrama Mermaid", systemImage: "point.3.connected.trianglepath.dotted")
                 }
                 Button { viewModel.paste() } label: {
                     Label("Pegar", systemImage: "doc.on.clipboard")

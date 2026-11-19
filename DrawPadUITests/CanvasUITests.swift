@@ -388,6 +388,42 @@ final class CanvasUITests: XCTestCase {
         assertAppIsRunning()
     }
 
+    // MARK: - Diagramas de Mermaid
+
+    func testInsertingAMermaidDiagramFromTheTemplate() {
+        openNewNotebook()
+
+        chooseInsertAction("Diagrama Mermaid")
+        let insert = app.buttons["Confirmar diagrama"]
+        XCTAssertTrue(insert.waitForExistence(timeout: 10))
+        // Mermaid tarda un poco en dibujar la plantilla: el botón se activa después.
+        let enabled = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isEnabled == true"), object: insert)
+        XCTAssertEqual(XCTWaiter().wait(for: [enabled], timeout: 20), .completed, "Mermaid no dibujó la plantilla")
+        insert.tap()
+
+        XCTAssertTrue(app.images["Diagrama Mermaid"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["Editar diagrama"].exists)
+        app.buttons["Listo"].tap()
+        assertAppIsRunning()
+    }
+
+    func testAMermaidSyntaxErrorIsShownInTheEditor() {
+        openNewNotebook()
+
+        chooseInsertAction("Diagrama Mermaid")
+        let editor = app.textViews["Código Mermaid"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 10))
+        editor.tap()
+        editor.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 200))
+        editor.typeText("flowchart LR\n  A -->")
+
+        let error = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Error en el diagrama")).firstMatch
+        XCTAssertTrue(error.waitForExistence(timeout: 20))
+        XCTAssertFalse(app.buttons["Confirmar diagrama"].isEnabled)
+        app.buttons["Cancelar"].firstMatch.tap()
+        assertAppIsRunning()
+    }
+
     // MARK: - Suavizar
 
     func testSmoothingStrokesCanBeRepeatedAndUndone() {

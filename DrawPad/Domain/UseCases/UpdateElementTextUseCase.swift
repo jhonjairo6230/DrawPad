@@ -24,7 +24,7 @@ struct UpdateElementTextUseCase {
         case .shape(var shape):
             shape.label = trimmed
             element.content = .shape(shape)
-        case .image, .connector:
+        case .image, .connector, .mermaid:
             throw DrawingError.elementNotFound
         }
         try elements.save(element)

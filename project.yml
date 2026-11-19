@@ -21,6 +21,11 @@ targets:
     platform: iOS
     sources:
       - path: DrawPad
+        excludes:
+          - "Resources/Mermaid/**"
+      # Mermaid (JavaScript, licencia MIT) va como recurso, no como código.
+      - path: DrawPad/Resources/Mermaid
+        buildPhase: resources
     info:
       path: DrawPad/Resources/Info.plist
       properties:

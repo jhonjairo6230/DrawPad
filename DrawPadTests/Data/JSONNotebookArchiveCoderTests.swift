@@ -32,6 +32,7 @@ final class JSONNotebookArchiveCoderTests: XCTestCase {
                 api,
                 queue,
                 .sampleConnector(pageID: second.id, from: api.id, to: queue.id, style: .line),
+                .sampleMermaid(pageID: second.id, source: "graph TD\n A-->B", image: "diagrama"),
             ]
         )
     }

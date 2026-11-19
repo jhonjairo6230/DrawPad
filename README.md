@@ -25,6 +25,8 @@ desde Windows. No está pensada para publicarse en el App Store.
   y texto o imágenes pegados del portapapeles, para dibujar encima.
 - **Figuras para diagramas** (cuadrado, círculo, rombo, cilindro) con texto,
   giro de 90° y **flechas o líneas** que las unen y las siguen al moverlas.
+- **Diagramas Mermaid**: escribes el diagrama en texto y se dibuja en la hoja
+  (sin conexión), para anotarlo encima con el Pencil.
 - **Suavizar trazos**: quita el temblor de lo dibujado (se puede deshacer).
 - Deshacer y rehacer.
 - **Dibujar con el dedo** (opcional; por defecto solo dibuja el Pencil).
@@ -52,6 +54,10 @@ Guía completa: [docs/compilacion-e-instalacion.md](docs/compilacion-e-instalaci
 - **XcodeGen**: el proyecto de Xcode se genera desde `project.yml`.
 - **GitHub Actions**: pruebas en simulador y `.ipa` sin firmar en cada push.
 - **Git Flow**: `main`, `develop`, `feature/`, `release/`, `backport/`, `hotfix/`.
+
+## Licencias de terceros
+
+- [Mermaid](https://mermaid.js.org) 11.17.2, licencia MIT: `DrawPad/Resources/Mermaid/LICENSE-mermaid.txt`.
 
 ## Documentación
 

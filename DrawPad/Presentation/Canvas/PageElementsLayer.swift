@@ -200,6 +200,14 @@ private final class PageElementView: UIView {
                 isAccessibilityElement = true
                 accessibilityLabel = shape.label.isEmpty ? shape.kind.title : "\(shape.kind.title): \(shape.label)"
                 accessibilityTraits = .staticText
+            case .mermaid(let diagram):
+                imageView.image = UIImage(data: diagram.image)
+                imageView.isHidden = false
+                label.isHidden = true
+                shapeView.isHidden = true
+                isAccessibilityElement = true
+                accessibilityLabel = "Diagrama Mermaid"
+                accessibilityTraits = .image
             case .connector:
                 break // Las conexiones no tienen vista propia.
             }
@@ -250,7 +258,7 @@ private final class PageElementView: UIView {
     @objc private func pinched(_ gesture: UIPinchGestureRecognizer) {
         // Imágenes y figuras cambian de tamaño; un texto se ajusta a su contenido.
         switch content {
-        case .some(.image), .some(.shape): break
+        case .some(.image), .some(.shape), .some(.mermaid): break
         default: return
         }
         switch gesture.state {

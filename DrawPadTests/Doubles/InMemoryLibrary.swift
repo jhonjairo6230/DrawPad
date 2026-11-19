@@ -177,6 +177,24 @@ extension PageElement {
         )
     }
 
+    /// Diagrama de Mermaid de ejemplo para las pruebas.
+    static func sampleMermaid(
+        id: UUID = UUID(),
+        pageID: UUID = UUID(),
+        source: String = "flowchart LR\n  A --> B",
+        image: String = "png",
+        frame: CGRect = CGRect(x: 100, y: 100, width: 300, height: 200),
+        createdAt: Date = Date(timeIntervalSince1970: 0)
+    ) -> PageElement {
+        PageElement(
+            id: id,
+            pageID: pageID,
+            frame: frame,
+            content: .mermaid(MermaidDiagram(source: source, image: Data(image.utf8))),
+            createdAt: createdAt
+        )
+    }
+
     /// Conexión de ejemplo para las pruebas.
     static func sampleConnector(
         id: UUID = UUID(),

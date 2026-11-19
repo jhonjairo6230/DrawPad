@@ -50,6 +50,8 @@ enum PageElementStyle {
                 UIImage(data: data)?.draw(in: element.frame)
             case .shape(let shape):
                 DiagramRenderer.draw(shape, in: element.frame, theme: theme)
+            case .mermaid(let diagram):
+                UIImage(data: diagram.image)?.draw(in: element.frame)
             case .connector:
                 break // Ya dibujadas arriba.
             }

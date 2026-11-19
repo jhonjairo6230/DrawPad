@@ -573,6 +573,58 @@ final class CanvasViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.isConnecting)
     }
 
+    // MARK: - Diagramas de Mermaid
+
+    func testANewDiagramStartsFromTheTemplate() throws {
+        let viewModel = try makeLoadedViewModel()
+
+        viewModel.beginNewMermaid()
+
+        XCTAssertEqual(viewModel.mermaidEditor?.source, MermaidEditorRequest.template)
+        XCTAssertEqual(viewModel.mermaidEditor?.isNew, true)
+    }
+
+    func testCommittingANewDiagramPlacesItSelectedAndReadyToMove() throws {
+        let viewModel = try makeLoadedViewModel()
+        canvas.viewportSize = CGSize(width: 1000, height: 800)
+        viewModel.beginNewMermaid()
+        let request = try XCTUnwrap(viewModel.mermaidEditor)
+
+        viewModel.commitMermaid(
+            source: "graph TD\n A-->B",
+            snapshot: MermaidSnapshot(image: Data("png".utf8), size: CGSize(width: 2000, height: 400)),
+            for: request
+        )
+
+        let added = try XCTUnwrap(viewModel.elements.first)
+        XCTAssertEqual(added.content, .mermaid(MermaidDiagram(source: "graph TD\n A-->B", image: Data("png".utf8))))
+        // Como mucho el 80 % del ancho de la pantalla.
+        XCTAssertEqual(added.frame.width, 800, accuracy: 0.001)
+        XCTAssertEqual(added.frame.height, 160, accuracy: 0.001)
+        XCTAssertEqual(viewModel.selectedElementID, added.id)
+        XCTAssertTrue(viewModel.isArrangingElements)
+    }
+
+    func testEditingTheSelectedDiagramReplacesSourceAndImage() throws {
+        let diagram = PageElement.sampleMermaid(pageID: drawing.id, source: "graph TD\n A-->B")
+        let viewModel = try makeLoadedViewModel(elements: [diagram])
+        viewModel.setArrangingElements(true)
+        canvas.onElementSelected?(diagram.id)
+
+        viewModel.beginEditingSelectedMermaid()
+        let request = try XCTUnwrap(viewModel.mermaidEditor)
+        XCTAssertEqual(request.source, "graph TD\n A-->B")
+        XCTAssertFalse(request.isNew)
+        viewModel.commitMermaid(
+            source: "graph TD\n A-->C",
+            snapshot: MermaidSnapshot(image: Data("nuevo".utf8), size: CGSize(width: 300, height: 200)),
+            for: request
+        )
+
+        XCTAssertEqual(viewModel.elements.first?.content, .mermaid(MermaidDiagram(source: "graph TD\n A-->C", image: Data("nuevo".utf8))))
+        XCTAssertEqual(repository.elements[diagram.id]?.content, viewModel.elements.first?.content)
+    }
+
     // MARK: - Suavizar
 
     func testSmoothStrokesSmoothsTheCanvasAndSavesTheResult() {

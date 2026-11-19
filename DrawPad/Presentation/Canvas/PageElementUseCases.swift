@@ -12,6 +12,8 @@ struct PageElementUseCases {
     let addShape: AddShapeElementUseCase
     let rotate: RotateShapeUseCase
     let connect: ConnectElementsUseCase
+    let addMermaid: AddMermaidElementUseCase
+    let updateMermaid: UpdateMermaidElementUseCase
 
     /// Todos sobre el mismo repositorio y el mismo portapapeles.
     init(elements: PageElementRepository, clipboard: Clipboard) {
@@ -29,5 +31,7 @@ struct PageElementUseCases {
         self.addShape = AddShapeElementUseCase(elements: elements)
         self.rotate = RotateShapeUseCase(elements: elements)
         self.connect = ConnectElementsUseCase(elements: elements)
+        self.addMermaid = AddMermaidElementUseCase(elements: elements)
+        self.updateMermaid = UpdateMermaidElementUseCase(elements: elements)
     }
 }
