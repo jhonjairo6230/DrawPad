@@ -26,7 +26,15 @@ final class AppContainer {
         createNotebook: CreateNotebookUseCase(notebooks: library, drawings: library),
         renameNotebook: RenameNotebookUseCase(notebooks: library),
         deleteNotebook: DeleteNotebookUseCase(notebooks: library),
-        changeCover: ChangeCoverUseCase(notebooks: library)
+        changeCover: ChangeCoverUseCase(notebooks: library),
+        exportNotebook: ExportNotebookUseCase(
+            notebooks: library, drawings: library, elements: library,
+            coder: archiveCoder, store: exportFileStore
+        ),
+        importNotebook: ImportNotebookUseCase(
+            notebooks: library, drawings: library, elements: library,
+            coder: archiveCoder, reader: SecurityScopedFileReader()
+        )
     )
 
     /// Monta un cuaderno abierto. Cada hoja que muestre la crea con
@@ -93,6 +101,7 @@ final class AppContainer {
     private lazy var canvasPreferences = CanvasPreferences()
     private lazy var imageLibrary: ImageLibrary = PhotoLibraryImageExporter()
     private lazy var exportFileStore: ExportFileStore = TemporaryExportFileStore.live()
+    private lazy var archiveCoder: NotebookArchiveCoder = JSONNotebookArchiveCoder()
     /// En las pruebas de interfaz, un portapapeles fijo: leer el del sistema
     /// muestra un aviso de permiso de iOS que una prueba no puede aceptar.
     private lazy var clipboard: Clipboard = isUITesting

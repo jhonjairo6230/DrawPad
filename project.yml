@@ -35,6 +35,25 @@ targets:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         NSPhotoLibraryAddUsageDescription: DrawPad necesita permiso para guardar tus dibujos en Fotos.
+        # Archivos .drawpad: cuadernos exportados (ver docs/adr/0017).
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: com.jhonjairo6230.drawpad.notebook
+            UTTypeDescription: Cuaderno de DrawPad
+            UTTypeConformsTo:
+              - public.data
+              - public.content
+            UTTypeTagSpecification:
+              public.filename-extension:
+                - drawpad
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Cuaderno de DrawPad
+            CFBundleTypeRole: Editor
+            LSHandlerRank: Owner
+            LSItemContentTypes:
+              - com.jhonjairo6230.drawpad.notebook
+        # iOS copia el archivo a la app al abrirlo desde Archivos, en lugar de
+        # editarlo donde está.
+        LSSupportsOpeningDocumentsInPlace: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jhonjairo6230.drawpad

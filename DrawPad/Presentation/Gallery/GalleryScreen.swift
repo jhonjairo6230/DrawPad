@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Pantalla inicial: la cuadrícula de cuadernos.
 ///
@@ -16,6 +17,7 @@ struct GalleryScreen: View {
     @State private var newTitle = ""
     @State private var notebookToDelete: NotebookSummary?
     @State private var notebookToRestyle: NotebookSummary?
+    @State private var isImporting = false
 
     private let columns = [GridItem(.adaptive(minimum: 170), spacing: 28)]
 
@@ -24,7 +26,10 @@ struct GalleryScreen: View {
             content
                 .navigationTitle("Cuadernos")
                 .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
+                    ToolbarItemGroup(placement: .topBarTrailing) {
+                        Button { isImporting = true } label: {
+                            Label("Importar", systemImage: "square.and.arrow.down.on.square")
+                        }
                         Button { createAndOpen() } label: {
                             Label("Nuevo cuaderno", systemImage: "plus")
                         }
@@ -35,6 +40,20 @@ struct GalleryScreen: View {
                 }
         }
         .onAppear { viewModel.load() }
+        // Elegir un archivo .drawpad en Archivos / iCloud Drive.
+        .fileImporter(isPresented: $isImporting, allowedContentTypes: [.drawPadNotebook]) { result in
+            if case .success(let url) = result {
+                viewModel.importNotebook(from: url)
+            }
+        }
+        // Tocar un archivo .drawpad en la app Archivos abre DrawPad con él.
+        .onOpenURL { url in
+            openNotebook = nil
+            viewModel.importNotebook(from: url)
+        }
+        .sheet(item: $viewModel.sharedFile) { file in
+            ActivityView(items: [file.url])
+        }
         .onChange(of: openNotebook) { closed, opened in
             // Al volver de un cuaderno: guardar lo pendiente y refrescar la
             // lista, en ese orden, para que la portada salga actualizada.
@@ -112,6 +131,11 @@ struct GalleryScreen: View {
                                 notebookToRestyle = notebook
                             } label: {
                                 Label("Cambiar portada", systemImage: "paintpalette")
+                            }
+                            Button {
+                                viewModel.export(id: notebook.id)
+                            } label: {
+                                Label("Exportar", systemImage: "square.and.arrow.up")
                             }
                             Button(role: .destructive) {
                                 notebookToDelete = notebook

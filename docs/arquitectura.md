@@ -26,13 +26,14 @@ flowchart TB
     subgraph DOM["Domain — Swift puro"]
         D1["Casos de uso<br/>cuadernos · hojas · papel<br/>textos, imágenes, figuras y conexiones<br/>exportar · compartir"]
         D2["Notebook · Drawing · PageElement<br/>CanvasBackground · CanvasTheme<br/>DrawingError"]
-        D3["NotebookRepository · DrawingRepository<br/>PageElementRepository<br/>ImageLibrary · ExportFileStore · Clipboard<br/>(protocolos)"]
+        D3["NotebookRepository · DrawingRepository<br/>PageElementRepository<br/>ImageLibrary · ExportFileStore · Clipboard<br/>NotebookArchiveCoder · ImportedFileReader<br/>(protocolos)"]
     end
     subgraph DATA["Data — detalles técnicos"]
         T1["SwiftDataLibrary<br/>NotebookRecord · DrawingRecord<br/>PageElementRecord"]
         T2["PhotoLibraryImageExporter<br/>(Photos)"]
         T4["TemporaryExportFileStore<br/>(archivos temporales)"]
         T5["SystemClipboard<br/>(UIPasteboard)"]
+        T6["JSONNotebookArchiveCoder<br/>SecurityScopedFileReader<br/>(archivos .drawpad)"]
         T3[("Base de datos local<br/>SwiftData")]
     end
 
@@ -50,6 +51,7 @@ flowchart TB
     T2 -. implementa .-> D3
     T4 -. implementa .-> D3
     T5 -. implementa .-> D3
+    T6 -. implementa .-> D3
     T1 --> T3
     A1 --> A2
     A2 --> G1
@@ -60,6 +62,7 @@ flowchart TB
     A2 --> T2
     A2 --> T4
     A2 --> T5
+    A2 --> T6
 ```
 
 Las flechas continuas son "usa"; las punteadas, "implementa". Fíjate en que
@@ -103,7 +106,8 @@ DrawPad/
 │   │   ├── ClipboardContent.swift  Lo que se puede pegar: texto o imagen
 │   │   ├── CanvasBackground.swift  Patrón del papel: blanco, cuadrícula, líneas, puntos
 │   │   ├── CanvasTheme.swift       Papel claro u oscuro
-│   │   └── ExportFormat.swift      Formatos para compartir: PNG o PDF
+│   │   ├── ExportFormat.swift      Formatos para compartir: PNG o PDF
+│   │   └── NotebookBundle.swift    Un cuaderno completo para exportar o importar
 │   ├── Errors/DrawingError.swift   Errores con mensaje para el usuario
 │   ├── Repositories/               Puertos (protocolos)
 │   │   ├── NotebookRepository.swift
@@ -111,7 +115,9 @@ DrawPad/
 │   │   ├── PageElementRepository.swift
 │   │   ├── Clipboard.swift
 │   │   ├── ImageLibrary.swift
-│   │   └── ExportFileStore.swift
+│   │   ├── ExportFileStore.swift
+│   │   ├── NotebookArchiveCoder.swift  Cuaderno ↔ archivo
+│   │   └── ImportedFileReader.swift    Leer un archivo elegido por el usuario
 │   └── UseCases/                   Una acción de negocio por archivo
 │       ├── ListNotebooksUseCase.swift
 │       ├── CreateNotebookUseCase.swift
@@ -119,6 +125,8 @@ DrawPad/
 │       ├── RenameNotebookUseCase.swift
 │       ├── DeleteNotebookUseCase.swift
 │       ├── ChangeCoverUseCase.swift
+│       ├── ExportNotebookUseCase.swift
+│       ├── ImportNotebookUseCase.swift      Si ya existe, lo reemplaza
 │       ├── ListPagesUseCase.swift
 │       ├── AddPageUseCase.swift
 │       ├── DeletePageUseCase.swift
@@ -143,11 +151,13 @@ DrawPad/
 │   │   ├── DrawingRecord.swift     Modelo de SwiftData de una hoja (@Model)
 │   │   └── PageElementRecord.swift Modelo de SwiftData de un texto o una imagen (@Model)
 │   ├── Repositories/SwiftDataLibrary.swift   Los tres repositorios, una base de datos
+│   ├── Archive/JSONNotebookArchiveCoder.swift  Formato .drawpad (JSON versionado)
 │   └── Gateways/
 │       ├── PhotoLibraryImageExporter.swift
 │       ├── TemporaryExportFileStore.swift
 │       ├── SystemClipboard.swift   Portapapeles del sistema
-│       └── FixedClipboard.swift    Portapapeles fijo para las pruebas de interfaz
+│       ├── FixedClipboard.swift    Portapapeles fijo para las pruebas de interfaz
+│       └── SecurityScopedFileReader.swift  Lee archivos de Archivos / iCloud Drive
 ├── Presentation/
 │   ├── Gallery/
 │   │   ├── GalleryScreen.swift     Cuadrícula de cuadernos y navegación
@@ -186,16 +196,19 @@ DrawPad/
 │   └── Common/
 │       ├── AlertMessage.swift
 │       ├── SharedFile.swift        Archivo listo para la hoja de compartir
-│       └── ActivityView.swift      Hoja de compartir de iOS
+│       ├── ActivityView.swift      Hoja de compartir de iOS
+│       └── UTType+DrawPad.swift    Tipo de archivo .drawpad
 └── Resources/Assets.xcassets       Icono de la app
 
 DrawPadTests/
 ├── Doubles/                        Falsos: biblioteca, lienzo, hoja abierta, Fotos, archivos
 ├── Domain/
 │   ├── UseCasesTests.swift
+│   ├── NotebookArchiveUseCasesTests.swift
 │   └── PageElementUseCasesTests.swift
 ├── Data/
 │   ├── SwiftDataLibraryTests.swift             Base de datos real en memoria
+│   ├── JSONNotebookArchiveCoderTests.swift     Escribir y leer .drawpad
 │   └── TemporaryExportFileStoreTests.swift
 └── Presentation/
     ├── GalleryViewModelTests.swift
@@ -233,6 +246,8 @@ classDiagram
         +create() UUID?
         +rename(id, title)
         +changeCover(id, cover)
+        +export(id)
+        +importNotebook(from: URL)
         +delete(id)
     }
     class NotebookScreen {
@@ -335,6 +350,7 @@ classDiagram
         ListNotebooks · CreateNotebook
         LoadNotebook · RenameNotebook
         DeleteNotebook · ChangeCover
+        ExportNotebook · ImportNotebook
         ListPages · AddPage · DeletePage
         LoadDrawing · SaveDrawing
         ChangeBackground
@@ -987,6 +1003,55 @@ sequenceDiagram
     end
 ```
 
+### 5.13 Exportar e importar un cuaderno (iPad → iCloud Drive → iPhone)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Usuario
+    participant G as GalleryScreen
+    participant GVM as GalleryViewModel
+    participant EX as ExportNotebookUseCase
+    participant IM as ImportNotebookUseCase
+    participant C as JSONNotebookArchiveCoder
+    participant R as Repositorios
+    participant F as Archivos / iCloud Drive
+
+    Note over U,F: En el iPad
+    U->>G: mantiene pulsado el cuaderno, "Exportar"
+    G->>GVM: export(id)
+    GVM->>EX: execute(id)
+    EX->>R: cuaderno, hojas en orden y elementos de cada hoja
+    EX->>C: encode(NotebookBundle)
+    C-->>EX: JSON con format y version
+    EX-->>GVM: URL de "Física.drawpad" (carpeta temporal)
+    GVM-->>G: hoja de compartir
+    U->>F: "Guardar en Archivos", iCloud Drive
+
+    Note over U,F: En el otro dispositivo
+    alt botón Importar
+        U->>G: "Importar", elige el archivo
+    else toca el archivo en la app Archivos
+        F->>G: onOpenURL(archivo)
+    end
+    G->>GVM: importNotebook(from: url)
+    GVM->>IM: execute(fileURL)
+    IM->>F: lee el archivo (acceso temporal)
+    IM->>C: decode(datos)
+    alt no es un cuaderno o está dañado
+        C-->>GVM: importFailed
+    else versión más nueva
+        C-->>GVM: unsupportedArchiveVersion
+    else válido
+        alt el cuaderno ya está
+            IM->>R: deleteNotebook(id) con sus hojas y elementos
+        end
+        IM->>R: guarda cuaderno, hojas y elementos
+        IM-->>GVM: importado o actualizado
+    end
+    GVM-->>G: alerta con el resultado y lista actualizada
+```
+
 ## 6. Decisiones de diseño que conviene entender
 
 **El dominio no conoce PencilKit.** `Drawing.strokesData` es `Data` opaco.
@@ -1036,6 +1101,14 @@ un **modo aparte**: mientras dura, el lienzo no atiende toques y los recibe
 la capa. Los elementos no son trazos: cada uno es una fila de la base de
 datos y se guarda al momento, no con el autoguardado
 (ver [ADR 0013](adr/0013-textos-e-imagenes.md)).
+
+**Exportar es un formato propio, versionado y separado del dominio.** El
+archivo `.drawpad` es un JSON con `format` y `version`, y tipos propios
+(`ArchiveFile`, `PageDTO`…) en vez de las entidades. Así cambiar una entidad
+no cambia el formato sin querer, y una versión futura se reconoce y se
+rechaza con un mensaje claro. **Importar reemplaza** el cuaderno si ya está
+(mismo identificador), para que el ida y vuelta iPad → iPhone actualice la
+copia en vez de duplicarla (ver [ADR 0017](adr/0017-exportar-importar-cuadernos.md)).
 
 **Las figuras son elementos y las conexiones también.** Una figura es un
 `PageElement` con un `DiagramShape` (tipo, texto, giro); una conexión es un
@@ -1148,6 +1221,8 @@ la interfaz va en el hilo principal). El temporizador de autoguardado es una
 | Qué se prueba | Archivo | Cómo |
 | ------------- | ------- | ---- |
 | Casos de uso | `Domain/UseCasesTests.swift`, `Domain/PageElementUseCasesTests.swift` | Biblioteca en memoria, portapapeles falso y dobles espía. |
+| Formato `.drawpad` | `Data/JSONNotebookArchiveCoderTests.swift` | Escribir y volver a leer un cuaderno completo; archivos dañados, de otra app o de una versión futura. |
+| Exportar e importar | `Domain/NotebookArchiveUseCasesTests.swift` | Biblioteca en memoria y formato falso; incluye el reemplazo de un cuaderno que ya existe. |
 | Biblioteca SwiftData | `Data/SwiftDataLibraryTests.swift` | Base de datos real, en memoria. Incluye la migración de dibujos sin cuaderno. |
 | Archivos para compartir | `Data/TemporaryExportFileStoreTests.swift` | Carpeta temporal real. |
 | ViewModel del lienzo | `Presentation/CanvasViewModelTests.swift` | Lienzo falso; el autoguardado se prueba con un retardo de milisegundos. |

@@ -23,6 +23,12 @@ Glosario para estudiar el código. Cada entrada dice qué es y dónde verlo.
 | `UIGestureRecognizer` | Reconoce gestos (toque, arrastre, pellizco) sobre una vista de UIKit. | `PageElementsLayer.swift` |
 | `isUserInteractionEnabled` | Si es `false`, la vista ignora los toques y pasan a la que tiene debajo. | Modo "mover" en `PencilKitCanvas` |
 | `TextEditor` + `@FocusState` | Campo de texto de varias líneas, y control de si tiene el teclado. | `TextElementEditorSheet.swift` |
+| `Codable` | Convierte tipos de Swift a JSON y al revés. | `JSONNotebookArchiveCoder.swift` |
+| `UTType` + `UTExportedTypeDeclarations` | Declara un tipo de archivo propio (`.drawpad`) para que el sistema sepa qué app lo abre. | `UTType+DrawPad.swift`, `project.yml` |
+| `CFBundleDocumentTypes` | Los tipos de archivo que la app sabe abrir desde Archivos. | `project.yml` |
+| `.fileImporter` | Abre el selector de archivos del sistema (Archivos, iCloud Drive). | `GalleryScreen` |
+| `.onOpenURL` | Recibe el archivo con el que se abrió la app. | `GalleryScreen` |
+| `startAccessingSecurityScopedResource` | Permiso temporal para leer un archivo de fuera de la app. | `SecurityScopedFileReader.swift` |
 | `UIActivityViewController` | La hoja de compartir del sistema. | `ActivityView.swift` |
 | `UIViewControllerRepresentable` | Como `UIViewRepresentable`, para un controlador de UIKit. | `ActivityView.swift` |
 | `.sheet(item:)` | Presenta una hoja mientras un valor opcional no sea `nil`. | Hoja de compartir en `CanvasScreen` |

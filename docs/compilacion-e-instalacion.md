@@ -151,7 +151,19 @@ encendido en la misma red. Con una cuenta de pago de Apple Developer
 | El workflow falla en "Generar DrawPad.xcodeproj" | Error de sintaxis en `project.yml`. |
 | "Guardar en Fotos" da error de permiso | Ajustes → DrawPad → Fotos → permitir añadir fotos. |
 
-## 7. Si algún día tienes un Mac
+## 7. Pasar un cuaderno a otro dispositivo
+
+No hay sincronización automática (necesitaría una cuenta de pago de Apple
+Developer); se pasa a mano por iCloud Drive:
+
+1. En el iPad, en la galería, mantén pulsado el cuaderno → **Exportar** →
+   **Guardar en Archivos** → elige una carpeta de **iCloud Drive**.
+2. En el otro dispositivo, abre la app **Archivos**, busca `Nombre.drawpad`
+   y tócalo: se abre en DrawPad. También puedes usar el botón **Importar** de
+   la galería.
+3. Si ese cuaderno ya estaba, se reemplaza por la versión nueva.
+
+## 8. Si algún día tienes un Mac
 
 ```bash
 brew install xcodegen
