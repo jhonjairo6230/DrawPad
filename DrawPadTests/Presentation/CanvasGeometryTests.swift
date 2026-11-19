@@ -111,7 +111,7 @@ final class CanvasGeometryTests: XCTestCase {
         )
     }
 
-    // MARK: - Ajustar al ancho (solo lectura)
+    // MARK: - Ajustar al ancho (iPhone)
 
     func testAWidePageIsZoomedOutToFitTheWidth() {
         let phone = CGSize(width: 390, height: 700)

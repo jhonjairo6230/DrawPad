@@ -163,11 +163,26 @@ Developer); se pasa a mano por iCloud Drive:
    la galería.
 3. Si ese cuaderno ya estaba, se reemplaza por la versión nueva.
 
-## 8. Instalar en el iPhone (solo lectura)
+## 8. Instalar en el iPhone
 
-El mismo `.ipa` sirve para iPad y iPhone. En el iPhone la app **solo lee**:
-muestra los cuadernos importados, se pasa de hoja y se amplía, pero no se
-dibuja ni se edita.
+El mismo `.ipa` sirve para iPad y iPhone. En el iPhone no hay Apple Pencil,
+así que **no se dibujan trazos**, pero sí se escribe y se hacen diagramas:
+
+| | iPad | iPhone |
+| - | :-: | :-: |
+| Leer cuadernos, pasar de hoja, ampliar, compartir | ✅ | ✅ |
+| Importar y exportar cuadernos (`.drawpad`) | ✅ | ✅ |
+| Crear, renombrar y cambiar la portada de cuadernos | ✅ | — |
+| Dibujar (Pencil o dedo), deshacer, papel, suavizar, borrar todo | ✅ | — |
+| Cuadros de texto y pegar | ✅ | — |
+| Figuras, conexiones y diagramas Mermaid | ✅ | ✅ |
+| Hojas Markdown: crear, editar, importar y exportar `.md` | ✅ | ✅ |
+| Añadir hojas de dibujo | ✅ | ✅ (para diagramas) |
+| Borrar hojas de dibujo | ✅ | — |
+| Borrar hojas Markdown | ✅ | ✅ |
+
+El porqué está en los ADR [0018](adr/0018-iphone-solo-lectura.md),
+[0021](adr/0021-markdown-en-iphone.md) y [0022](adr/0022-diagramas-en-iphone.md).
 
 1. Conecta el iPhone al PC, desbloquéalo y toca **Confiar**.
 2. En el iPhone: **Ajustes → Privacidad y seguridad → Modo de desarrollador**
@@ -175,8 +190,14 @@ dibuja ni se edita.
 3. Instala `DrawPad-unsigned.ipa` con Sideloadly, con el mismo Apple ID.
 4. **Ajustes → General → VPN y gestión de dispositivos** → tu Apple ID →
    **Confiar**.
-5. Para leer un cuaderno, sigue la sección 7: exportar en el iPad a iCloud
-   Drive y abrir el `.drawpad` en el iPhone.
+5. Para tener un cuaderno en el iPhone, sigue la sección 7: exportar en el
+   iPad a iCloud Drive y abrir el `.drawpad` en el iPhone.
+
+**Llevar al iPad lo hecho en el iPhone.** No hay sincronización: es el mismo
+camino al revés. En la galería del iPhone, mantén pulsado el cuaderno →
+**Exportar** → iCloud Drive; en el iPad, **Importar**. El cuaderno del iPad se
+**reemplaza** por el que llega, así que si cambiaste el mismo cuaderno en los
+dos, gana el último que importas.
 
 Los límites de la cuenta gratuita (sección 5) cuentan por dispositivo:
 también hay que reinstalar en el iPhone cada 7 días.
