@@ -29,6 +29,8 @@ desde Windows. No está pensada para publicarse en el App Store.
 - Deshacer y rehacer.
 - **Dibujar con el dedo** (opcional; por defecto solo dibuja el Pencil).
 - Borrar todo, con confirmación.
+- **Exportar e importar cuadernos** en archivos `.drawpad`, por ejemplo para
+  pasarlos por iCloud Drive a otro dispositivo.
 - **Guardar en Fotos** y **compartir** como imagen (PNG) o PDF: AirDrop,
   Archivos, Mensajes, imprimir…
 

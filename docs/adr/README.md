@@ -23,6 +23,7 @@ entienda **por qué** el código es como es.
 | [0014](0014-ipa-y-pruebas-en-paralelo.md) | IPA y pruebas en paralelo en el workflow | Aceptada |
 | [0015](0015-portada-dibujada.md) | Portada dibujada a mano | Aceptada |
 | [0016](0016-figuras-de-diagrama.md) | Figuras de diagrama unidas con flechas | Aceptada |
+| [0017](0017-exportar-importar-cuadernos.md) | Exportar e importar cuadernos en archivos `.drawpad` | Aceptada |
 
 ## Cómo añadir un ADR
 
