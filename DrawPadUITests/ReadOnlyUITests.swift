@@ -61,9 +61,11 @@ final class ReadOnlyUITests: XCTestCase {
         let window = app.windows.firstMatch
         assertSampleTextIsShown(after: "abrir la hoja")
 
-        window.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.4))
-            .press(forDuration: 0.1, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.7, dy: 0.6)))
-        assertSampleTextIsShown(after: "arrastrar")
+        // Desplazar es vertical: desde iOS 26, deslizar a la derecha en
+        // cualquier punto de la pantalla es "volver" (a la galería).
+        window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.7))
+            .press(forDuration: 0.1, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4)))
+        assertSampleTextIsShown(after: "desplazar")
 
         window.pinch(withScale: 2, velocity: 2)
         assertSampleTextIsShown(after: "ampliar")
