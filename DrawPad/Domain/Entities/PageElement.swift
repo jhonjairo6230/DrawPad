@@ -14,6 +14,8 @@ struct PageElement: Equatable, Identifiable {
         /// dibuja entre los bordes de los elementos que une y los sigue al
         /// moverlos. Su `frame` es `.zero`.
         case connector(Connector)
+        /// Diagrama escrito en Mermaid: el texto y la imagen ya dibujada.
+        case mermaid(MermaidDiagram)
     }
 
     let id: UUID
@@ -39,6 +41,11 @@ struct PageElement: Equatable, Identifiable {
 
     var isConnector: Bool {
         if case .connector = content { return true }
+        return false
+    }
+
+    var isMermaid: Bool {
+        if case .mermaid = content { return true }
         return false
     }
 
@@ -80,6 +87,17 @@ enum ShapeKind: String, CaseIterable, Equatable {
         case .cylinder: return CGSize(width: 110, height: 140)
         }
     }
+}
+
+/// Un diagrama escrito en Mermaid (https://mermaid.js.org).
+///
+/// Se guardan las dos cosas: el **texto**, que es lo que se edita, y la
+/// **imagen** que salió al dibujarlo, para mostrar y exportar la hoja sin
+/// volver a dibujarlo cada vez.
+struct MermaidDiagram: Equatable {
+    var source: String
+    /// PNG del diagrama dibujado.
+    var image: Data
 }
 
 /// Flecha o línea entre dos elementos de la misma hoja.

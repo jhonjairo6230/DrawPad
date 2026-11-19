@@ -90,7 +90,11 @@ final class AppContainer {
             prepareShareFile: PrepareShareFileUseCase(store: exportFileStore),
             elementUseCases: PageElementUseCases(elements: library, clipboard: clipboard)
         )
-        return CanvasModule(viewModel: viewModel, canvas: canvas)
+        return CanvasModule(viewModel: viewModel, canvas: canvas) { source, theme in
+            let preview = WebKitMermaidPreview()
+            let editor = MermaidEditorViewModel(source: source, theme: theme, preview: preview)
+            return MermaidEditorModule(viewModel: editor, preview: preview)
+        }
     }
 
     // MARK: - Implementaciones concretas

@@ -22,6 +22,7 @@ flowchart TB
         P1["CanvasScreen<br/>CanvasViewModel"]
         P3["DrawingCanvas · PageSession<br/>(protocolos)"]
         P4["PencilKitCanvas<br/>PencilCanvasView"]
+        P5["WebKitMermaidPreview<br/>(Mermaid en WebKit, sin red)"]
     end
     subgraph DOM["Domain — Swift puro"]
         D1["Casos de uso<br/>cuadernos · hojas · papel<br/>textos, imágenes, figuras y conexiones<br/>exportar · compartir"]
@@ -45,6 +46,7 @@ flowchart TB
     P1 --> P3
     P1 --> D1
     P4 -. implementa .-> P3
+    P5 -. implementa .-> P3
     D1 --> D2
     D1 --> D3
     T1 -. implementa .-> D3
@@ -58,6 +60,7 @@ flowchart TB
     A2 --> N1
     A2 --> P1
     A2 --> P4
+    A2 --> P5
     A2 --> T1
     A2 --> T2
     A2 --> T4
@@ -102,7 +105,7 @@ DrawPad/
 │   │   ├── NotebookSummary.swift   Lo justo para la galería: tapa, hojas, actividad
 │   │   ├── Drawing.swift           Una hoja: trazos, miniatura, papel, fechas
 │   │   ├── DrawingSummary.swift    Lo justo para listar hojas (sin trazos)
-│   │   ├── PageElement.swift       Un texto, imagen, figura (DiagramShape) o conexión (Connector)
+│   │   ├── PageElement.swift       Un texto, imagen, figura (DiagramShape), conexión (Connector) o diagrama Mermaid
 │   │   ├── ClipboardContent.swift  Lo que se puede pegar: texto o imagen
 │   │   ├── CanvasBackground.swift  Patrón del papel: blanco, cuadrícula, líneas, puntos
 │   │   ├── CanvasTheme.swift       Papel claro u oscuro
@@ -143,6 +146,8 @@ DrawPad/
 │       ├── AddShapeElementUseCase.swift
 │       ├── RotateShapeUseCase.swift
 │       ├── ConnectElementsUseCase.swift
+│       ├── AddMermaidElementUseCase.swift   Guarda un diagrama ya dibujado
+│       ├── UpdateMermaidElementUseCase.swift
 │       ├── ExportDrawingUseCase.swift
 │       └── PrepareShareFileUseCase.swift
 ├── Data/
@@ -169,6 +174,13 @@ DrawPad/
 │   │   ├── CoverDrawingViewModel.swift Estado de esa pantalla
 │   │   ├── CoverDrawingModule.swift    Su ViewModel y su lienzo, juntos
 │   │   └── NotebookCover+Presentation.swift  Nombre y tono de cada color y estilo
+│   ├── Mermaid/
+│   │   ├── MermaidPreview.swift            Puerto: dibujar Mermaid y sacar la imagen
+│   │   ├── WebKitMermaidPreview.swift      Mermaid dentro de WebKit, sin red
+│   │   ├── MermaidPreviewView.swift        La vista web en SwiftUI
+│   │   ├── MermaidEditorViewModel.swift    Texto, vista previa y errores
+│   │   ├── MermaidEditorModule.swift       ViewModel + vista web; petición de editor
+│   │   └── MermaidEditorSheet.swift        Editor con vista previa
 │   ├── Notebook/
 │   │   ├── NotebookScreen.swift    Cuaderno abierto: hoja actual y controles de hojas
 │   │   └── NotebookViewModel.swift Pasar, añadir y eliminar hojas
@@ -199,7 +211,9 @@ DrawPad/
 │       ├── ActivityView.swift      Hoja de compartir de iOS
 │       ├── UTType+DrawPad.swift    Tipo de archivo .drawpad
 │       └── EditingCapability.swift Valor de entorno canEdit (false en el iPhone)
-└── Resources/Assets.xcassets       Icono de la app
+└── Resources/
+    ├── Assets.xcassets             Icono de la app
+    └── Mermaid/                    mermaid.min.js 11.17.2 (MIT) y su licencia
 
 DrawPadTests/
 ├── Doubles/                        Falsos: biblioteca, lienzo, hoja abierta, Fotos, archivos
@@ -216,6 +230,8 @@ DrawPadTests/
     ├── NotebookViewModelTests.swift
     ├── CanvasViewModelTests.swift
     ├── CoverDrawingViewModelTests.swift
+    ├── MermaidEditorViewModelTests.swift
+    ├── WebKitMermaidPreviewTests.swift      Mermaid real en WebKit (integración)
     ├── CanvasGeometryTests.swift
     ├── DiagramGeometryTests.swift
     └── StrokeSmootherTests.swift
@@ -359,6 +375,7 @@ classDiagram
         ListPageElements · AddText · AddImage
         Paste · UpdateText · Move · DeleteElement
         AddShape · RotateShape · ConnectElements
+        AddMermaid · UpdateMermaid
         ExportDrawing · PrepareShareFile
     }
     class NotebookRepository {
@@ -1054,6 +1071,44 @@ sequenceDiagram
     GVM-->>G: alerta con el resultado y lista actualizada
 ```
 
+### 5.14 Insertar un diagrama de Mermaid
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Usuario
+    participant V as CanvasScreen
+    participant VM as CanvasViewModel
+    participant E as MermaidEditorViewModel
+    participant W as WebKitMermaidPreview
+    participant UC as AddMermaidElementUseCase
+    participant R as PageElementRepository
+
+    U->>V: "Insertar", "Diagrama Mermaid"
+    V->>VM: beginNewMermaid()
+    VM-->>V: mermaidEditor con la plantilla
+    V->>W: crea la vista web (Mermaid incluido en la app)
+    V->>E: onAppear()
+    E->>W: render(texto, tema de la hoja)
+    W->>W: mermaid.render() en JavaScript
+    W-->>E: dibujado (tamaño) o error de Mermaid
+    loop mientras escribe
+        U->>E: updateSource(texto)
+        Note over E: espera 0,4 s sin teclear
+        E->>W: render(texto, tema)
+    end
+    U->>V: "Insertar"
+    V->>E: finish()
+    E->>W: render() y snapshot()
+    W->>W: PDF del recuadro del diagrama, a PNG
+    W-->>E: imagen y tamaño
+    E-->>V: texto e imagen
+    V->>VM: commitMermaid(texto, imagen)
+    VM->>UC: execute(hoja, texto, imagen, tamaño, centro, máximo)
+    UC->>R: save(diagrama)
+    VM-->>V: seleccionado, en modo mover
+```
+
 ## 6. Decisiones de diseño que conviene entender
 
 **El dominio no conoce PencilKit.** `Drawing.strokesData` es `Data` opaco.
@@ -1129,6 +1184,14 @@ moverlas o girarlas, y por eso quitar una figura quita sus conexiones (regla
 de `DeleteElementUseCase`). Girar es de 90 en 90°: basta con intercambiar
 ancho y alto, y el dibujo del cilindro cambia de orientación
 (ver [ADR 0016](adr/0016-figuras-de-diagrama.md)).
+
+**Mermaid se dibuja en la presentación y se guarda como texto e imagen.**
+La librería Mermaid (JavaScript) va dentro de la app y corre en una vista web
+sin conexión (`WebKitMermaidPreview`, el único sitio que conoce WebKit). El
+editor dibuja una vista previa visible y de ella sale la imagen; el dominio
+recibe el texto y el PNG ya hechos, como recibe el PNG al exportar. La hoja
+muestra la imagen como cualquier elemento, bajo los trazos, y el texto se
+guarda para volver a editarlo (ver [ADR 0019](adr/0019-hojas-mermaid.md)).
 
 **El portapapeles es un puerto.** `PasteElementUseCase` no sabe qué es
 `UIPasteboard`: pide a `Clipboard` "qué hay copiado". Así la lógica de pegar
@@ -1238,6 +1301,8 @@ la interfaz va en el hilo principal). El temporizador de autoguardado es una
 | ViewModel del lienzo | `Presentation/CanvasViewModelTests.swift` | Lienzo falso; el autoguardado se prueba con un retardo de milisegundos. |
 | Cuentas del zoom | `Presentation/CanvasGeometryTests.swift` | Funciones puras, sin vistas; incluye el ajuste al ancho del iPhone. |
 | Solo lectura | `DrawPadUITests/ReadOnlyUITests.swift` | Simulador de iPad con `-readOnly` y un cuaderno de ejemplo. |
+| Editor de Mermaid | `Presentation/MermaidEditorViewModelTests.swift` | Motor falso: espera al teclear, errores, imagen final. |
+| Mermaid real | `Presentation/WebKitMermaidPreviewTests.swift` | WebKit y la librería incluida: un diagrama válido se dibuja y da imagen; uno roto da el error de Mermaid. |
 | Suavizado | `Presentation/StrokeSmootherTests.swift` | Líneas de ejemplo: una recta no cambia, un zigzag se aplana, los extremos no se mueven. |
 | ViewModel de la galería | `Presentation/GalleryViewModelTests.swift` | Biblioteca en memoria. |
 | ViewModel del cuaderno | `Presentation/NotebookViewModelTests.swift` | Biblioteca en memoria y hojas abiertas falsas. |

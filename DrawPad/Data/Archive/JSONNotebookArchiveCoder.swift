@@ -179,6 +179,10 @@ private struct ElementDTO: Codable {
             text = value.label
             shape = value.kind.rawValue
             quarterTurns = value.quarterTurns
+        case .mermaid(let value):
+            kind = "mermaid"
+            text = value.source
+            image = value.image
         case .connector(let value):
             kind = "connector"
             fromID = value.fromID
@@ -205,6 +209,9 @@ private struct ElementDTO: Codable {
                 label: text ?? "",
                 quarterTurns: ((quarterTurns ?? 0) % 4 + 4) % 4
             ))
+        case "mermaid":
+            guard let text, let image else { return nil }
+            content = .mermaid(MermaidDiagram(source: text, image: image))
         case "connector":
             guard let fromID, let toID else { return nil }
             content = .connector(Connector(

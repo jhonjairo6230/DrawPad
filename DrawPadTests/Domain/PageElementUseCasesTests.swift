@@ -399,6 +399,64 @@ final class PageElementUseCasesTests: XCTestCase {
         XCTAssertEqual(Set(library.elements.keys), [a.id, b.id])
     }
 
+    // MARK: - Diagramas de Mermaid
+
+    func testAddMermaidSavesTheTrimmedSourceAndImageFittedToTheLimit() throws {
+        let library = InMemoryLibrary()
+
+        let element = try AddMermaidElementUseCase(elements: library).execute(
+            pageID: pageID, source: "  flowchart LR\n A-->B \n", image: Data("png".utf8),
+            imageSize: CGSize(width: 960, height: 360), centeredAt: center, maxSize: maxImageSize
+        )
+
+        XCTAssertEqual(element.content, .mermaid(MermaidDiagram(source: "flowchart LR\n A-->B", image: Data("png".utf8))))
+        XCTAssertEqual(element.frame.width, 480, accuracy: 0.001)
+        XCTAssertEqual(element.frame.height, 180, accuracy: 0.001)
+        XCTAssertEqual(element.frame.midX, center.x, accuracy: 0.001)
+        XCTAssertEqual(library.elements[element.id], element)
+    }
+
+    func testAddMermaidRejectsEmptySourceOrMissingImage() {
+        let library = InMemoryLibrary()
+        let useCase = AddMermaidElementUseCase(elements: library)
+
+        XCTAssertThrowsError(try useCase.execute(
+            pageID: pageID, source: "  ", image: Data("png".utf8),
+            imageSize: CGSize(width: 10, height: 10), centeredAt: center, maxSize: maxImageSize
+        )) { XCTAssertEqual($0 as? DrawingError, .emptyText) }
+        XCTAssertThrowsError(try useCase.execute(
+            pageID: pageID, source: "graph TD", image: Data(),
+            imageSize: CGSize(width: 10, height: 10), centeredAt: center, maxSize: maxImageSize
+        )) { XCTAssertEqual($0 as? DrawingError, .invalidDiagram("no se pudo dibujar")) }
+        XCTAssertTrue(library.elements.isEmpty)
+    }
+
+    func testUpdateMermaidKeepsTheCenterAndResizesToTheNewImage() throws {
+        let diagram = PageElement.sampleMermaid(pageID: pageID, frame: CGRect(x: 100, y: 100, width: 200, height: 100))
+        let library = InMemoryLibrary(elements: [diagram])
+
+        let updated = try UpdateMermaidElementUseCase(elements: library).execute(
+            id: diagram.id, source: "graph TD\n A-->B-->C", image: Data("nuevo".utf8),
+            imageSize: CGSize(width: 100, height: 300), maxSize: maxImageSize
+        )
+
+        XCTAssertEqual(updated.content, .mermaid(MermaidDiagram(source: "graph TD\n A-->B-->C", image: Data("nuevo".utf8))))
+        XCTAssertEqual(updated.frame.size, CGSize(width: 100, height: 300))
+        XCTAssertEqual(updated.frame.midX, 200, accuracy: 0.001)
+        XCTAssertEqual(updated.frame.midY, 150, accuracy: 0.001)
+        XCTAssertEqual(library.elements[diagram.id], updated)
+    }
+
+    func testUpdateMermaidOnSomethingElseFails() {
+        let text = PageElement.sampleText(pageID: pageID)
+        let useCase = UpdateMermaidElementUseCase(elements: InMemoryLibrary(elements: [text]))
+
+        XCTAssertThrowsError(try useCase.execute(
+            id: text.id, source: "graph TD", image: Data("png".utf8),
+            imageSize: CGSize(width: 10, height: 10), maxSize: maxImageSize
+        )) { XCTAssertEqual($0 as? DrawingError, .elementNotFound) }
+    }
+
     // MARK: - Borrado en cascada (regla de los repositorios)
 
     func testDeletingAPageOrANotebookDeletesTheirElements() throws {

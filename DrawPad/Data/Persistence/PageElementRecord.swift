@@ -15,6 +15,8 @@ final class PageElementRecord {
     static let imageKind = "image"
     static let shapeKind = "shape"
     static let connectorKind = "connector"
+    /// Diagrama de Mermaid: el texto en `text` y la imagen en `imageData`.
+    static let mermaidKind = "mermaid"
 
     @Attribute(.unique) var id: UUID
     var pageID: UUID

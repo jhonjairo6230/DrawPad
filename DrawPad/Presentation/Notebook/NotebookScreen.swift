@@ -43,7 +43,11 @@ struct NotebookScreen: View {
         // La sesión es un `CanvasModule` en la app; en las pruebas del
         // ViewModel es un doble sin vista.
         if let module = viewModel.session as? CanvasModule {
-            CanvasScreen(viewModel: module.viewModel, canvas: module.canvas)
+            CanvasScreen(
+                viewModel: module.viewModel,
+                canvas: module.canvas,
+                makeMermaidEditor: module.makeMermaidEditor
+            )
                 // Una identidad por hoja: al cambiar, SwiftUI desmonta el
                 // lienzo anterior y monta el nuevo.
                 .id(module.id)

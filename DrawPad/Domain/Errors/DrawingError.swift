@@ -29,6 +29,8 @@ enum DrawingError: Error, Equatable {
     case elementNotFound
     /// Se intentó unir un elemento consigo mismo, o con una conexión.
     case invalidConnection
+    /// El texto de Mermaid no se pudo dibujar; lleva el motivo que dio Mermaid.
+    case invalidDiagram(String)
     /// El archivo no es un cuaderno de DrawPad o está dañado.
     case importFailed
     /// El archivo lo creó una versión de DrawPad más nueva que esta.
@@ -62,6 +64,8 @@ extension DrawingError: LocalizedError {
             return "No hay texto ni imágenes en el portapapeles. Copia algo primero."
         case .elementNotFound:
             return "Ese elemento ya no está en la hoja."
+        case .invalidDiagram(let reason):
+            return "El diagrama tiene un error: \(reason)"
         case .invalidConnection:
             return "Elige otro elemento: no se puede unir uno consigo mismo."
         case .importFailed:

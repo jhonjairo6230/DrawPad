@@ -38,6 +38,9 @@ final class CanvasViewModel {
     private(set) var isArrangingElements = false
     /// Editor de texto abierto; la vista lo muestra mientras no sea `nil`.
     var textEditor: TextEditorRequest?
+    /// Editor de diagramas de Mermaid abierto; la vista lo muestra mientras no
+    /// sea `nil`.
+    var mermaidEditor: MermaidEditorRequest?
     /// Conexión a medio hacer: ya se eligió el origen y falta tocar el destino.
     private(set) var connectionDraft: ConnectionDraft?
 
@@ -230,8 +233,44 @@ final class CanvasViewModel {
             textEditor = TextEditorRequest(elementID: element.id, text: text)
         case .shape(let shape):
             textEditor = TextEditorRequest(elementID: element.id, text: shape.label, isShapeLabel: true)
-        case .image, .connector:
+        case .image, .connector, .mermaid:
             break
+        }
+    }
+
+    // MARK: - Diagramas de Mermaid
+
+    /// Abre el editor con un diagrama de ejemplo.
+    func beginNewMermaid() {
+        mermaidEditor = MermaidEditorRequest(elementID: nil, source: MermaidEditorRequest.template)
+    }
+
+    /// Abre el editor con el texto del diagrama seleccionado.
+    func beginEditingSelectedMermaid() {
+        guard let element = selectedElement, case .mermaid(let diagram) = element.content else { return }
+        mermaidEditor = MermaidEditorRequest(elementID: element.id, source: diagram.source)
+    }
+
+    /// Guarda lo que devolvió el editor: un diagrama nuevo en el centro de lo
+    /// visible, o el cambio de uno existente.
+    func commitMermaid(source: String, snapshot: MermaidSnapshot, for request: MermaidEditorRequest) {
+        let viewport = canvas.viewportSize
+        // Recién dibujado, un diagrama ocupa como mucho el 80 % de la pantalla.
+        let maxSize = CGSize(width: viewport.width * 0.8, height: viewport.height * 0.8)
+        performOnElements {
+            if let elementID = request.elementID {
+                let updated = try elementUseCases.updateMermaid.execute(
+                    id: elementID, source: source, image: snapshot.image,
+                    imageSize: snapshot.size, maxSize: maxSize
+                )
+                replaceElement(updated)
+            } else {
+                let added = try elementUseCases.addMermaid.execute(
+                    pageID: drawingID, source: source, image: snapshot.image,
+                    imageSize: snapshot.size, centeredAt: canvas.visibleCenter, maxSize: maxSize
+                )
+                insertAndSelect(added)
+            }
         }
     }
 
