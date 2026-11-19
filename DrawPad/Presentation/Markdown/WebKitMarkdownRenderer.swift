@@ -50,6 +50,9 @@ final class WebKitMarkdownRenderer: NSObject {
         shownText = markdown
         pendingShow?.cancel()
         pendingShow = Task { [weak self] in
+            await self?.waitUntilLoaded()
+            // Mientras cargaba la página llegó un texto más nuevo.
+            guard !Task.isCancelled else { return }
             _ = await self?.render(markdown)
         }
     }
@@ -113,15 +116,22 @@ final class WebKitMarkdownRenderer: NSObject {
     """
 
     /// Cuerpo de una función asíncrona con `source` como argumento.
+    ///
+    /// Cada llamada se numera: si mientras se dibuja un diagrama llega un
+    /// texto más nuevo, la anterior se detiene y no toca la página.
     private static let renderFunction = """
+    const generation = (window.drawpadRenderGeneration || 0) + 1;
+    window.drawpadRenderGeneration = generation;
+    const isStale = () => window.drawpadRenderGeneration !== generation;
     const content = document.getElementById('content');
-    content.innerHTML = marked.parse(source);
+    const draft = document.createElement('div');
+    draft.innerHTML = marked.parse(source);
     let diagrams = 0;
     let diagramErrors = 0;
     if (typeof mermaid !== 'undefined') {
       const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: dark ? 'dark' : 'default' });
-      const blocks = Array.from(content.querySelectorAll('pre > code.language-mermaid'));
+      const blocks = Array.from(draft.querySelectorAll('pre > code.language-mermaid'));
       for (let index = 0; index < blocks.length; index++) {
         const code = blocks[index];
         const id = 'mdmermaid' + index + '_' + Math.floor(Math.random() * 1000000000);
@@ -138,9 +148,13 @@ final class WebKitMarkdownRenderer: NSObject {
           holder.textContent = 'Error en el diagrama: ' + String((error && error.message) || error);
           diagramErrors++;
         }
+        if (isStale()) { return null; }
         code.parentElement.replaceWith(holder);
       }
     }
+    if (isStale()) { return null; }
+    // El documento se cambia de una vez, ya con los diagramas dibujados.
+    content.replaceChildren(...draft.childNodes);
     return {
       headings: content.querySelectorAll('h1, h2, h3, h4, h5, h6').length,
       tables: content.querySelectorAll('table').length,

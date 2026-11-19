@@ -27,8 +27,10 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
 
     var onDrawingChanged: (() -> Void)?
 
-    /// Solo lectura (iPhone): no se dibuja, no hay paleta y la hoja empieza
-    /// ajustada al ancho de la pantalla. Se puede desplazar y ampliar.
+    /// Sin trazos (iPhone): no se dibuja, no hay paleta y la hoja empieza
+    /// ajustada al ancho de la pantalla. Se puede desplazar y ampliar, y los
+    /// elementos (figuras, conexiones, Mermaid) se siguen moviendo en el modo
+    /// de mover.
     private let isReadOnly: Bool
     /// En solo lectura, mientras el usuario no amplíe a mano, el zoom se
     /// mantiene ajustado al ancho (la hoja puede cambiar al cargarla o al girar).
