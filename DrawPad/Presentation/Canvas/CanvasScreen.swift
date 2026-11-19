@@ -14,7 +14,7 @@ struct CanvasScreen: View {
     let makeMermaidEditor: (String, CanvasTheme) -> MermaidEditorModule
 
     @Environment(\.scenePhase) private var scenePhase
-    @Environment(\.canEdit) private var canEdit
+    @Environment(\.editing) private var editing
     @State private var isConfirmingClear = false
 
     var body: some View {
@@ -67,7 +67,7 @@ struct CanvasScreen: View {
     @ViewBuilder
     private var canvasView: some View {
         let page = PencilCanvasView(canvas: canvas).ignoresSafeArea(edges: .bottom)
-        if canEdit {
+        if editing.canDraw {
             page.toolbar { toolbarContent }
         } else {
             page.toolbar {
