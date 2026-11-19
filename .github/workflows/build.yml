@@ -3,9 +3,9 @@
 #
 # Dos trabajos en paralelo:
 #   - ipa:   compila y publica el .ipa (unos 3 minutos).
-#   - tests: pruebas unitarias y de interfaz en un simulador (unos 15 minutos).
+#   - tests: pruebas unitarias y de interfaz en un simulador (unos 25 minutos).
 # El .ipa no espera a las pruebas: se puede instalar y probar en el iPad
-# mientras terminan (ver docs/adr/0014-ramas-fix-e-ipa-sin-esperar-pruebas.md).
+# mientras terminan (ver docs/adr/0014-ipa-y-pruebas-en-paralelo.md).
 name: Compilar IPA
 
 on:
@@ -14,7 +14,6 @@ on:
       - main
       - develop
       - "feature/**"
-      - "fix/**"
       - "release/**"
       - "hotfix/**"
       - "backport/**"

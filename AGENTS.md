@@ -43,13 +43,12 @@ Documentación en `docs/`; decisiones en `docs/adr/`.
 Push a la rama y mirar el workflow **Compilar IPA**
 (`.github/workflows/build.yml`). Tiene dos trabajos en paralelo: **IPA**
 compila y publica `DrawPad-unsigned.ipa` (unos 3 minutos) y **Pruebas** corre
-las unitarias y de interfaz en un simulador de iPad (unos 15). Si falla, el
+las unitarias y de interfaz en un simulador de iPad (unos 25). Si falla, el
 error está en el log del paso correspondiente.
 
-Se puede fusionar a `develop` con el trabajo **IPA** en verde, sin esperar a
-**Pruebas**: el dueño prueba en el iPad y los fallos se corrigen en ramas
-`fix/`. Aun así, hay que mirar el resultado de **Pruebas** y arreglar lo que
-falle (ver `docs/adr/0014-ramas-fix-e-ipa-sin-esperar-pruebas.md`).
+El `.ipa` se puede instalar y probar en el iPad mientras terminan las pruebas
+(ver `docs/adr/0014-ipa-y-pruebas-en-paralelo.md`); que haya `.ipa` solo
+significa que la app compila, no que las pruebas hayan pasado.
 
 ## Documentación
 
@@ -63,13 +62,15 @@ falle (ver `docs/adr/0014-ramas-fix-e-ipa-sin-esperar-pruebas.md`).
 
 | Rama | Sale de | PR hacia | Para qué |
 | ---- | ------- | -------- | -------- |
-| `feature/<nombre>` | `develop` | `develop` | Funcionalidad nueva o documentación. |
-| `fix/<nombre>` | `develop` | `develop` | Corregir un fallo de algo que ya está en `develop`. |
+| `feature/<nombre>` | `develop` | `develop` | Cualquier funcionalidad, arreglo o documentación. |
 | `release/<x.y.z>` | `develop` | `main` | Preparar una versión: subir `MARKETING_VERSION` en `project.yml`. |
 | `backport/<x.y.z>` | `main` (tras la release) | `develop` | Igualar `develop` con `main`. |
 | `hotfix/<x.y.z>` | `main` | `main` | Arreglo urgente. Después, `backport/<x.y.z>` a `develop`. |
 
 - **Nunca** un PR de `develop` a `main` ni commits directos en `develop` o `main`.
-- **No uses ramas `claude/…`** ni otros prefijos: solo `feature/`, `fix/`,
-  `release/`, `backport/` y `hotfix/`.
+- **No uses ramas `claude/…`** ni otros prefijos: solo `feature/`, `release/`,
+  `backport/` y `hotfix/`.
+- **Los PR los fusiona el dueño, o los fusiono yo cuando él lo pide.** Tampoco
+  se añaden reglas de proceso (ramas nuevas, cuándo se fusiona) sin que lo
+  pida: el proceso es el de este documento.
 - Versionado semántico: funcionalidad sube `y`, arreglos suben `z`.

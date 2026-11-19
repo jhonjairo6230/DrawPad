@@ -20,7 +20,7 @@ entienda **por qué** el código es como es.
 | [0011](0011-suavizar-trazos.md) | Suavizar trazos con un algoritmo propio | Aceptada |
 | [0012](0012-portada-disenada.md) | Portada del cuaderno como tapa diseñada | Aceptada |
 | [0013](0013-textos-e-imagenes.md) | Textos e imágenes en una capa bajo los trazos | Aceptada |
-| [0014](0014-ramas-fix-e-ipa-sin-esperar-pruebas.md) | Ramas `fix/` e `.ipa` sin esperar a las pruebas | Aceptada |
+| [0014](0014-ipa-y-pruebas-en-paralelo.md) | IPA y pruebas en paralelo en el workflow | Aceptada |
 
 ## Cómo añadir un ADR
 
