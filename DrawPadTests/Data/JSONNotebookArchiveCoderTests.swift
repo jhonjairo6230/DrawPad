@@ -21,11 +21,15 @@ final class JSONNotebookArchiveCoderTests: XCTestCase {
             background: .dots, theme: .dark
         )
         let second = Drawing.sample(notebookID: notebook.id, createdAt: Date(timeIntervalSince1970: 2))
+        let spec = Drawing.sample(
+            notebookID: notebook.id, createdAt: Date(timeIntervalSince1970: 3),
+            kind: .markdown, markdown: "# Spec\n\n| a | b |\n|---|---|"
+        )
         let api = PageElement.sampleShape(pageID: second.id, .rectangle, label: "API")
         let queue = PageElement.sampleShape(pageID: second.id, .cylinder, label: "Kafka", quarterTurns: 1)
         return NotebookBundle(
             notebook: notebook,
-            pages: [first, second],
+            pages: [first, second, spec],
             elements: [
                 .sampleText(pageID: first.id, "Hola\nmundo"),
                 .sampleImage(pageID: first.id, data: "imagen"),
@@ -51,6 +55,24 @@ final class JSONNotebookArchiveCoderTests: XCTestCase {
 
         XCTAssertEqual(json?["format"] as? String, "drawpad-notebook")
         XCTAssertEqual(json?["version"] as? Int, JSONNotebookArchiveCoder.currentVersion)
+    }
+
+    func testAVersion1FileWithoutPageKindsIsReadAsDrawingPages() throws {
+        var json = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: try coder.encode(fullBundle())) as? [String: Any]
+        )
+        json["version"] = 1
+        var pages = try XCTUnwrap(json["pages"] as? [[String: Any]])
+        for index in pages.indices {
+            pages[index].removeValue(forKey: "kind")
+            pages[index].removeValue(forKey: "markdown")
+        }
+        json["pages"] = pages
+
+        let decoded = try coder.decode(try JSONSerialization.data(withJSONObject: json))
+
+        XCTAssertEqual(decoded.pages.map(\.kind), [.drawing, .drawing, .drawing])
+        XCTAssertEqual(decoded.pages.map(\.markdown), ["", "", ""])
     }
 
     func testSomethingThatIsNotANotebookIsRejected() {

@@ -10,9 +10,14 @@ import Foundation
 /// Cada archivo lleva `format` y `version`. Esta app escribe la versión
 /// ``currentVersion`` y lee esa y las anteriores; una más nueva se rechaza
 /// con un mensaje claro.
+///
+/// Versiones:
+/// - 1: cuadernos de dibujo.
+/// - 2: hojas Markdown (`kind` y `markdown` en cada hoja). Una app que solo
+///   conoce la 1 las rechaza en vez de leerlas como hojas de dibujo vacías.
 struct JSONNotebookArchiveCoder: NotebookArchiveCoder {
     static let formatIdentifier = "drawpad-notebook"
-    static let currentVersion = 1
+    static let currentVersion = 2
 
     let fileExtension = "drawpad"
 
@@ -55,7 +60,7 @@ struct JSONNotebookArchiveCoder: NotebookArchiveCoder {
     }
 }
 
-// MARK: - Formato del archivo (versión 1)
+// MARK: - Formato del archivo (versiones 1 y 2)
 
 private struct ArchiveHeader: Decodable {
     let format: String
@@ -116,6 +121,9 @@ private struct PageDTO: Codable {
     let updatedAt: Date
     let background: String
     let theme: String
+    /// Versión 2. En archivos de la versión 1 no está: hoja de dibujo.
+    let kind: String?
+    let markdown: String?
 
     init(_ page: Drawing) {
         id = page.id
@@ -125,6 +133,8 @@ private struct PageDTO: Codable {
         updatedAt = page.updatedAt
         background = page.background.rawValue
         theme = page.theme.rawValue
+        kind = page.kind.rawValue
+        markdown = page.kind == .markdown ? page.markdown : nil
     }
 
     /// La hoja siempre pertenece al cuaderno del archivo.
@@ -137,7 +147,9 @@ private struct PageDTO: Codable {
             createdAt: createdAt,
             updatedAt: updatedAt,
             background: CanvasBackground(rawValue: background) ?? .blank,
-            theme: CanvasTheme(rawValue: theme) ?? .light
+            theme: CanvasTheme(rawValue: theme) ?? .light,
+            kind: kind.flatMap(PageKind.init(rawValue:)) ?? .drawing,
+            markdown: markdown ?? ""
         )
     }
 }

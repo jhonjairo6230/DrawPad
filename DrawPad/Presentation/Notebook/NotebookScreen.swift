@@ -1,14 +1,17 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Un cuaderno abierto: muestra la hoja actual y, en la barra, los controles
 /// para pasar de hoja, añadir una nueva (botón +) o eliminar la que se ve
 /// (menú del título).
 ///
-/// El lienzo lo pinta ``CanvasScreen``; esta vista solo decide **qué hoja**.
+/// La hoja la pinta ``CanvasScreen`` (dibujo) o ``MarkdownPageScreen``
+/// (Markdown); esta vista solo decide **qué hoja**.
 struct NotebookScreen: View {
     @Bindable var viewModel: NotebookViewModel
 
     @State private var isConfirmingDelete = false
+    @State private var isImportingMarkdown = false
     @Environment(\.canEdit) private var canEdit
 
     var body: some View {
@@ -18,6 +21,11 @@ struct NotebookScreen: View {
                 ToolbarItem(placement: .principal) { pageControls }
             }
             .onAppear { viewModel.onAppear() }
+            .fileImporter(isPresented: $isImportingMarkdown, allowedContentTypes: Self.markdownTypes) { result in
+                if case .success(let url) = result {
+                    viewModel.importMarkdown(from: url)
+                }
+            }
             .confirmationDialog(
                 "¿Eliminar esta hoja?",
                 isPresented: $isConfirmingDelete,
@@ -51,10 +59,20 @@ struct NotebookScreen: View {
                 // Una identidad por hoja: al cambiar, SwiftUI desmonta el
                 // lienzo anterior y monta el nuevo.
                 .id(module.id)
+        } else if let module = viewModel.session as? MarkdownPageModule {
+            MarkdownPageScreen(viewModel: module.viewModel, renderer: module.renderer)
+                .id(module.id)
         } else {
             Color(.systemBackground)
         }
     }
+
+    /// Archivos que se pueden importar como hoja Markdown.
+    private static let markdownTypes: [UTType] = [
+        UTType("net.daringfireball.markdown"),
+        UTType(filenameExtension: "md"),
+        .plainText,
+    ].compactMap { $0 }
 
     /// ‹  Cuaderno 1 · Hoja 2 de 5 ⌄  ›  +
     ///
@@ -93,7 +111,18 @@ struct NotebookScreen: View {
             .disabled(!viewModel.canGoToNextPage)
 
             if canEdit {
-                Button { viewModel.addPage() } label: {
+                Menu {
+                    Button { viewModel.addPage(.drawing) } label: {
+                        Label("Hoja de dibujo", systemImage: "pencil.and.scribble")
+                    }
+                    Button { viewModel.addPage(.markdown) } label: {
+                        Label("Hoja Markdown", systemImage: "doc.richtext")
+                    }
+                    Divider()
+                    Button { isImportingMarkdown = true } label: {
+                        Label("Importar Markdown…", systemImage: "square.and.arrow.down")
+                    }
+                } label: {
                     Label("Nueva hoja", systemImage: "plus")
                 }
             }

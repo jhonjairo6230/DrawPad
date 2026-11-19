@@ -56,9 +56,17 @@ final class AppContainer {
             loadNotebook: LoadNotebookUseCase(notebooks: library),
             listPages: ListPagesUseCase(drawings: library),
             addPage: AddPageUseCase(drawings: library),
+            addMarkdownPage: AddMarkdownPageUseCase(drawings: library),
+            importMarkdownPage: ImportMarkdownPageUseCase(
+                reader: SecurityScopedFileReader(),
+                addPage: AddMarkdownPageUseCase(drawings: library)
+            ),
             deletePage: DeletePageUseCase(drawings: library),
-            makeSession: { [unowned self] pageID, shareName in
-                makeCanvasModule(drawingID: pageID, shareName: shareName)
+            makeSession: { [unowned self] page, shareName in
+                switch page.kind {
+                case .drawing: return makeCanvasModule(drawingID: page.id, shareName: shareName)
+                case .markdown: return makeMarkdownModule(pageID: page.id, shareName: shareName)
+                }
             }
         )
     }
@@ -73,6 +81,18 @@ final class AppContainer {
             preferences: canvasPreferences
         )
         return CoverDrawingModule(viewModel: viewModel, canvas: canvas)
+    }
+
+    /// Monta una hoja Markdown: su ViewModel y la vista web que la formatea.
+    func makeMarkdownModule(pageID: UUID, shareName: String) -> MarkdownPageModule {
+        let viewModel = MarkdownPageViewModel(
+            pageID: pageID,
+            shareName: shareName,
+            loadPage: LoadDrawingUseCase(repository: library),
+            saveMarkdown: SaveMarkdownUseCase(drawings: library),
+            exportMarkdown: ExportMarkdownUseCase(drawings: library, store: exportFileStore)
+        )
+        return MarkdownPageModule(viewModel: viewModel, renderer: WebKitMarkdownRenderer())
     }
 
     /// Monta la pantalla de una hoja: un lienzo nuevo y su ViewModel.
@@ -116,13 +136,16 @@ final class AppContainer {
         }
     }()
 
-    /// "Cuaderno 1" con dos hojas y un texto en la primera.
+    /// "Cuaderno 1" con tres hojas: un texto en la primera, la segunda en
+    /// blanco y la tercera de Markdown.
     private static func addSampleNotebook(to library: SwiftDataLibrary) throws {
         let notebook = try CreateNotebookUseCase(notebooks: library, drawings: library).execute()
         let firstPage = try ListPagesUseCase(drawings: library).execute(notebookID: notebook.id)[0]
         _ = try AddTextElementUseCase(elements: library)
             .execute(pageID: firstPage.id, text: "Hola desde el iPad", centeredAt: CGPoint(x: 260, y: 200))
         _ = try AddPageUseCase(drawings: library).execute(notebookID: notebook.id)
+        _ = try AddMarkdownPageUseCase(drawings: library)
+            .execute(notebookID: notebook.id, markdown: "# Hola Markdown\n\nUn spec de ejemplo.")
     }
 
     private lazy var canvasPreferences = CanvasPreferences()

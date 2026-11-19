@@ -151,6 +151,33 @@ final class SwiftDataLibraryTests: XCTestCase {
         XCTAssertEqual(try library.findDrawing(id: drawing.id), drawing)
     }
 
+    func testMarkdownPagesAreSavedAndListedWithTheirKind() throws {
+        let notebookID = UUID()
+        let drawingPage = Drawing.sample(notebookID: notebookID, createdAt: date(1))
+        let markdownPage = Drawing.sample(
+            notebookID: notebookID, createdAt: date(2), kind: .markdown, markdown: "# Spec\n\n- uno"
+        )
+        try library.save(drawingPage)
+        try library.save(markdownPage)
+
+        XCTAssertEqual(try library.findDrawing(id: markdownPage.id), markdownPage)
+        XCTAssertEqual(try library.listDrawings(notebookID: notebookID).map(\.kind), [.drawing, .markdown])
+    }
+
+    func testAPageSavedBeforeMarkdownExistedIsADrawingPage() throws {
+        let id = UUID()
+        let context = ModelContext(container)
+        context.insert(DrawingRecord(
+            id: id, strokesData: Data(), thumbnailData: nil, createdAt: date(1), updatedAt: date(1),
+            backgroundRaw: nil, themeRaw: nil, notebookID: UUID()
+        ))
+        try context.save()
+
+        let page = try XCTUnwrap(library.findDrawing(id: id))
+        XCTAssertEqual(page.kind, .drawing)
+        XCTAssertEqual(page.markdown, "")
+    }
+
     func testListDrawingsReturnsOnlyThatNotebookInCreationOrder() throws {
         let notebookID = UUID()
         let first = Drawing.sample(notebookID: notebookID, createdAt: date(1))

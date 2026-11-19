@@ -101,7 +101,12 @@ final class SwiftDataLibrary: NotebookRepository, DrawingRepository, PageElement
     func listDrawings(notebookID: UUID) throws -> [DrawingSummary] {
         try storage {
             try pageRecords(notebookID: notebookID).map {
-                DrawingSummary(id: $0.id, thumbnailData: $0.thumbnailData, updatedAt: $0.updatedAt)
+                DrawingSummary(
+                    id: $0.id,
+                    thumbnailData: $0.thumbnailData,
+                    updatedAt: $0.updatedAt,
+                    kind: Self.pageKind(of: $0)
+                )
             }
         }
     }
@@ -120,7 +125,9 @@ final class SwiftDataLibrary: NotebookRepository, DrawingRepository, PageElement
                 updatedAt: record.updatedAt,
                 // Sin valor (hoja anterior a los fondos) o valor desconocido: papel blanco liso.
                 background: record.backgroundRaw.flatMap(CanvasBackground.init(rawValue:)) ?? .blank,
-                theme: record.themeRaw.flatMap(CanvasTheme.init(rawValue:)) ?? .light
+                theme: record.themeRaw.flatMap(CanvasTheme.init(rawValue:)) ?? .light,
+                kind: Self.pageKind(of: record),
+                markdown: record.markdownText ?? ""
             )
         }
     }
@@ -134,8 +141,10 @@ final class SwiftDataLibrary: NotebookRepository, DrawingRepository, PageElement
                 existing.backgroundRaw = drawing.background.rawValue
                 existing.themeRaw = drawing.theme.rawValue
                 existing.notebookID = drawing.notebookID
+                existing.pageKindRaw = drawing.kind.rawValue
+                existing.markdownText = drawing.kind == .markdown ? drawing.markdown : nil
             } else {
-                context.insert(DrawingRecord(
+                let record = DrawingRecord(
                     id: drawing.id,
                     strokesData: drawing.strokesData,
                     thumbnailData: drawing.thumbnailData,
@@ -144,7 +153,10 @@ final class SwiftDataLibrary: NotebookRepository, DrawingRepository, PageElement
                     backgroundRaw: drawing.background.rawValue,
                     themeRaw: drawing.theme.rawValue,
                     notebookID: drawing.notebookID
-                ))
+                )
+                record.pageKindRaw = drawing.kind.rawValue
+                record.markdownText = drawing.kind == .markdown ? drawing.markdown : nil
+                context.insert(record)
             }
             try context.save()
         }
@@ -233,6 +245,11 @@ final class SwiftDataLibrary: NotebookRepository, DrawingRepository, PageElement
     }
 
     // MARK: - Privado
+
+    /// Sin valor (hoja anterior a Markdown) o desconocido: hoja de dibujo.
+    private static func pageKind(of record: DrawingRecord) -> PageKind {
+        record.pageKindRaw.flatMap(PageKind.init(rawValue:)) ?? .drawing
+    }
 
     /// La tapa guardada. Sin valor (cuaderno anterior a las tapas) o con un
     /// valor desconocido, la tapa estándar.

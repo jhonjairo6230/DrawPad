@@ -23,8 +23,12 @@ targets:
       - path: DrawPad
         excludes:
           - "Resources/Mermaid/**"
-      # Mermaid (JavaScript, licencia MIT) va como recurso, no como código.
+          - "Resources/Markdown/**"
+      # Mermaid y marked (JavaScript, licencia MIT) van como recursos, no
+      # como código.
       - path: DrawPad/Resources/Mermaid
+        buildPhase: resources
+      - path: DrawPad/Resources/Markdown
         buildPhase: resources
     info:
       path: DrawPad/Resources/Info.plist

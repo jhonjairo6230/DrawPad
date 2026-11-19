@@ -23,10 +23,11 @@ flowchart TB
         P3["DrawingCanvas · PageSession<br/>(protocolos)"]
         P4["PencilKitCanvas<br/>PencilCanvasView"]
         P5["WebKitMermaidPreview<br/>(Mermaid en WebKit, sin red)"]
+        P6["MarkdownPageScreen<br/>MarkdownPageViewModel<br/>WebKitMarkdownRenderer"]
     end
     subgraph DOM["Domain — Swift puro"]
-        D1["Casos de uso<br/>cuadernos · hojas · papel<br/>textos, imágenes, figuras y conexiones<br/>exportar · compartir"]
-        D2["Notebook · Drawing · PageElement<br/>CanvasBackground · CanvasTheme<br/>DrawingError"]
+        D1["Casos de uso<br/>cuadernos · hojas · papel · Markdown<br/>textos, imágenes, figuras y conexiones<br/>exportar · compartir"]
+        D2["Notebook · Drawing · PageKind · PageElement<br/>CanvasBackground · CanvasTheme<br/>DrawingError"]
         D3["NotebookRepository · DrawingRepository<br/>PageElementRepository<br/>ImageLibrary · ExportFileStore · Clipboard<br/>NotebookArchiveCoder · ImportedFileReader<br/>(protocolos)"]
     end
     subgraph DATA["Data — detalles técnicos"]
@@ -40,6 +41,8 @@ flowchart TB
 
     G1 --> N1
     N1 --> P1
+    N1 --> P6
+    P6 --> D1
     G1 --> D1
     N1 --> D1
     N1 --> P3
@@ -61,6 +64,7 @@ flowchart TB
     A2 --> P1
     A2 --> P4
     A2 --> P5
+    A2 --> P6
     A2 --> T1
     A2 --> T2
     A2 --> T4
@@ -105,6 +109,7 @@ DrawPad/
 │   │   ├── NotebookSummary.swift   Lo justo para la galería: tapa, hojas, actividad
 │   │   ├── Drawing.swift           Una hoja: trazos, miniatura, papel, fechas
 │   │   ├── DrawingSummary.swift    Lo justo para listar hojas (sin trazos)
+│   │   ├── PageKind.swift          Tipo de hoja: de dibujo o Markdown
 │   │   ├── PageElement.swift       Un texto, imagen, figura (DiagramShape), conexión (Connector) o diagrama Mermaid
 │   │   ├── ClipboardContent.swift  Lo que se puede pegar: texto o imagen
 │   │   ├── CanvasBackground.swift  Patrón del papel: blanco, cuadrícula, líneas, puntos
@@ -148,6 +153,10 @@ DrawPad/
 │       ├── ConnectElementsUseCase.swift
 │       ├── AddMermaidElementUseCase.swift   Guarda un diagrama ya dibujado
 │       ├── UpdateMermaidElementUseCase.swift
+│       ├── AddMarkdownPageUseCase.swift     Hoja Markdown nueva, con plantilla de spec
+│       ├── SaveMarkdownUseCase.swift
+│       ├── ImportMarkdownPageUseCase.swift  Un .md como hoja nueva
+│       ├── ExportMarkdownUseCase.swift      La hoja como .md
 │       ├── ExportDrawingUseCase.swift
 │       └── PrepareShareFileUseCase.swift
 ├── Data/
@@ -181,6 +190,12 @@ DrawPad/
 │   │   ├── MermaidEditorViewModel.swift    Texto, vista previa y errores
 │   │   ├── MermaidEditorModule.swift       ViewModel + vista web; petición de editor
 │   │   └── MermaidEditorSheet.swift        Editor con vista previa
+│   ├── Markdown/
+│   │   ├── WebKitMarkdownRenderer.swift    marked + Mermaid en WebKit, sin red
+│   │   ├── MarkdownWebView.swift           La vista web en SwiftUI
+│   │   ├── MarkdownPageViewModel.swift     Ver / Editar, autoguardado, exportar .md
+│   │   ├── MarkdownPageModule.swift        ViewModel + vista web de una hoja abierta
+│   │   └── MarkdownPageScreen.swift        Documento formateado o texto
 │   ├── Notebook/
 │   │   ├── NotebookScreen.swift    Cuaderno abierto: hoja actual y controles de hojas
 │   │   └── NotebookViewModel.swift Pasar, añadir y eliminar hojas
@@ -213,13 +228,15 @@ DrawPad/
 │       └── EditingCapability.swift Valor de entorno canEdit (false en el iPhone)
 └── Resources/
     ├── Assets.xcassets             Icono de la app
-    └── Mermaid/                    mermaid.min.js 11.17.2 (MIT) y su licencia
+    ├── Mermaid/                    mermaid.min.js 11.17.2 (MIT) y su licencia
+    └── Markdown/                   marked.umd.js 18.2.1 (MIT) y su licencia
 
 DrawPadTests/
 ├── Doubles/                        Falsos: biblioteca, lienzo, hoja abierta, Fotos, archivos
 ├── Domain/
 │   ├── UseCasesTests.swift
 │   ├── NotebookArchiveUseCasesTests.swift
+│   ├── MarkdownPageUseCasesTests.swift
 │   └── PageElementUseCasesTests.swift
 ├── Data/
 │   ├── SwiftDataLibraryTests.swift             Base de datos real en memoria
@@ -232,6 +249,8 @@ DrawPadTests/
     ├── CoverDrawingViewModelTests.swift
     ├── MermaidEditorViewModelTests.swift
     ├── WebKitMermaidPreviewTests.swift      Mermaid real en WebKit (integración)
+    ├── MarkdownPageViewModelTests.swift
+    ├── WebKitMarkdownRendererTests.swift    marked y Mermaid reales en WebKit
     ├── CanvasGeometryTests.swift
     ├── DiagramGeometryTests.swift
     └── StrokeSmootherTests.swift
@@ -281,7 +300,8 @@ classDiagram
         +onAppear()
         +goToPreviousPage()
         +goToNextPage()
-        +addPage()
+        +addPage(kind)
+        +importMarkdown(from: URL)
         +deleteCurrentPage()
         +flushPendingSave()
     }
@@ -290,11 +310,25 @@ classDiagram
         +flushPendingSave()
         +discardPendingSave()
     }
+    class MarkdownPageModule {
+        +viewModel MarkdownPageViewModel
+        +renderer WebKitMarkdownRenderer
+    }
+    class MarkdownPageViewModel {
+        <<Observable>>
+        +text String
+        +mode read · edit
+        +updateText(texto)
+        +export()
+    }
     class CanvasModule {
         +viewModel CanvasViewModel
         +canvas PencilKitCanvas
     }
     class CanvasScreen {
+        <<SwiftUI View>>
+    }
+    class MarkdownPageScreen {
         <<SwiftUI View>>
     }
     class CanvasViewModel {
@@ -376,6 +410,8 @@ classDiagram
         Paste · UpdateText · Move · DeleteElement
         AddShape · RotateShape · ConnectElements
         AddMermaid · UpdateMermaid
+        AddMarkdownPage · SaveMarkdown
+        ImportMarkdownPage · ExportMarkdown
         ExportDrawing · PrepareShareFile
     }
     class NotebookRepository {
@@ -463,6 +499,8 @@ classDiagram
         +updatedAt Date
         +background CanvasBackground
         +theme CanvasTheme
+        +kind PageKind
+        +markdown String
     }
     class SwiftDataLibrary {
         +adoptOrphanDrawings()
@@ -482,6 +520,10 @@ classDiagram
     NotebookScreen --> CanvasScreen : hoja actual
     NotebookViewModel --> PageSession
     CanvasModule ..|> PageSession
+    MarkdownPageModule ..|> PageSession
+    MarkdownPageModule --> MarkdownPageViewModel
+    MarkdownPageViewModel --> UseCases
+    NotebookScreen --> MarkdownPageScreen : hoja Markdown
     CanvasModule --> CanvasViewModel
     CanvasModule --> PencilKitCanvas
     CanvasScreen --> CanvasViewModel
@@ -1109,6 +1151,56 @@ sequenceDiagram
     VM-->>V: seleccionado, en modo mover
 ```
 
+### 5.15 Hojas Markdown: crear, escribir y leer
+
+`NotebookViewModel` abre cada hoja según su tipo: `AppContainer` monta un
+`CanvasModule` para las de dibujo y un `MarkdownPageModule` para las
+Markdown. El resto del cuaderno (pasar, borrar, exportar) no distingue.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Usuario
+    participant NV as NotebookScreen
+    participant NVM as NotebookViewModel
+    participant AC as AppContainer
+    participant V as MarkdownPageScreen
+    participant VM as MarkdownPageViewModel
+    participant W as WebKitMarkdownRenderer
+    participant UC as Casos de uso Markdown
+    participant R as DrawingRepository
+
+    U->>NV: "+", "Hoja Markdown"
+    NV->>NVM: addPage(.markdown)
+    NVM->>UC: AddMarkdownPage.execute(cuaderno)
+    UC->>R: save(hoja Markdown con plantilla)
+    NVM->>AC: makeSession(hoja, nombre)
+    AC-->>NVM: MarkdownPageModule (según hoja.kind)
+    NV->>V: muestra la hoja
+    V->>VM: onAppear()
+    VM->>R: LoadDrawing → texto
+    V->>W: show(texto)
+    W->>W: marked.parse() y mermaid.render() en JavaScript
+    W-->>U: documento formateado (modo Ver)
+    U->>V: "Editar" y escribe
+    loop mientras escribe
+        V->>VM: updateText(texto)
+        Note over VM: espera 1 s sin teclear
+        VM->>UC: SaveMarkdown.execute(hoja, texto)
+        UC->>R: save(hoja)
+    end
+    U->>V: "Ver"
+    V->>W: show(texto nuevo)
+    U->>V: "Compartir", "Exportar como .md"
+    V->>VM: export()
+    VM->>UC: ExportMarkdown.execute(hoja, nombre)
+    UC-->>VM: archivo .md
+    VM-->>V: hoja de compartir
+```
+
+Importar un `.md` sigue el mismo camino que crear la hoja, pero
+`ImportMarkdownPageUseCase` lee el archivo (UTF-8) y lo usa como texto.
+
 ## 6. Decisiones de diseño que conviene entender
 
 **El dominio no conoce PencilKit.** `Drawing.strokesData` es `Data` opaco.
@@ -1192,6 +1284,14 @@ editor dibuja una vista previa visible y de ella sale la imagen; el dominio
 recibe el texto y el PNG ya hechos, como recibe el PNG al exportar. La hoja
 muestra la imagen como cualquier elemento, bajo los trazos, y el texto se
 guarda para volver a editarlo (ver [ADR 0019](adr/0019-hojas-mermaid.md)).
+
+**Una hoja Markdown es otra clase de hoja, no un elemento.** `Drawing.kind`
+dice si la hoja es de dibujo o Markdown; el cuaderno solo pide a
+`makeSession` "abre esta hoja" y `AppContainer` elige la pantalla. El texto
+se guarda tal cual en `Drawing.markdown` y se formatea al mostrarlo, con
+marked y Mermaid dentro de una vista web sin red
+(`WebKitMarkdownRenderer`). El HTML que traiga el documento se muestra como
+texto, nunca se ejecuta (ver [ADR 0020](adr/0020-hojas-markdown.md)).
 
 **El portapapeles es un puerto.** `PasteElementUseCase` no sabe qué es
 `UIPasteboard`: pide a `Clipboard` "qué hay copiado". Así la lógica de pegar

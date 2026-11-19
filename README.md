@@ -27,6 +27,9 @@ desde Windows. No está pensada para publicarse en el App Store.
   giro de 90° y **flechas o líneas** que las unen y las siguen al moverlas.
 - **Diagramas Mermaid**: escribes el diagrama en texto y se dibuja en la hoja
   (sin conexión), para anotarlo encima con el Pencil.
+- **Hojas Markdown** para specs y documentación: se escriben en texto y se
+  leen formateadas (tablas, tareas, código y bloques `mermaid` dibujados).
+  Se importan y exportan como `.md`.
 - **Suavizar trazos**: quita el temblor de lo dibujado (se puede deshacer).
 - Deshacer y rehacer.
 - **Dibujar con el dedo** (opcional; por defecto solo dibuja el Pencil).
@@ -58,6 +61,7 @@ Guía completa: [docs/compilacion-e-instalacion.md](docs/compilacion-e-instalaci
 ## Licencias de terceros
 
 - [Mermaid](https://mermaid.js.org) 11.17.2, licencia MIT: `DrawPad/Resources/Mermaid/LICENSE-mermaid.txt`.
+- [marked](https://marked.js.org) 18.2.1, licencia MIT: `DrawPad/Resources/Markdown/LICENSE-marked.txt`.
 
 ## Documentación
 
