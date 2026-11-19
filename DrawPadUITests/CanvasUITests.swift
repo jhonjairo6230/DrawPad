@@ -119,6 +119,21 @@ final class CanvasUITests: XCTestCase {
         XCTAssertFalse(app.buttons["Quitar dibujo"].exists)
     }
 
+    func testExportingANotebookOpensTheShareSheetWithoutErrors() {
+        openNewNotebook()
+        goBackToGallery()
+
+        let card = app.buttons["Cuaderno 1"]
+        XCTAssertTrue(card.waitForExistence(timeout: 5))
+        card.press(forDuration: 1.2)
+        let export = app.buttons["Exportar"]
+        XCTAssertTrue(export.waitForExistence(timeout: 5))
+        export.tap()
+
+        XCTAssertFalse(app.alerts["Algo salió mal"].waitForExistence(timeout: 3))
+        assertAppIsRunning()
+    }
+
     // MARK: - Hojas
 
     func testAddingPagesMovingBetweenThemAndDeletingOne() {

@@ -29,6 +29,10 @@ enum DrawingError: Error, Equatable {
     case elementNotFound
     /// Se intentó unir un elemento consigo mismo, o con una conexión.
     case invalidConnection
+    /// El archivo no es un cuaderno de DrawPad o está dañado.
+    case importFailed
+    /// El archivo lo creó una versión de DrawPad más nueva que esta.
+    case unsupportedArchiveVersion
     /// Se intentó exportar una hoja sin trazos.
     case emptyDrawing
 }
@@ -60,6 +64,10 @@ extension DrawingError: LocalizedError {
             return "Ese elemento ya no está en la hoja."
         case .invalidConnection:
             return "Elige otro elemento: no se puede unir uno consigo mismo."
+        case .importFailed:
+            return "El archivo no es un cuaderno de DrawPad o está dañado."
+        case .unsupportedArchiveVersion:
+            return "Este cuaderno se exportó con una versión más nueva de DrawPad. Actualiza la app para abrirlo."
         case .emptyDrawing:
             return "La hoja está vacía: dibuja algo antes de exportar o compartir."
         }
