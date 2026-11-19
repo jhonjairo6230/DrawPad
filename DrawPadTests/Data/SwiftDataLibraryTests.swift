@@ -257,6 +257,36 @@ final class SwiftDataLibraryTests: XCTestCase {
         XCTAssertEqual(try library.listElements(pageID: pageID), [kept])
     }
 
+    func testShapesAndConnectorsAreSavedAndRead() throws {
+        let pageID = UUID()
+        let queue = PageElement.sampleShape(
+            pageID: pageID, .cylinder, label: "Kafka", quarterTurns: 1,
+            frame: CGRect(x: 10, y: 20, width: 140, height: 110), createdAt: date(1)
+        )
+        let service = PageElement.sampleShape(pageID: pageID, .rectangle, createdAt: date(2))
+        let connector = PageElement.sampleConnector(
+            pageID: pageID, from: service.id, to: queue.id, style: .line, createdAt: date(3)
+        )
+        try library.save(queue)
+        try library.save(service)
+        try library.save(connector)
+
+        XCTAssertEqual(try library.listElements(pageID: pageID), [queue, service, connector])
+    }
+
+    func testChangingAnElementKindClearsTheColumnsItNoLongerUses() throws {
+        var element = PageElement.sampleShape(.diamond, label: "¿Sí?", quarterTurns: 1)
+        try library.save(element)
+
+        element.content = .text("Ahora soy texto")
+        try library.save(element)
+
+        XCTAssertEqual(try library.findElement(id: element.id), element)
+        let record = try ModelContext(container).fetch(FetchDescriptor<PageElementRecord>()).first
+        XCTAssertNil(record?.shapeKindRaw)
+        XCTAssertNil(record?.quarterTurns)
+    }
+
     func testDeletingAPageDeletesItsElements() throws {
         let page = Drawing.sample()
         let element = PageElement.sampleText(pageID: page.id)

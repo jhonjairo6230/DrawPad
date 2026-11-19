@@ -24,7 +24,7 @@ struct TextElementEditorSheet: View {
                 .focused($isEditorFocused)
                 .padding(16)
                 .accessibilityLabel("Texto")
-                .navigationTitle(request.isNew ? "Nuevo texto" : "Editar texto")
+                .navigationTitle(navigationTitle)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
@@ -35,12 +35,18 @@ struct TextElementEditorSheet: View {
                             onSave(text)
                             dismiss()
                         }
-                        .disabled(isBlank)
+                        // Una figura puede quedarse sin texto; un cuadro de texto no.
+                        .disabled(isBlank && !request.isShapeLabel)
                     }
                 }
                 // Con el teclado ya abierto se puede empezar a escribir sin tocar nada.
                 .onAppear { isEditorFocused = true }
         }
+    }
+
+    private var navigationTitle: String {
+        if request.isShapeLabel { return "Texto de la figura" }
+        return request.isNew ? "Nuevo texto" : "Editar texto"
     }
 
     private var isBlank: Bool {

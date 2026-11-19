@@ -22,9 +22,10 @@ Documentación en `docs/`; decisiones en `docs/adr/`.
   no abrirá (ver `docs/adr/0007-swiftdata.md`).
 - En la interfaz se dice **cuaderno** y **hoja**; en el código, `Notebook` y
   `Drawing`. Un cuaderno nunca se queda sin hojas (regla en los casos de uso).
-- Textos e imágenes (`PageElement`) van en `PageElementsLayer`, bajo los
-  trazos. Se guardan al momento por sus casos de uso, no con el autoguardado.
-  Borrar una hoja o un cuaderno debe borrar sus elementos.
+- Textos, imágenes, figuras y conexiones (`PageElement`) van en
+  `PageElementsLayer`, bajo los trazos. Se guardan al momento por sus casos
+  de uso, no con el autoguardado. Borrar una hoja o un cuaderno debe borrar
+  sus elementos; borrar un elemento, sus conexiones.
 - Cada tipo lleva un comentario `///` que explica su papel (el porqué).
 - Interfaz, comentarios y documentación en español; identificadores en inglés.
 - Lógica nueva → pruebas en `DrawPadTests` con los dobles de `Doubles/`.

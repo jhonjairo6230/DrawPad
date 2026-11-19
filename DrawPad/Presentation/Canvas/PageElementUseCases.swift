@@ -1,7 +1,7 @@
 import Foundation
 
-/// Los casos de uso de textos e imágenes que necesita ``CanvasViewModel``,
-/// agrupados para no alargar su `init` con seis parámetros más.
+/// Los casos de uso de textos, imágenes, figuras y conexiones que necesita
+/// ``CanvasViewModel``, agrupados para no alargar su `init`.
 struct PageElementUseCases {
     let list: ListPageElementsUseCase
     let addText: AddTextElementUseCase
@@ -9,6 +9,9 @@ struct PageElementUseCases {
     let updateText: UpdateElementTextUseCase
     let move: MoveElementUseCase
     let delete: DeleteElementUseCase
+    let addShape: AddShapeElementUseCase
+    let rotate: RotateShapeUseCase
+    let connect: ConnectElementsUseCase
 
     /// Todos sobre el mismo repositorio y el mismo portapapeles.
     init(elements: PageElementRepository, clipboard: Clipboard) {
@@ -23,5 +26,8 @@ struct PageElementUseCases {
         self.updateText = UpdateElementTextUseCase(elements: elements)
         self.move = MoveElementUseCase(elements: elements)
         self.delete = DeleteElementUseCase(elements: elements)
+        self.addShape = AddShapeElementUseCase(elements: elements)
+        self.rotate = RotateShapeUseCase(elements: elements)
+        self.connect = ConnectElementsUseCase(elements: elements)
     }
 }

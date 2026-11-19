@@ -449,6 +449,130 @@ final class CanvasViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.alert)
     }
 
+    // MARK: - Figuras y conexiones
+
+    func testInsertingAShapePutsItAtTheVisibleCenterSelectedAndReadyToMove() throws {
+        let viewModel = try makeLoadedViewModel()
+        canvas.visibleCenter = CGPoint(x: 500, y: 400)
+
+        viewModel.insertShape(.diamond)
+
+        let added = try XCTUnwrap(viewModel.elements.first)
+        XCTAssertEqual(added.content, .shape(DiagramShape(kind: .diamond)))
+        XCTAssertEqual(added.frame.midX, 500, accuracy: 0.001)
+        XCTAssertEqual(repository.elements[added.id], added)
+        XCTAssertEqual(viewModel.selectedElementID, added.id)
+        XCTAssertTrue(viewModel.isArrangingElements)
+        XCTAssertEqual(canvas.shownElements, [added])
+    }
+
+    func testRotatingTheSelectedShape() throws {
+        let cylinder = PageElement.sampleShape(
+            pageID: drawing.id, .cylinder, frame: CGRect(x: 100, y: 100, width: 110, height: 140)
+        )
+        let viewModel = try makeLoadedViewModel(elements: [cylinder])
+        viewModel.setArrangingElements(true)
+        canvas.onElementSelected?(cylinder.id)
+
+        viewModel.rotateSelectedShape()
+
+        XCTAssertEqual(viewModel.elements.first?.content, .shape(DiagramShape(kind: .cylinder, quarterTurns: 1)))
+        XCTAssertEqual(viewModel.elements.first?.frame.size, CGSize(width: 140, height: 110))
+        XCTAssertEqual(canvas.shownElements.first?.frame.size, CGSize(width: 140, height: 110))
+    }
+
+    func testEditingAShapeLabelAllowsLeavingItEmpty() throws {
+        let shape = PageElement.sampleShape(pageID: drawing.id, label: "API")
+        let viewModel = try makeLoadedViewModel(elements: [shape])
+        viewModel.setArrangingElements(true)
+        canvas.onElementSelected?(shape.id)
+
+        viewModel.beginEditingSelectedText()
+        let request = try XCTUnwrap(viewModel.textEditor)
+        XCTAssertTrue(request.isShapeLabel)
+        XCTAssertEqual(request.text, "API")
+        viewModel.commitText("", for: request)
+
+        XCTAssertEqual(viewModel.elements.first?.content, .shape(DiagramShape(kind: .rectangle, label: "")))
+        XCTAssertNil(viewModel.alert)
+    }
+
+    func testConnectingTwoShapesByTappingTheDestination() throws {
+        let api = PageElement.sampleShape(pageID: drawing.id, createdAt: Date(timeIntervalSince1970: 1))
+        let db = PageElement.sampleShape(pageID: drawing.id, .cylinder, createdAt: Date(timeIntervalSince1970: 2))
+        let viewModel = try makeLoadedViewModel(elements: [api, db])
+        viewModel.setArrangingElements(true)
+        canvas.onElementSelected?(api.id)
+
+        viewModel.beginConnecting(.arrow)
+        XCTAssertTrue(viewModel.isConnecting)
+        canvas.onElementSelected?(db.id)
+
+        XCTAssertFalse(viewModel.isConnecting)
+        let connector = try XCTUnwrap(viewModel.elements.first(where: \.isConnector))
+        XCTAssertEqual(connector.content, .connector(Connector(fromID: api.id, toID: db.id, style: .arrow)))
+        XCTAssertEqual(viewModel.selectedElementID, connector.id)
+        XCTAssertEqual(canvas.shownElements.count, 3)
+        XCTAssertEqual(canvas.shownSelectedID, connector.id)
+    }
+
+    func testTappingTheBackgroundOrTheOriginCancelsConnecting() throws {
+        let a = PageElement.sampleShape(pageID: drawing.id)
+        let b = PageElement.sampleShape(pageID: drawing.id)
+        let viewModel = try makeLoadedViewModel(elements: [a, b])
+        viewModel.setArrangingElements(true)
+
+        for tap in [nil, a.id] as [UUID?] {
+            canvas.onElementSelected?(a.id)
+            viewModel.beginConnecting(.line)
+            canvas.onElementSelected?(tap)
+            XCTAssertFalse(viewModel.isConnecting)
+        }
+        XCTAssertFalse(viewModel.elements.contains(where: \.isConnector))
+    }
+
+    func testConnectingToAConnectorShowsAnAlert() throws {
+        let a = PageElement.sampleShape(pageID: drawing.id, createdAt: Date(timeIntervalSince1970: 1))
+        let b = PageElement.sampleShape(pageID: drawing.id, createdAt: Date(timeIntervalSince1970: 2))
+        let link = PageElement.sampleConnector(pageID: drawing.id, from: a.id, to: b.id)
+        let viewModel = try makeLoadedViewModel(elements: [a, b, link])
+        viewModel.setArrangingElements(true)
+        canvas.onElementSelected?(a.id)
+
+        viewModel.beginConnecting(.arrow)
+        canvas.onElementSelected?(link.id)
+
+        XCTAssertEqual(viewModel.alert, AlertMessage(error: DrawingError.invalidConnection))
+        XCTAssertEqual(viewModel.elements.filter(\.isConnector).count, 1)
+    }
+
+    func testDeletingAShapeAlsoRemovesItsConnectorsFromTheScreen() throws {
+        let a = PageElement.sampleShape(pageID: drawing.id, createdAt: Date(timeIntervalSince1970: 1))
+        let b = PageElement.sampleShape(pageID: drawing.id, createdAt: Date(timeIntervalSince1970: 2))
+        let link = PageElement.sampleConnector(pageID: drawing.id, from: a.id, to: b.id)
+        let viewModel = try makeLoadedViewModel(elements: [a, b, link])
+        viewModel.setArrangingElements(true)
+        canvas.onElementSelected?(b.id)
+
+        viewModel.deleteSelectedElement()
+
+        XCTAssertEqual(viewModel.elements, [a])
+        XCTAssertEqual(canvas.shownElements, [a])
+        XCTAssertNil(repository.elements[link.id])
+    }
+
+    func testLeavingArrangeModeCancelsAConnectionInProgress() throws {
+        let a = PageElement.sampleShape(pageID: drawing.id)
+        let viewModel = try makeLoadedViewModel(elements: [a])
+        viewModel.setArrangingElements(true)
+        canvas.onElementSelected?(a.id)
+        viewModel.beginConnecting(.arrow)
+
+        viewModel.setArrangingElements(false)
+
+        XCTAssertFalse(viewModel.isConnecting)
+    }
+
     // MARK: - Suavizar
 
     func testSmoothStrokesSmoothsTheCanvasAndSavesTheResult() {

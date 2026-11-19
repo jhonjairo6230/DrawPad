@@ -175,37 +175,25 @@ final class SwiftDataLibrary: NotebookRepository, DrawingRepository, PageElement
 
     func save(_ element: PageElement) throws {
         try storage {
-            let kind: String
-            let text: String?
-            let imageData: Data?
-            switch element.content {
-            case .text(let value):
-                (kind, text, imageData) = (PageElementRecord.textKind, value, nil)
-            case .image(let value):
-                (kind, text, imageData) = (PageElementRecord.imageKind, nil, value)
-            }
+            let record: PageElementRecord
             if let existing = try elementRecord(id: element.id) {
-                existing.kindRaw = kind
-                existing.text = text
-                existing.imageData = imageData
-                existing.x = element.frame.origin.x
-                existing.y = element.frame.origin.y
-                existing.width = element.frame.width
-                existing.height = element.frame.height
+                record = existing
             } else {
-                context.insert(PageElementRecord(
+                record = PageElementRecord(
                     id: element.id,
                     pageID: element.pageID,
-                    kindRaw: kind,
-                    text: text,
-                    imageData: imageData,
-                    x: element.frame.origin.x,
-                    y: element.frame.origin.y,
-                    width: element.frame.width,
-                    height: element.frame.height,
+                    kindRaw: "",
+                    text: nil,
+                    imageData: nil,
+                    x: 0,
+                    y: 0,
+                    width: 0,
+                    height: 0,
                     createdAt: element.createdAt
-                ))
+                )
+                context.insert(record)
             }
+            Self.write(element, into: record)
             try context.save()
         }
     }
@@ -305,6 +293,40 @@ final class SwiftDataLibrary: NotebookRepository, DrawingRepository, PageElement
         }
     }
 
+    /// Copia en la fila todo lo del elemento, y vacía las columnas que su
+    /// tipo no usa (por si antes era de otro tipo).
+    private static func write(_ element: PageElement, into record: PageElementRecord) {
+        record.x = element.frame.origin.x
+        record.y = element.frame.origin.y
+        record.width = element.frame.width
+        record.height = element.frame.height
+        record.text = nil
+        record.imageData = nil
+        record.shapeKindRaw = nil
+        record.quarterTurns = nil
+        record.fromID = nil
+        record.toID = nil
+        record.connectorStyleRaw = nil
+        switch element.content {
+        case .text(let value):
+            record.kindRaw = PageElementRecord.textKind
+            record.text = value
+        case .image(let value):
+            record.kindRaw = PageElementRecord.imageKind
+            record.imageData = value
+        case .shape(let shape):
+            record.kindRaw = PageElementRecord.shapeKind
+            record.text = shape.label
+            record.shapeKindRaw = shape.kind.rawValue
+            record.quarterTurns = shape.quarterTurns
+        case .connector(let connector):
+            record.kindRaw = PageElementRecord.connectorKind
+            record.fromID = connector.fromID
+            record.toID = connector.toID
+            record.connectorStyleRaw = connector.style.rawValue
+        }
+    }
+
     /// La entidad de dominio, o `nil` si la fila no tiene el contenido que
     /// dice tener (no debería pasar; se ignora en lugar de romper la hoja).
     private static func element(from record: PageElementRecord) -> PageElement? {
@@ -316,6 +338,20 @@ final class SwiftDataLibrary: NotebookRepository, DrawingRepository, PageElement
         case PageElementRecord.imageKind:
             guard let data = record.imageData else { return nil }
             content = .image(data)
+        case PageElementRecord.shapeKind:
+            guard let kind = record.shapeKindRaw.flatMap(ShapeKind.init(rawValue:)) else { return nil }
+            content = .shape(DiagramShape(
+                kind: kind,
+                label: record.text ?? "",
+                quarterTurns: ((record.quarterTurns ?? 0) % 4 + 4) % 4
+            ))
+        case PageElementRecord.connectorKind:
+            guard let fromID = record.fromID, let toID = record.toID else { return nil }
+            content = .connector(Connector(
+                fromID: fromID,
+                toID: toID,
+                style: record.connectorStyleRaw.flatMap(ConnectorStyle.init(rawValue:)) ?? .arrow
+            ))
         default:
             return nil
         }

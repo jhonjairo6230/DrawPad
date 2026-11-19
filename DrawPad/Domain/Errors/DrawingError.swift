@@ -27,6 +27,8 @@ enum DrawingError: Error, Equatable {
     case clipboardEmpty
     /// El texto o la imagen ya no existe en la hoja.
     case elementNotFound
+    /// Se intentó unir un elemento consigo mismo, o con una conexión.
+    case invalidConnection
     /// Se intentó exportar una hoja sin trazos.
     case emptyDrawing
 }
@@ -56,6 +58,8 @@ extension DrawingError: LocalizedError {
             return "No hay texto ni imágenes en el portapapeles. Copia algo primero."
         case .elementNotFound:
             return "Ese elemento ya no está en la hoja."
+        case .invalidConnection:
+            return "Elige otro elemento: no se puede unir uno consigo mismo."
         case .emptyDrawing:
             return "La hoja está vacía: dibuja algo antes de exportar o compartir."
         }
