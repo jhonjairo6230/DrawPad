@@ -28,6 +28,14 @@ enum CanvasGeometry {
         CGSize(width: pageSize.width * zoomScale, height: pageSize.height * zoomScale)
     }
 
+    /// El zoom con el que una hoja cabe a lo ancho en la pantalla, sin
+    /// ampliar nunca (como mucho 1). Para leer en el iPhone una hoja hecha en
+    /// el iPad.
+    static func fitWidthZoom(viewport: CGSize, pageSize: CGSize) -> CGFloat {
+        guard viewport.width > 0, pageSize.width > 0 else { return 1 }
+        return min(1, viewport.width / pageSize.width)
+    }
+
     /// El punto de la hoja que se ve en el centro de la pantalla: ahí se
     /// colocan los textos e imágenes nuevos.
     static func visibleCenter(viewport: CGSize, zoomScale: CGFloat, contentOffset: CGPoint) -> CGPoint {

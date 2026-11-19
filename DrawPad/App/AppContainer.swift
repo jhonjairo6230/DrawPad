@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import UIKit
 
 /// *Composition root*: el único lugar donde se crean las implementaciones
 /// concretas y se conectan entre sí (inyección de dependencias manual).
@@ -16,10 +17,20 @@ final class AppContainer {
     /// Argumento de lanzamiento que usan las pruebas de interfaz para arrancar
     /// con una base de datos vacía y en memoria.
     static let uiTestingArgument = "-uiTesting"
+    /// Las pruebas de interfaz corren en un simulador de iPad: con este
+    /// argumento la app se comporta como en el iPhone (solo lectura).
+    static let readOnlyArgument = "-readOnly"
+    /// Con este argumento (y `-uiTesting`) la app arranca con un cuaderno de
+    /// ejemplo, para probar la lectura sin poder crear cuadernos.
+    static let sampleNotebookArgument = "-uiTestingSampleNotebook"
     /// Lo que "hay en el portapapeles" durante las pruebas de interfaz.
     static let uiTestingClipboardText = "Texto pegado"
 
     private let isUITesting = ProcessInfo.processInfo.arguments.contains(AppContainer.uiTestingArgument)
+
+    /// `false` en el iPhone: la app solo lee (ver docs/adr/0018).
+    private(set) lazy var canEdit: Bool = UIDevice.current.userInterfaceIdiom != .phone
+        && !ProcessInfo.processInfo.arguments.contains(AppContainer.readOnlyArgument)
 
     private(set) lazy var galleryViewModel = GalleryViewModel(
         listNotebooks: ListNotebooksUseCase(notebooks: library),
@@ -66,7 +77,7 @@ final class AppContainer {
 
     /// Monta la pantalla de una hoja: un lienzo nuevo y su ViewModel.
     func makeCanvasModule(drawingID: UUID, shareName: String) -> CanvasModule {
-        let canvas = PencilKitCanvas()
+        let canvas = PencilKitCanvas(isReadOnly: !canEdit)
         let viewModel = CanvasViewModel(
             drawingID: drawingID,
             shareName: shareName,
@@ -91,12 +102,24 @@ final class AppContainer {
             let library = SwiftDataLibrary(container: container)
             // Dibujos guardados antes de que existieran los cuadernos.
             try library.adoptOrphanDrawings()
+            if isUITesting, ProcessInfo.processInfo.arguments.contains(AppContainer.sampleNotebookArgument) {
+                try AppContainer.addSampleNotebook(to: library)
+            }
             return library
         } catch {
             // Sin base de datos la app no puede hacer nada útil.
             fatalError("No se pudo abrir la base de datos: \(error)")
         }
     }()
+
+    /// "Cuaderno 1" con dos hojas y un texto en la primera.
+    private static func addSampleNotebook(to library: SwiftDataLibrary) throws {
+        let notebook = try CreateNotebookUseCase(notebooks: library, drawings: library).execute()
+        let firstPage = try ListPagesUseCase(drawings: library).execute(notebookID: notebook.id)[0]
+        _ = try AddTextElementUseCase(elements: library)
+            .execute(pageID: firstPage.id, text: "Hola desde el iPad", centeredAt: CGPoint(x: 260, y: 200))
+        _ = try AddPageUseCase(drawings: library).execute(notebookID: notebook.id)
+    }
 
     private lazy var canvasPreferences = CanvasPreferences()
     private lazy var imageLibrary: ImageLibrary = PhotoLibraryImageExporter()

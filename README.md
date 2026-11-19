@@ -34,7 +34,8 @@ desde Windows. No está pensada para publicarse en el App Store.
 - **Guardar en Fotos** y **compartir** como imagen (PNG) o PDF: AirDrop,
   Archivos, Mensajes, imprimir…
 
-Requiere iPadOS 17 o posterior.
+Requiere iPadOS 17 o posterior. En el **iPhone** (iOS 17 o posterior) la app
+funciona en **solo lectura**, para leer los cuadernos exportados desde el iPad.
 
 ## Instalar en tu iPad
 

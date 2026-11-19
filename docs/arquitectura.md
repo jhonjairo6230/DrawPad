@@ -197,7 +197,8 @@ DrawPad/
 │       ├── AlertMessage.swift
 │       ├── SharedFile.swift        Archivo listo para la hoja de compartir
 │       ├── ActivityView.swift      Hoja de compartir de iOS
-│       └── UTType+DrawPad.swift    Tipo de archivo .drawpad
+│       ├── UTType+DrawPad.swift    Tipo de archivo .drawpad
+│       └── EditingCapability.swift Valor de entorno canEdit (false en el iPhone)
 └── Resources/Assets.xcassets       Icono de la app
 
 DrawPadTests/
@@ -220,7 +221,8 @@ DrawPadTests/
     └── StrokeSmootherTests.swift
 
 DrawPadUITests/
-└── CanvasUITests.swift             Toca la app real en el simulador
+├── CanvasUITests.swift             Toca la app real en el simulador
+└── ReadOnlyUITests.swift           Modo de solo lectura (el del iPhone), con -readOnly
 ```
 
 > **Sobre los nombres:** en la interfaz se habla de **cuadernos** y **hojas**.
@@ -1102,6 +1104,14 @@ la capa. Los elementos no son trazos: cada uno es una fila de la base de
 datos y se guarda al momento, no con el autoguardado
 (ver [ADR 0013](adr/0013-textos-e-imagenes.md)).
 
+**En el iPhone, solo lectura, decidido una vez.** `AppContainer` calcula
+`canEdit` (falso en el iPhone, o con `-readOnly` en las pruebas) y lo reparte
+con el entorno de SwiftUI. Cada pantalla esconde lo que no aplica: crear,
+renombrar, portada, añadir hojas, herramientas. El lienzo se crea en modo
+lectura: sin paleta, sin gesto de dibujo y con la hoja ajustada al ancho
+(`CanvasGeometry.fitWidthZoom`). Los ViewModel y los casos de uso no cambian
+(ver [ADR 0018](adr/0018-iphone-solo-lectura.md)).
+
 **Exportar es un formato propio, versionado y separado del dominio.** El
 archivo `.drawpad` es un JSON con `format` y `version`, y tipos propios
 (`ArchiveFile`, `PageDTO`…) en vez de las entidades. Así cambiar una entidad
@@ -1226,7 +1236,8 @@ la interfaz va en el hilo principal). El temporizador de autoguardado es una
 | Biblioteca SwiftData | `Data/SwiftDataLibraryTests.swift` | Base de datos real, en memoria. Incluye la migración de dibujos sin cuaderno. |
 | Archivos para compartir | `Data/TemporaryExportFileStoreTests.swift` | Carpeta temporal real. |
 | ViewModel del lienzo | `Presentation/CanvasViewModelTests.swift` | Lienzo falso; el autoguardado se prueba con un retardo de milisegundos. |
-| Cuentas del zoom | `Presentation/CanvasGeometryTests.swift` | Funciones puras, sin vistas. |
+| Cuentas del zoom | `Presentation/CanvasGeometryTests.swift` | Funciones puras, sin vistas; incluye el ajuste al ancho del iPhone. |
+| Solo lectura | `DrawPadUITests/ReadOnlyUITests.swift` | Simulador de iPad con `-readOnly` y un cuaderno de ejemplo. |
 | Suavizado | `Presentation/StrokeSmootherTests.swift` | Líneas de ejemplo: una recta no cambia, un zigzag se aplana, los extremos no se mueven. |
 | ViewModel de la galería | `Presentation/GalleryViewModelTests.swift` | Biblioteca en memoria. |
 | ViewModel del cuaderno | `Presentation/NotebookViewModelTests.swift` | Biblioteca en memoria y hojas abiertas falsas. |

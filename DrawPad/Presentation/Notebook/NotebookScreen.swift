@@ -9,6 +9,7 @@ struct NotebookScreen: View {
     @Bindable var viewModel: NotebookViewModel
 
     @State private var isConfirmingDelete = false
+    @Environment(\.canEdit) private var canEdit
 
     var body: some View {
         page
@@ -63,33 +64,43 @@ struct NotebookScreen: View {
             }
             .disabled(!viewModel.canGoToPreviousPage)
 
-            Menu {
-                Button(role: .destructive) { isConfirmingDelete = true } label: {
-                    Label("Eliminar esta hoja", systemImage: "trash")
+            if canEdit {
+                Menu {
+                    Button(role: .destructive) { isConfirmingDelete = true } label: {
+                        Label("Eliminar esta hoja", systemImage: "trash")
+                    }
+                    .disabled(!viewModel.canDeletePage)
+                } label: {
+                    HStack(spacing: 4) {
+                        pageTitle
+                        // Indica que el título se puede tocar.
+                        Image(systemName: "chevron.down")
+                            .font(.caption.weight(.semibold))
+                    }
                 }
-                .disabled(!viewModel.canDeletePage)
-            } label: {
-                HStack(spacing: 4) {
-                    Text("\(viewModel.title) · \(viewModel.pageLabel)")
-                        .font(.headline)
-                        .lineLimit(1)
-                    // Indica que el título se puede tocar.
-                    Image(systemName: "chevron.down")
-                        .font(.caption.weight(.semibold))
-                }
+                .accessibilityIdentifier("Hojas")
+            } else {
+                pageTitle
             }
-            .accessibilityIdentifier("Hojas")
 
             Button { viewModel.goToNextPage() } label: {
                 Label("Hoja siguiente", systemImage: "chevron.right")
             }
             .disabled(!viewModel.canGoToNextPage)
 
-            Button { viewModel.addPage() } label: {
-                Label("Nueva hoja", systemImage: "plus")
+            if canEdit {
+                Button { viewModel.addPage() } label: {
+                    Label("Nueva hoja", systemImage: "plus")
+                }
             }
         }
         .labelStyle(.iconOnly)
+    }
+
+    private var pageTitle: some View {
+        Text("\(viewModel.title) · \(viewModel.pageLabel)")
+            .font(.headline)
+            .lineLimit(1)
     }
 
     private var isShowingAlert: Binding<Bool> {

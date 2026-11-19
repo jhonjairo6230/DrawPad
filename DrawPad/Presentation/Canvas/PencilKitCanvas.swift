@@ -27,6 +27,13 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
 
     var onDrawingChanged: (() -> Void)?
 
+    /// Solo lectura (iPhone): no se dibuja, no hay paleta y la hoja empieza
+    /// ajustada al ancho de la pantalla. Se puede desplazar y ampliar.
+    private let isReadOnly: Bool
+    /// En solo lectura, mientras el usuario no amplíe a mano, el zoom se
+    /// mantiene ajustado al ancho (la hoja puede cambiar al cargarla o al girar).
+    private var userHasZoomed = false
+
     var onElementMoved: ((UUID, CGRect) -> Void)? {
         get { elementsLayer.onElementMoved }
         set { elementsLayer.onElementMoved = newValue }
@@ -37,7 +44,8 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
         set { elementsLayer.onElementSelected = newValue }
     }
 
-    override init() {
+    init(isReadOnly: Bool = false) {
+        self.isReadOnly = isReadOnly
         super.init()
         canvasView.delegate = self
         canvasView.drawingPolicy = .pencilOnly
@@ -66,11 +74,16 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
             self?.updatePageSize()
         }
         setBackground(background, theme: theme)
+        if isReadOnly {
+            // Sin trazos nuevos; el desplazamiento y el zoom siguen funcionando.
+            canvasView.drawingGestureRecognizer.isEnabled = false
+        }
     }
 
     /// Muestra la paleta flotante de herramientas. Debe llamarse cuando el
     /// lienzo ya está en una ventana (por eso ``PencilCanvasView`` lo difiere).
     func showToolPicker() {
+        guard !isReadOnly else { return }
         toolPicker.addObserver(canvasView)
         toolPicker.setVisible(true, forFirstResponder: canvasView)
         canvasView.becomeFirstResponder()
@@ -134,6 +147,7 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
     }
 
     func setFingerDrawingEnabled(_ enabled: Bool) {
+        guard !isReadOnly else { return }
         canvasView.drawingPolicy = enabled ? .anyInput : .pencilOnly
     }
 
@@ -260,6 +274,13 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
                 elements: elements.map(\.frame)
             )
         )
+        if isReadOnly {
+            let fit = CanvasGeometry.fitWidthZoom(viewport: viewport, pageSize: pageSize)
+            canvasView.minimumZoomScale = fit
+            if !userHasZoomed, canvasView.zoomScale != fit {
+                canvasView.zoomScale = fit
+            }
+        }
         let contentSize = CanvasGeometry.contentSize(pageSize: pageSize, zoomScale: canvasView.zoomScale)
         if canvasView.contentSize != contentSize {
             canvasView.contentSize = contentSize
@@ -336,6 +357,10 @@ extension PencilKitCanvas: PKCanvasViewDelegate {
 
     func scrollViewDidZoom(_ scrollView: UIScrollView) {
         updatePaperPlacement()
+    }
+
+    func scrollViewWillBeginZooming(_ scrollView: UIScrollView, with view: UIView?) {
+        userHasZoomed = true
     }
 }
 

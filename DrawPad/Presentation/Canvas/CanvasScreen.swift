@@ -6,12 +6,14 @@ import SwiftUI
 /// controles para cambiar de hoja.
 ///
 /// La vista no toma decisiones: traduce toques en llamadas al
-/// ``CanvasViewModel`` y pinta su estado.
+/// ``CanvasViewModel`` y pinta su estado. En solo lectura (iPhone) la barra
+/// se queda solo con "Compartir".
 struct CanvasScreen: View {
     @Bindable var viewModel: CanvasViewModel
     let canvas: PencilKitCanvas
 
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.canEdit) private var canEdit
     @State private var isConfirmingClear = false
 
     var body: some View {
@@ -52,10 +54,16 @@ struct CanvasScreen: View {
             }
     }
 
+    @ViewBuilder
     private var canvasView: some View {
-        PencilCanvasView(canvas: canvas)
-            .ignoresSafeArea(edges: .bottom)
-            .toolbar { toolbarContent }
+        let page = PencilCanvasView(canvas: canvas).ignoresSafeArea(edges: .bottom)
+        if canEdit {
+            page.toolbar { toolbarContent }
+        } else {
+            page.toolbar {
+                ToolbarItem(placement: .topBarTrailing) { shareMenu }
+            }
+        }
     }
 
     /// Barra del modo de mover: qué hacer con lo seleccionado y cómo volver a
@@ -194,23 +202,29 @@ struct CanvasScreen: View {
                 Label("Más", systemImage: "ellipsis.circle")
             }
 
-            if viewModel.isExporting {
-                ProgressView()
-            } else {
-                Menu {
-                    Button { Task { await viewModel.export() } } label: {
-                        Label("Guardar en Fotos", systemImage: "square.and.arrow.down")
-                    }
-                    Divider()
-                    Button { viewModel.share(as: .png) } label: {
-                        Label("Compartir como imagen", systemImage: "photo")
-                    }
-                    Button { viewModel.share(as: .pdf) } label: {
-                        Label("Compartir como PDF", systemImage: "doc.richtext")
-                    }
-                } label: {
-                    Label("Compartir", systemImage: "square.and.arrow.up")
+            shareMenu
+        }
+    }
+
+    /// Guardar en Fotos y compartir: lo único que queda en solo lectura.
+    @ViewBuilder
+    private var shareMenu: some View {
+        if viewModel.isExporting {
+            ProgressView()
+        } else {
+            Menu {
+                Button { Task { await viewModel.export() } } label: {
+                    Label("Guardar en Fotos", systemImage: "square.and.arrow.down")
                 }
+                Divider()
+                Button { viewModel.share(as: .png) } label: {
+                    Label("Compartir como imagen", systemImage: "photo")
+                }
+                Button { viewModel.share(as: .pdf) } label: {
+                    Label("Compartir como PDF", systemImage: "doc.richtext")
+                }
+            } label: {
+                Label("Compartir", systemImage: "square.and.arrow.up")
             }
         }
     }

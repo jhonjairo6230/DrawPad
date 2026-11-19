@@ -24,6 +24,7 @@ entienda **por qué** el código es como es.
 | [0015](0015-portada-dibujada.md) | Portada dibujada a mano | Aceptada |
 | [0016](0016-figuras-de-diagrama.md) | Figuras de diagrama unidas con flechas | Aceptada |
 | [0017](0017-exportar-importar-cuadernos.md) | Exportar e importar cuadernos en archivos `.drawpad` | Aceptada |
+| [0018](0018-iphone-solo-lectura.md) | La app en el iPhone, en solo lectura | Aceptada |
 
 ## Cómo añadir un ADR
 
