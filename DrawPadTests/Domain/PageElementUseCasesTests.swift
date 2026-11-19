@@ -250,6 +250,155 @@ final class PageElementUseCasesTests: XCTestCase {
         XCTAssertEqual(Array(library.elements.keys), [kept.id])
     }
 
+    // MARK: - Figuras
+
+    func testAddShapeSavesItUprightWithoutTextAtItsDefaultSize() throws {
+        let library = InMemoryLibrary()
+
+        let element = try AddShapeElementUseCase(elements: library).execute(
+            pageID: pageID, kind: .cylinder, centeredAt: center
+        )
+
+        XCTAssertEqual(element.content, .shape(DiagramShape(kind: .cylinder)))
+        XCTAssertEqual(element.frame.size, ShapeKind.cylinder.defaultSize)
+        XCTAssertEqual(element.frame.midX, center.x, accuracy: 0.001)
+        XCTAssertEqual(element.frame.midY, center.y, accuracy: 0.001)
+        XCTAssertEqual(library.elements[element.id], element)
+    }
+
+    func testRotatingAShapeSwapsItsSidesAroundTheCenter() throws {
+        let cylinder = PageElement.sampleShape(
+            pageID: pageID, .cylinder, frame: CGRect(x: 100, y: 100, width: 110, height: 140)
+        )
+        let library = InMemoryLibrary(elements: [cylinder])
+        let useCase = RotateShapeUseCase(elements: library)
+
+        let sideways = try useCase.execute(id: cylinder.id)
+
+        XCTAssertEqual(sideways.content, .shape(DiagramShape(kind: .cylinder, quarterTurns: 1)))
+        XCTAssertEqual(sideways.frame.size, CGSize(width: 140, height: 110))
+        XCTAssertEqual(sideways.frame.midX, cylinder.frame.midX, accuracy: 0.001)
+        XCTAssertEqual(sideways.frame.midY, cylinder.frame.midY, accuracy: 0.001)
+
+        // Cuatro cuartos de vuelta: como al principio.
+        _ = try useCase.execute(id: cylinder.id)
+        _ = try useCase.execute(id: cylinder.id)
+        let back = try useCase.execute(id: cylinder.id)
+        XCTAssertEqual(back.content, cylinder.content)
+        XCTAssertEqual(back.frame, cylinder.frame)
+    }
+
+    func testRotatingSomethingThatIsNotAShapeFails() {
+        let text = PageElement.sampleText(pageID: pageID)
+        let useCase = RotateShapeUseCase(elements: InMemoryLibrary(elements: [text]))
+
+        for id in [text.id, UUID()] {
+            XCTAssertThrowsError(try useCase.execute(id: id)) { error in
+                XCTAssertEqual(error as? DrawingError, .elementNotFound)
+            }
+        }
+    }
+
+    func testAShapeLabelIsTrimmedAndCanBeEmpty() throws {
+        let shape = PageElement.sampleShape(pageID: pageID, .diamond, label: "Viejo")
+        let library = InMemoryLibrary(elements: [shape])
+        let useCase = UpdateElementTextUseCase(elements: library)
+
+        let named = try useCase.execute(id: shape.id, text: "  ¿Pagado? ")
+        XCTAssertEqual(named.content, .shape(DiagramShape(kind: .diamond, label: "¿Pagado?")))
+
+        let cleared = try useCase.execute(id: shape.id, text: "  ")
+        XCTAssertEqual(cleared.content, .shape(DiagramShape(kind: .diamond, label: "")))
+        XCTAssertEqual(library.elements[shape.id]?.frame, shape.frame)
+    }
+
+    // MARK: - Conexiones
+
+    func testConnectingTwoShapesSavesAConnector() throws {
+        let api = PageElement.sampleShape(pageID: pageID, .rectangle)
+        let db = PageElement.sampleShape(pageID: pageID, .cylinder)
+        let library = InMemoryLibrary(elements: [api, db])
+
+        let connector = try ConnectElementsUseCase(elements: library).execute(
+            pageID: pageID, from: api.id, to: db.id, style: .arrow
+        )
+
+        XCTAssertEqual(connector.content, .connector(Connector(fromID: api.id, toID: db.id, style: .arrow)))
+        XCTAssertEqual(connector.frame, .zero)
+        XCTAssertEqual(library.elements[connector.id], connector)
+    }
+
+    func testConnectingTheSamePairAgainChangesTheStyleInsteadOfDuplicating() throws {
+        let a = PageElement.sampleShape(pageID: pageID)
+        let b = PageElement.sampleShape(pageID: pageID)
+        let library = InMemoryLibrary(elements: [a, b])
+        let useCase = ConnectElementsUseCase(elements: library)
+
+        let first = try useCase.execute(pageID: pageID, from: a.id, to: b.id, style: .arrow)
+        let second = try useCase.execute(pageID: pageID, from: a.id, to: b.id, style: .line)
+
+        XCTAssertEqual(second.id, first.id)
+        XCTAssertEqual(library.elements.values.filter(\.isConnector).count, 1)
+        XCTAssertEqual(library.elements[first.id]?.content, .connector(Connector(fromID: a.id, toID: b.id, style: .line)))
+    }
+
+    func testConnectingTheOtherWayRoundIsANewConnector() throws {
+        let a = PageElement.sampleShape(pageID: pageID)
+        let b = PageElement.sampleShape(pageID: pageID)
+        let library = InMemoryLibrary(elements: [a, b])
+        let useCase = ConnectElementsUseCase(elements: library)
+
+        _ = try useCase.execute(pageID: pageID, from: a.id, to: b.id, style: .arrow)
+        _ = try useCase.execute(pageID: pageID, from: b.id, to: a.id, style: .arrow)
+
+        XCTAssertEqual(library.elements.values.filter(\.isConnector).count, 2)
+    }
+
+    func testInvalidConnectionsAreRejected() {
+        let shape = PageElement.sampleShape(pageID: pageID)
+        let other = PageElement.sampleShape(pageID: pageID)
+        let existing = PageElement.sampleConnector(pageID: pageID, from: shape.id, to: other.id)
+        let onAnotherPage = PageElement.sampleShape()
+        let library = InMemoryLibrary(elements: [shape, other, existing, onAnotherPage])
+        let useCase = ConnectElementsUseCase(elements: library)
+
+        XCTAssertThrowsError(try useCase.execute(pageID: pageID, from: shape.id, to: shape.id, style: .arrow)) {
+            XCTAssertEqual($0 as? DrawingError, .invalidConnection)
+        }
+        XCTAssertThrowsError(try useCase.execute(pageID: pageID, from: shape.id, to: existing.id, style: .arrow)) {
+            XCTAssertEqual($0 as? DrawingError, .invalidConnection)
+        }
+        XCTAssertThrowsError(try useCase.execute(pageID: pageID, from: shape.id, to: onAnotherPage.id, style: .arrow)) {
+            XCTAssertEqual($0 as? DrawingError, .elementNotFound)
+        }
+        XCTAssertEqual(library.elements.values.filter(\.isConnector).count, 1)
+    }
+
+    func testDeletingAShapeDeletesItsConnectorsButNotOthers() throws {
+        let api = PageElement.sampleShape(pageID: pageID)
+        let db = PageElement.sampleShape(pageID: pageID, .cylinder)
+        let queue = PageElement.sampleShape(pageID: pageID, .cylinder)
+        let toDB = PageElement.sampleConnector(pageID: pageID, from: api.id, to: db.id)
+        let fromDB = PageElement.sampleConnector(pageID: pageID, from: db.id, to: queue.id)
+        let toQueue = PageElement.sampleConnector(pageID: pageID, from: api.id, to: queue.id)
+        let library = InMemoryLibrary(elements: [api, db, queue, toDB, fromDB, toQueue])
+
+        try DeleteElementUseCase(elements: library).execute(id: db.id)
+
+        XCTAssertEqual(Set(library.elements.keys), [api.id, queue.id, toQueue.id])
+    }
+
+    func testDeletingAConnectorLeavesTheShapes() throws {
+        let a = PageElement.sampleShape(pageID: pageID)
+        let b = PageElement.sampleShape(pageID: pageID)
+        let connector = PageElement.sampleConnector(pageID: pageID, from: a.id, to: b.id)
+        let library = InMemoryLibrary(elements: [a, b, connector])
+
+        try DeleteElementUseCase(elements: library).execute(id: connector.id)
+
+        XCTAssertEqual(Set(library.elements.keys), [a.id, b.id])
+    }
+
     // MARK: - Borrado en cascada (regla de los repositorios)
 
     func testDeletingAPageOrANotebookDeletesTheirElements() throws {

@@ -1,6 +1,6 @@
 import Foundation
 
-/// Cambia el texto de un cuadro de texto ya colocado.
+/// Cambia el texto de un cuadro de texto, o el texto dentro de una figura.
 struct UpdateElementTextUseCase {
     private let elements: PageElementRepository
 
@@ -8,15 +8,25 @@ struct UpdateElementTextUseCase {
         self.elements = elements
     }
 
-    /// - Throws: ``DrawingError/emptyText`` si el texto queda vacío, o
-    ///   ``DrawingError/elementNotFound`` si no existe o no es un texto.
+    /// Un cuadro de texto no puede quedar vacío; una figura sí (se queda sin
+    /// texto).
+    /// - Throws: ``DrawingError/emptyText`` si un cuadro de texto queda vacío,
+    ///   o ``DrawingError/elementNotFound`` si no existe o no lleva texto.
     func execute(id: UUID, text: String) throws -> PageElement {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { throw DrawingError.emptyText }
-        guard var element = try elements.findElement(id: id), element.isText else {
+        guard var element = try elements.findElement(id: id) else {
             throw DrawingError.elementNotFound
         }
-        element.content = .text(trimmed)
+        switch element.content {
+        case .text:
+            guard !trimmed.isEmpty else { throw DrawingError.emptyText }
+            element.content = .text(trimmed)
+        case .shape(var shape):
+            shape.label = trimmed
+            element.content = .shape(shape)
+        case .image, .connector:
+            throw DrawingError.elementNotFound
+        }
         try elements.save(element)
         return element
     }

@@ -309,6 +309,70 @@ final class CanvasUITests: XCTestCase {
         assertAppIsRunning()
     }
 
+    // MARK: - Figuras de diagrama
+
+    func testBuildingASmallArchitectureDiagram() {
+        openNewNotebook()
+
+        // Un servicio a la izquierda…
+        insertShape("Cuadrado")
+        dragElement(app.staticTexts["Cuadrado"], to: canvasPoint(0.25, 0.45))
+        app.buttons["Editar texto"].tap()
+        typeInEditor("API")
+        XCTAssertTrue(app.staticTexts["Cuadrado: API"].waitForExistence(timeout: 5))
+
+        // …y una cola de mensajes (cilindro acostado) a la derecha.
+        insertShape("Cilindro")
+        dragElement(app.staticTexts["Cilindro"], to: canvasPoint(0.7, 0.45))
+        app.buttons["Girar"].tap()
+        app.buttons["Editar texto"].tap()
+        typeInEditor("Kafka")
+        XCTAssertTrue(app.staticTexts["Cilindro: Kafka"].waitForExistence(timeout: 5))
+
+        // Flecha de la API a la cola.
+        app.staticTexts["Cuadrado: API"].tap()
+        app.buttons["Conectar"].tap()
+        app.buttons["Con flecha"].tap()
+        XCTAssertTrue(app.staticTexts["Toca el elemento de destino"].waitForExistence(timeout: 5))
+        app.staticTexts["Cilindro: Kafka"].tap()
+        XCTAssertTrue(app.staticTexts["Conexión seleccionada"].waitForExistence(timeout: 5))
+
+        // Mover una figura con la flecha puesta no rompe nada.
+        dragElement(app.staticTexts["Cilindro: Kafka"], to: canvasPoint(0.7, 0.7))
+        app.buttons["Listo"].tap()
+
+        goBackToGallery()
+        app.buttons["Cuaderno 1"].tap()
+        XCTAssertTrue(app.staticTexts["Cuadrado: API"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Cilindro: Kafka"].exists)
+        assertAppIsRunning()
+    }
+
+    func testEveryShapeCanBeInsertedAndDeleted() {
+        openNewNotebook()
+
+        for shape in ["Cuadrado", "Círculo", "Rombo", "Cilindro"] {
+            insertShape(shape)
+            XCTAssertTrue(app.staticTexts[shape].waitForExistence(timeout: 5))
+            app.buttons["Eliminar"].tap()
+            XCTAssertFalse(app.staticTexts[shape].waitForExistence(timeout: 2))
+        }
+        app.buttons["Listo"].tap()
+        assertAppIsRunning()
+    }
+
+    func testCancellingAConnectionLeavesTheShapeSelected() {
+        openNewNotebook()
+        insertShape("Rombo")
+
+        app.buttons["Conectar"].tap()
+        app.buttons["Con línea"].tap()
+        app.buttons["Cancelar conexión"].tap()
+
+        XCTAssertTrue(app.staticTexts["Arrastra para mover"].waitForExistence(timeout: 5))
+        assertAppIsRunning()
+    }
+
     // MARK: - Suavizar
 
     func testSmoothingStrokesCanBeRepeatedAndUndone() {
@@ -441,6 +505,34 @@ final class CanvasUITests: XCTestCase {
         let action = app.descendants(matching: .any).matching(identifier: title).firstMatch
         XCTAssertTrue(action.waitForExistence(timeout: 5))
         action.tap()
+    }
+
+    /// Menú "Insertar" → "Figura" → la figura pedida.
+    private func insertShape(_ title: String) {
+        app.buttons["Insertar"].tap()
+        let shapes = app.buttons["Figura"]
+        XCTAssertTrue(shapes.waitForExistence(timeout: 5))
+        shapes.tap()
+        let shape = app.buttons[title]
+        XCTAssertTrue(shape.waitForExistence(timeout: 5))
+        shape.tap()
+        XCTAssertTrue(app.staticTexts[title].waitForExistence(timeout: 5))
+    }
+
+    /// Arrastra un elemento (en el modo de mover) hasta un punto de la pantalla.
+    private func dragElement(_ element: XCUIElement, to point: XCUICoordinate) {
+        XCTAssertTrue(element.waitForExistence(timeout: 5))
+        element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .press(forDuration: 0.2, thenDragTo: point)
+    }
+
+    /// Escribe en el editor de texto abierto y guarda.
+    private func typeInEditor(_ text: String) {
+        let editor = app.textViews.firstMatch
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        editor.tap()
+        editor.typeText(text)
+        app.buttons["Guardar"].tap()
     }
 
     /// "Dibujar con el dedo" está en el menú "Más".

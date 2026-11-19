@@ -23,6 +23,8 @@ desde Windows. No está pensada para publicarse en el App Store.
 - **Zoom** con pellizco (hasta 4×) y desplazamiento por la hoja.
 - **Texto e imágenes** en la hoja: cuadros de texto escritos con el teclado
   y texto o imágenes pegados del portapapeles, para dibujar encima.
+- **Figuras para diagramas** (cuadrado, círculo, rombo, cilindro) con texto,
+  giro de 90° y **flechas o líneas** que las unen y las siguen al moverlas.
 - **Suavizar trazos**: quita el temblor de lo dibujado (se puede deshacer).
 - Deshacer y rehacer.
 - **Dibujar con el dedo** (opcional; por defecto solo dibuja el Pencil).

@@ -157,6 +157,45 @@ extension PageElement {
     }
 }
 
+extension PageElement {
+    /// Figura de ejemplo para las pruebas.
+    static func sampleShape(
+        id: UUID = UUID(),
+        pageID: UUID = UUID(),
+        _ kind: ShapeKind = .rectangle,
+        label: String = "",
+        quarterTurns: Int = 0,
+        frame: CGRect = CGRect(x: 100, y: 100, width: 160, height: 100),
+        createdAt: Date = Date(timeIntervalSince1970: 0)
+    ) -> PageElement {
+        PageElement(
+            id: id,
+            pageID: pageID,
+            frame: frame,
+            content: .shape(DiagramShape(kind: kind, label: label, quarterTurns: quarterTurns)),
+            createdAt: createdAt
+        )
+    }
+
+    /// Conexión de ejemplo para las pruebas.
+    static func sampleConnector(
+        id: UUID = UUID(),
+        pageID: UUID = UUID(),
+        from fromID: UUID,
+        to toID: UUID,
+        style: ConnectorStyle = .arrow,
+        createdAt: Date = Date(timeIntervalSince1970: 10)
+    ) -> PageElement {
+        PageElement(
+            id: id,
+            pageID: pageID,
+            frame: .zero,
+            content: .connector(Connector(fromID: fromID, toID: toID, style: style)),
+            createdAt: createdAt
+        )
+    }
+}
+
 extension Drawing {
     /// Hoja de ejemplo para las pruebas; cada una cambia solo lo que le importa.
     static func sample(

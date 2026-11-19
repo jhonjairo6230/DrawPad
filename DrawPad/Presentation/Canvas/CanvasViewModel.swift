@@ -10,9 +10,11 @@ import Observation
 ///   través de los casos de uso; nunca con PencilKit, SwiftData ni Fotos.
 /// - Publica estado observable (`background`, `isExporting`, `alert`…).
 ///
-/// **Textos e imágenes:** además de los trazos, la hoja tiene elementos
-/// (``PageElement``). Se guardan al momento, cada uno por separado, y se
-/// mueven en un modo aparte (`isArrangingElements`) en el que no se dibuja.
+/// **Elementos:** además de los trazos, la hoja tiene textos, imágenes,
+/// figuras y conexiones (``PageElement``). Se guardan al momento, cada uno
+/// por separado, y se mueven en un modo aparte (`isArrangingElements`) en el
+/// que no se dibuja. Unir dos elementos es un paso más dentro de ese modo:
+/// se elige el origen, "Conectar", y se toca el destino (`connectionDraft`).
 ///
 /// **Autoguardado:** cada cambio de trazos reinicia un temporizador
 /// (`autosaveDelay`). Cuando pasa ese tiempo sin cambios se guarda una sola
@@ -36,6 +38,8 @@ final class CanvasViewModel {
     private(set) var isArrangingElements = false
     /// Editor de texto abierto; la vista lo muestra mientras no sea `nil`.
     var textEditor: TextEditorRequest?
+    /// Conexión a medio hacer: ya se eligió el origen y falta tocar el destino.
+    private(set) var connectionDraft: ConnectionDraft?
 
     private let drawingID: UUID
     /// Nombre de la hoja para el archivo al compartir ("Cuaderno 1 - Hoja 2").
@@ -218,10 +222,62 @@ final class CanvasViewModel {
         textEditor = TextEditorRequest(elementID: nil, text: "")
     }
 
-    /// Abre el editor con el texto del cuadro seleccionado.
+    /// Abre el editor con el texto del cuadro o de la figura seleccionados.
     func beginEditingSelectedText() {
-        guard let element = selectedElement, case .text(let text) = element.content else { return }
-        textEditor = TextEditorRequest(elementID: element.id, text: text)
+        guard let element = selectedElement else { return }
+        switch element.content {
+        case .text(let text):
+            textEditor = TextEditorRequest(elementID: element.id, text: text)
+        case .shape(let shape):
+            textEditor = TextEditorRequest(elementID: element.id, text: shape.label, isShapeLabel: true)
+        case .image, .connector:
+            break
+        }
+    }
+
+    // MARK: - Figuras y conexiones
+
+    var isConnecting: Bool { connectionDraft != nil }
+
+    /// Añade una figura en el centro de lo que se está viendo.
+    func insertShape(_ kind: ShapeKind) {
+        performOnElements {
+            let added = try elementUseCases.addShape.execute(
+                pageID: drawingID, kind: kind, centeredAt: canvas.visibleCenter
+            )
+            insertAndSelect(added)
+        }
+    }
+
+    /// Gira la figura seleccionada un cuarto de vuelta.
+    func rotateSelectedShape() {
+        guard let element = selectedElement, element.isShape else { return }
+        performOnElements {
+            let rotated = try elementUseCases.rotate.execute(id: element.id)
+            replaceElement(rotated)
+        }
+    }
+
+    /// Empieza a unir el elemento seleccionado con otro: el siguiente que se
+    /// toque será el destino.
+    func beginConnecting(_ style: ConnectorStyle) {
+        guard let element = selectedElement, !element.isConnector else { return }
+        connectionDraft = ConnectionDraft(fromID: element.id, style: style)
+    }
+
+    func cancelConnecting() {
+        connectionDraft = nil
+    }
+
+    /// Une el origen de `draft` con `destinationID` y selecciona la conexión.
+    private func finishConnecting(_ draft: ConnectionDraft, to destinationID: UUID) {
+        performOnElements {
+            let connector = try elementUseCases.connect.execute(
+                pageID: drawingID, from: draft.fromID, to: destinationID, style: draft.style
+            )
+            elements = try elementUseCases.list.execute(pageID: drawingID)
+            selectedElementID = connector.id
+        }
     }
 
     /// Guarda lo escrito en el editor: crea el cuadro o cambia el existente.
@@ -257,22 +313,36 @@ final class CanvasViewModel {
     func setArrangingElements(_ enabled: Bool) {
         guard enabled != isArrangingElements else { return }
         isArrangingElements = enabled
-        if !enabled { selectedElementID = nil }
+        if !enabled {
+            selectedElementID = nil
+            connectionDraft = nil
+        }
         canvas.setArrangingElements(enabled)
         refreshCanvasElements()
     }
 
     func deleteSelectedElement() {
         guard let id = selectedElementID else { return }
+        connectionDraft = nil
         performOnElements {
             try elementUseCases.delete.execute(id: id)
-            elements.removeAll { $0.id == id }
+            // Se vuelve a leer: al quitar una figura se van también sus conexiones.
+            elements = try elementUseCases.list.execute(pageID: drawingID)
             selectedElementID = nil
         }
     }
 
-    /// El usuario tocó un elemento (o el fondo) en el modo de mover.
+    /// El usuario tocó un elemento (o el fondo) en el modo de mover. Si se
+    /// estaba uniendo, ese toque elige el destino; tocar el fondo o el mismo
+    /// origen lo cancela.
     private func selectElement(_ id: UUID?) {
+        if let draft = connectionDraft {
+            connectionDraft = nil
+            if let id, id != draft.fromID {
+                finishConnecting(draft, to: id)
+                return
+            }
+        }
         selectedElementID = id
         refreshCanvasElements()
     }
@@ -352,4 +422,10 @@ final class CanvasViewModel {
             alert = AlertMessage(error: error)
         }
     }
+}
+
+/// Una conexión a medio hacer: el origen elegido y el tipo de línea.
+struct ConnectionDraft: Equatable {
+    let fromID: UUID
+    let style: ConnectorStyle
 }

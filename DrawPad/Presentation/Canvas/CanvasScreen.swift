@@ -58,27 +58,57 @@ struct CanvasScreen: View {
             .toolbar { toolbarContent }
     }
 
-    /// Barra del modo "mover texto e imágenes": qué hacer con lo seleccionado
-    /// y cómo volver a dibujar.
+    /// Barra del modo de mover: qué hacer con lo seleccionado y cómo volver a
+    /// dibujar.
     private var arrangingBar: some View {
         HStack(spacing: 20) {
-            Text(viewModel.selectedElement == nil ? "Toca un texto o una imagen" : "Arrastra para mover")
+            Text(arrangingHint)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
-            if viewModel.selectedElement?.isText == true {
-                Button("Editar texto") { viewModel.beginEditingSelectedText() }
+            if viewModel.isConnecting {
+                Button("Cancelar") { viewModel.cancelConnecting() }
+                    .accessibilityIdentifier("Cancelar conexión")
+            } else {
+                selectionActions
+                Button("Listo") { viewModel.setArrangingElements(false) }
+                    .fontWeight(.semibold)
             }
-            if viewModel.selectedElement != nil {
-                Button("Eliminar", role: .destructive) { viewModel.deleteSelectedElement() }
-            }
-            Button("Listo") { viewModel.setArrangingElements(false) }
-                .fontWeight(.semibold)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
         .background(.regularMaterial, in: Capsule())
         .padding(.top, 12)
+    }
+
+    private var arrangingHint: String {
+        if viewModel.isConnecting { return "Toca el elemento de destino" }
+        guard let element = viewModel.selectedElement else { return "Toca un elemento" }
+        return element.isConnector ? "Conexión seleccionada" : "Arrastra para mover"
+    }
+
+    /// Lo que se puede hacer con el elemento seleccionado.
+    @ViewBuilder
+    private var selectionActions: some View {
+        if let element = viewModel.selectedElement {
+            if element.isText || element.isShape {
+                Button("Editar texto") { viewModel.beginEditingSelectedText() }
+            }
+            if element.isShape {
+                Button("Girar") { viewModel.rotateSelectedShape() }
+            }
+            if !element.isConnector {
+                Menu("Conectar") {
+                    Button { viewModel.beginConnecting(.arrow) } label: {
+                        Label("Con flecha", systemImage: "arrow.right")
+                    }
+                    Button { viewModel.beginConnecting(.line) } label: {
+                        Label("Con línea", systemImage: "line.diagonal")
+                    }
+                }
+            }
+            Button("Eliminar", role: .destructive) { viewModel.deleteSelectedElement() }
+        }
     }
 
     /// Adapta `alert: AlertMessage?` al `Bool` que pide `.alert`.
@@ -107,9 +137,18 @@ struct CanvasScreen: View {
                 Button { viewModel.paste() } label: {
                     Label("Pegar", systemImage: "doc.on.clipboard")
                 }
+                Menu {
+                    ForEach(ShapeKind.allCases, id: \.self) { kind in
+                        Button { viewModel.insertShape(kind) } label: {
+                            Label(kind.title, systemImage: kind.symbolName)
+                        }
+                    }
+                } label: {
+                    Label("Figura", systemImage: "square.on.circle")
+                }
                 Divider()
                 Button { viewModel.setArrangingElements(true) } label: {
-                    Label("Mover texto e imágenes", systemImage: "arrow.up.and.down.and.arrow.left.and.right")
+                    Label("Mover y conectar", systemImage: "arrow.up.and.down.and.arrow.left.and.right")
                 }
                 .disabled(viewModel.elements.isEmpty)
             } label: {

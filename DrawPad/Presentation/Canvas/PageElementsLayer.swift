@@ -1,13 +1,14 @@
 import UIKit
 
-/// La capa de textos e imágenes de una hoja. Va **entre el papel y los
+/// La capa de textos, imágenes, figuras y conexiones de una hoja. Va **entre el papel y los
 /// trazos**: se ve a través del lienzo transparente de PencilKit y los trazos
 /// quedan por encima.
 ///
 /// Normalmente no recibe toques (los recibe el lienzo, que está encima). En
-/// el modo "mover texto e imágenes" el lienzo deja de atender toques y esta
-/// capa permite seleccionar, arrastrar y, en las imágenes, cambiar el tamaño
-/// con un pellizco.
+/// el modo de mover el lienzo deja de atender toques y esta capa permite
+/// seleccionar, arrastrar y, en imágenes y figuras, cambiar el tamaño con un
+/// pellizco. Las conexiones se dibujan en una vista aparte, debajo, y se
+/// seleccionan tocando cerca de la línea.
 ///
 /// No sabe nada de guardar: avisa de lo que hizo el usuario con
 /// `onElementMoved` y `onElementSelected`.
@@ -19,7 +20,10 @@ final class PageElementsLayer: UIView {
     var onElementSelected: ((UUID?) -> Void)?
 
     var theme = CanvasTheme.light {
-        didSet { elementViews.values.forEach { $0.apply(theme: theme) } }
+        didSet {
+            elementViews.values.forEach { $0.apply(theme: theme) }
+            connectorsView.theme = theme
+        }
     }
 
     var isArranging = false {
@@ -30,11 +34,22 @@ final class PageElementsLayer: UIView {
     }
 
     private var elementViews: [UUID: PageElementView] = [:]
+    private let connectorsView = ConnectorsView()
+    /// Distancia máxima, en puntos de la hoja, a la que un toque selecciona
+    /// una conexión.
+    private let connectorHitDistance: CGFloat = 18
 
     override init(frame: CGRect) {
         super.init(frame: frame)
         isUserInteractionEnabled = false
-        addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(backgroundTapped)))
+        connectorsView.isUserInteractionEnabled = false
+        addSubview(connectorsView)
+        addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(backgroundTapped(_:))))
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        connectorsView.frame = bounds
     }
 
     @available(*, unavailable)
@@ -44,16 +59,21 @@ final class PageElementsLayer: UIView {
 
     /// Deja la capa mostrando exactamente estos elementos, en este orden.
     func show(_ elements: [PageElement], selectedID: UUID?) {
-        let ids = Set(elements.map(\.id))
+        let placed = elements.filter { !$0.isConnector }
+        let ids = Set(placed.map(\.id))
         for (id, view) in elementViews where !ids.contains(id) {
             view.removeFromSuperview()
             elementViews[id] = nil
         }
-        for element in elements {
+        for element in placed {
             let view = elementViews[element.id] ?? makeView(for: element)
             view.update(with: element, theme: theme)
             bringSubviewToFront(view) // El orden de la lista es el de apilado.
         }
+        connectorsView.elements = elements
+        connectorsView.selectedID = selectedID
+        sendSubviewToBack(connectorsView)
+        updateConnectors()
         select(selectedID)
     }
 
@@ -67,6 +87,9 @@ final class PageElementsLayer: UIView {
         view.onMoved = { [weak self] id, frame in
             self?.onElementMoved?(id, frame)
         }
+        view.onFrameChanging = { [weak self] in
+            self?.updateConnectors()
+        }
         elementViews[element.id] = view
         addSubview(view)
         return view
@@ -78,18 +101,37 @@ final class PageElementsLayer: UIView {
         }
     }
 
-    @objc private func backgroundTapped() {
-        onElementSelected?(nil)
+    /// Las conexiones se recalculan con los marcos que tienen las vistas en
+    /// este momento: así siguen a una figura mientras se arrastra.
+    private func updateConnectors() {
+        connectorsView.frames = elementViews.mapValues(\.frame)
+        connectorsView.setNeedsDisplay()
+    }
+
+    /// Un toque fuera de los elementos selecciona la conexión más cercana, si
+    /// hay una lo bastante cerca, o quita la selección.
+    @objc private func backgroundTapped(_ gesture: UITapGestureRecognizer) {
+        let point = gesture.location(in: self)
+        let nearest = connectorsView.segments
+            .map { (id: $0.connectorID, distance: DiagramGeometry.distance(from: point, toSegmentFrom: $0.start, to: $0.end)) }
+            .min { $0.distance < $1.distance }
+        if let nearest, nearest.distance <= connectorHitDistance {
+            onElementSelected?(nearest.id)
+        } else {
+            onElementSelected?(nil)
+        }
     }
 }
 
-/// La vista de un elemento: una etiqueta de texto o una imagen, con los
-/// gestos para tocarlo, arrastrarlo y (si es imagen) cambiarle el tamaño.
+/// La vista de un elemento: un texto, una imagen o una figura, con los
+/// gestos para tocarlo, arrastrarlo y (imágenes y figuras) cambiarle el tamaño.
 @MainActor
 private final class PageElementView: UIView {
     let elementID: UUID
     var onTapped: ((UUID) -> Void)?
     var onMoved: ((UUID, CGRect) -> Void)?
+    /// El marco está cambiando durante un gesto (para mover las conexiones).
+    var onFrameChanging: (() -> Void)?
 
     var isSelected = false {
         didSet {
@@ -99,6 +141,7 @@ private final class PageElementView: UIView {
 
     private let label = UILabel()
     private let imageView = UIImageView()
+    private let shapeView = ShapeView()
     private var content: PageElement.Content?
     /// Marco al empezar un gesto, para calcular el nuevo a partir de él.
     private var frameAtGestureStart = CGRect.zero
@@ -112,7 +155,7 @@ private final class PageElementView: UIView {
         label.numberOfLines = 0
         label.font = PageElementStyle.font
         imageView.contentMode = .scaleToFill
-        for subview in [label, imageView] {
+        for subview in [label, imageView, shapeView] {
             subview.frame = bounds
             subview.autoresizingMask = [.flexibleWidth, .flexibleHeight]
             addSubview(subview)
@@ -136,6 +179,7 @@ private final class PageElementView: UIView {
                 label.text = text
                 label.isHidden = false
                 imageView.isHidden = true
+                shapeView.isHidden = true
                 // Para VoiceOver y para las pruebas de interfaz.
                 isAccessibilityElement = true
                 accessibilityLabel = text
@@ -144,9 +188,20 @@ private final class PageElementView: UIView {
                 imageView.image = UIImage(data: data)
                 imageView.isHidden = false
                 label.isHidden = true
+                shapeView.isHidden = true
                 isAccessibilityElement = true
                 accessibilityLabel = "Imagen"
                 accessibilityTraits = .image
+            case .shape(let shape):
+                shapeView.shape = shape
+                shapeView.isHidden = false
+                label.isHidden = true
+                imageView.isHidden = true
+                isAccessibilityElement = true
+                accessibilityLabel = shape.label.isEmpty ? shape.kind.title : "\(shape.kind.title): \(shape.label)"
+                accessibilityTraits = .staticText
+            case .connector:
+                break // Las conexiones no tienen vista propia.
             }
         }
         apply(theme: theme)
@@ -161,6 +216,7 @@ private final class PageElementView: UIView {
 
     func apply(theme: CanvasTheme) {
         label.textColor = PageElementStyle.textColor(for: theme)
+        shapeView.theme = theme
     }
 
     // MARK: - Gestos
@@ -181,6 +237,7 @@ private final class PageElementView: UIView {
                 x: frameAtGestureStart.origin.x + translation.x,
                 y: frameAtGestureStart.origin.y + translation.y
             )
+            onFrameChanging?()
         case .ended:
             onMoved?(elementID, frame)
         case .cancelled, .failed:
@@ -191,8 +248,11 @@ private final class PageElementView: UIView {
     }
 
     @objc private func pinched(_ gesture: UIPinchGestureRecognizer) {
-        // Solo las imágenes cambian de tamaño; un texto se ajusta a su contenido.
-        guard case .image = content else { return }
+        // Imágenes y figuras cambian de tamaño; un texto se ajusta a su contenido.
+        switch content {
+        case .some(.image), .some(.shape): break
+        default: return
+        }
         switch gesture.state {
         case .began:
             frameAtGestureStart = frame
@@ -208,12 +268,77 @@ private final class PageElementView: UIView {
                 width: size.width,
                 height: size.height
             )
+            onFrameChanging?()
         case .ended:
             onMoved?(elementID, frame)
         case .cancelled, .failed:
             frame = frameAtGestureStart
+            onFrameChanging?()
         default:
             break
         }
+    }
+}
+
+/// Dibuja una figura de diagrama ocupando toda la vista.
+@MainActor
+private final class ShapeView: UIView {
+    var shape: DiagramShape? {
+        didSet { setNeedsDisplay() }
+    }
+
+    var theme = CanvasTheme.light {
+        didSet { setNeedsDisplay() }
+    }
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        backgroundColor = .clear
+        isOpaque = false
+        contentMode = .redraw // Repintar al cambiar de tamaño, no estirar.
+        isUserInteractionEnabled = false
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("ShapeView se crea por código")
+    }
+
+    override func draw(_ rect: CGRect) {
+        guard let shape else { return }
+        DiagramRenderer.draw(shape, in: bounds, theme: theme)
+    }
+}
+
+/// Dibuja todas las conexiones de la hoja. No recibe toques: la capa decide
+/// qué conexión se tocó con ``segments``.
+@MainActor
+private final class ConnectorsView: UIView {
+    var elements: [PageElement] = []
+    /// Marco actual de cada elemento (el de su vista).
+    var frames: [UUID: CGRect] = [:]
+    var selectedID: UUID?
+    var theme = CanvasTheme.light {
+        didSet { setNeedsDisplay() }
+    }
+
+    var segments: [DiagramGeometry.Segment] {
+        DiagramGeometry.segments(for: elements, frames: frames)
+    }
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        backgroundColor = .clear
+        isOpaque = false
+        contentMode = .redraw
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("ConnectorsView se crea por código")
+    }
+
+    override func draw(_ rect: CGRect) {
+        DiagramRenderer.draw(segments, theme: theme, highlighted: selectedID)
     }
 }

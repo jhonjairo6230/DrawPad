@@ -18,6 +18,8 @@ Glosario para estudiar el código. Cada entrada dice qué es y dónde verlo.
 | `UIGraphicsImageRenderer` | Dibuja en una imagen con Core Graphics. | Baldosas de fondo y exportación |
 | `UIGraphicsPDFRenderer` | Lo mismo, pero el resultado es un PDF. | `renderPDF()` en `PencilKitCanvas` |
 | `UIPasteboard` | El portapapeles del sistema. Leerlo puede mostrar un aviso de permiso. | `SystemClipboard.swift` |
+| `UIBezierPath` | Un contorno (rectas y curvas) que se puede trazar o rellenar. | `DiagramRenderer.swift` |
+| `draw(_:)` de `UIView` | Dibujo propio de una vista con Core Graphics; `setNeedsDisplay()` pide repintarla. | Figuras y conexiones en `PageElementsLayer.swift` |
 | `UIGestureRecognizer` | Reconoce gestos (toque, arrastre, pellizco) sobre una vista de UIKit. | `PageElementsLayer.swift` |
 | `isUserInteractionEnabled` | Si es `false`, la vista ignora los toques y pasan a la que tiene debajo. | Modo "mover" en `PencilKitCanvas` |
 | `TextEditor` + `@FocusState` | Campo de texto de varias líneas, y control de si tiene el teclado. | `TextElementEditorSheet.swift` |

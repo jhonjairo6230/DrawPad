@@ -24,7 +24,7 @@ flowchart TB
         P4["PencilKitCanvas<br/>PencilCanvasView"]
     end
     subgraph DOM["Domain — Swift puro"]
-        D1["Casos de uso<br/>cuadernos · hojas · papel<br/>textos e imágenes<br/>exportar · compartir"]
+        D1["Casos de uso<br/>cuadernos · hojas · papel<br/>textos, imágenes, figuras y conexiones<br/>exportar · compartir"]
         D2["Notebook · Drawing · PageElement<br/>CanvasBackground · CanvasTheme<br/>DrawingError"]
         D3["NotebookRepository · DrawingRepository<br/>PageElementRepository<br/>ImageLibrary · ExportFileStore · Clipboard<br/>(protocolos)"]
     end
@@ -99,7 +99,7 @@ DrawPad/
 │   │   ├── NotebookSummary.swift   Lo justo para la galería: tapa, hojas, actividad
 │   │   ├── Drawing.swift           Una hoja: trazos, miniatura, papel, fechas
 │   │   ├── DrawingSummary.swift    Lo justo para listar hojas (sin trazos)
-│   │   ├── PageElement.swift       Un texto o una imagen colocados en una hoja
+│   │   ├── PageElement.swift       Un texto, imagen, figura (DiagramShape) o conexión (Connector)
 │   │   ├── ClipboardContent.swift  Lo que se puede pegar: texto o imagen
 │   │   ├── CanvasBackground.swift  Patrón del papel: blanco, cuadrícula, líneas, puntos
 │   │   ├── CanvasTheme.swift       Papel claro u oscuro
@@ -131,7 +131,10 @@ DrawPad/
 │       ├── PasteElementUseCase.swift
 │       ├── UpdateElementTextUseCase.swift
 │       ├── MoveElementUseCase.swift
-│       ├── DeleteElementUseCase.swift
+│       ├── DeleteElementUseCase.swift         Al quitar una figura, quita sus conexiones
+│       ├── AddShapeElementUseCase.swift
+│       ├── RotateShapeUseCase.swift
+│       ├── ConnectElementsUseCase.swift
 │       ├── ExportDrawingUseCase.swift
 │       └── PrepareShareFileUseCase.swift
 ├── Data/
@@ -169,7 +172,10 @@ DrawPad/
 │   │   ├── PencilKitCanvas.swift   Adaptador de PencilKit
 │   │   ├── CanvasGeometry.swift    Cuentas del zoom: tamaño de hoja y posición del papel
 │   │   ├── StrokeSmoother.swift    Suavizado de trazos (media móvil sobre puntos)
-│   │   ├── PageElementsLayer.swift Capa de textos e imágenes bajo los trazos
+│   │   ├── PageElementsLayer.swift Capa de textos, imágenes, figuras y conexiones bajo los trazos
+│   │   ├── DiagramGeometry.swift   Cuentas de las conexiones (de borde a borde, puntas, toques)
+│   │   ├── DiagramRenderer.swift   Dibuja figuras y conexiones (pantalla y exportación)
+│   │   ├── ShapeKind+Presentation.swift    Nombre e icono de cada figura
 │   │   ├── PageElementStyle.swift  Tipografía de los textos y dibujo al exportar
 │   │   ├── PageElementUseCases.swift       Casos de uso de elementos, agrupados
 │   │   ├── TextEditorRequest.swift         Petición de abrir el editor de texto
@@ -197,6 +203,7 @@ DrawPadTests/
     ├── CanvasViewModelTests.swift
     ├── CoverDrawingViewModelTests.swift
     ├── CanvasGeometryTests.swift
+    ├── DiagramGeometryTests.swift
     └── StrokeSmootherTests.swift
 
 DrawPadUITests/
@@ -275,6 +282,10 @@ classDiagram
         +setArrangingElements(Bool)
         +beginEditingSelectedText()
         +deleteSelectedElement()
+        +insertShape(ShapeKind)
+        +rotateSelectedShape()
+        +beginConnecting(ConnectorStyle)
+        +cancelConnecting()
         +onAppear()
         +undo()
         +redo()
@@ -329,6 +340,7 @@ classDiagram
         ChangeBackground
         ListPageElements · AddText · AddImage
         Paste · UpdateText · Move · DeleteElement
+        AddShape · RotateShape · ConnectElements
         ExportDrawing · PrepareShareFile
     }
     class NotebookRepository {
@@ -361,8 +373,20 @@ classDiagram
         +id UUID
         +pageID UUID
         +frame CGRect
-        +content text | image
+        +content text | image | shape | connector
         +createdAt Date
+    }
+    class DiagramShape {
+        <<struct>>
+        +kind ShapeKind
+        +label String
+        +quarterTurns Int
+    }
+    class Connector {
+        <<struct>>
+        +fromID UUID
+        +toID UUID
+        +style arrow | line
     }
     class PageElementsLayer {
         <<UIView>>
@@ -439,6 +463,8 @@ classDiagram
     UseCases --> Clipboard
     PageElementRepository ..> PageElement
     PageElement --> Drawing : pageID
+    PageElement --> DiagramShape
+    PageElement --> Connector
     PencilKitCanvas --> PageElementsLayer
     SwiftDataLibrary ..|> PageElementRepository
     SystemClipboard ..|> Clipboard
@@ -913,6 +939,54 @@ sequenceDiagram
     GVM->>R: ChangeCoverUseCase, save(cuaderno)
 ```
 
+### 5.12 Figuras de diagrama y conexiones
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Usuario
+    participant V as CanvasScreen
+    participant VM as CanvasViewModel
+    participant UC as Casos de uso de elementos
+    participant R as PageElementRepository
+    participant L as PageElementsLayer
+
+    U->>V: "Insertar", "Figura", "Cilindro"
+    V->>VM: insertShape(.cylinder)
+    VM->>UC: AddShapeElementUseCase(hoja, cilindro, centro visible)
+    UC->>R: save(figura de pie, sin texto)
+    VM->>L: showElements(...) con la figura seleccionada, modo mover
+
+    opt la pone acostada (cola de mensajes)
+        U->>V: "Girar"
+        V->>VM: rotateSelectedShape()
+        VM->>UC: RotateShapeUseCase(id)
+        UC->>R: save(un cuarto de vuelta más, ancho y alto intercambiados)
+    end
+
+    U->>V: con la API seleccionada, "Conectar", "Con flecha"
+    V->>VM: beginConnecting(.arrow)
+    VM-->>V: connectionDraft (origen = API)
+    U->>L: toca el cilindro
+    L->>VM: onElementSelected(cilindro)
+    VM->>UC: ConnectElementsUseCase(API, cilindro, flecha)
+    UC->>R: save(conexión), o cambia el estilo si ya existía
+    VM->>L: showElements(...) con la conexión seleccionada
+    L->>L: DiagramGeometry: de borde a borde, con punta
+
+    opt mueve una figura
+        U->>L: arrastra el cilindro
+        L->>L: redibuja la flecha en cada paso
+        L->>VM: onElementMoved
+    end
+    opt elimina una figura
+        U->>V: "Eliminar"
+        V->>VM: deleteSelectedElement()
+        VM->>UC: DeleteElementUseCase(id)
+        UC->>R: borra la figura y las conexiones que la tocaban
+    end
+```
+
 ## 6. Decisiones de diseño que conviene entender
 
 **El dominio no conoce PencilKit.** `Drawing.strokesData` es `Data` opaco.
@@ -962,6 +1036,16 @@ un **modo aparte**: mientras dura, el lienzo no atiende toques y los recibe
 la capa. Los elementos no son trazos: cada uno es una fila de la base de
 datos y se guarda al momento, no con el autoguardado
 (ver [ADR 0013](adr/0013-textos-e-imagenes.md)).
+
+**Las figuras son elementos y las conexiones también.** Una figura es un
+`PageElement` con un `DiagramShape` (tipo, texto, giro); una conexión es un
+`PageElement` con un `Connector` que solo guarda los dos extremos. La línea
+no tiene posición propia: se calcula cada vez, de borde a borde, a partir de
+los marcos actuales (`DiagramGeometry`). Por eso sigue a las figuras al
+moverlas o girarlas, y por eso quitar una figura quita sus conexiones (regla
+de `DeleteElementUseCase`). Girar es de 90 en 90°: basta con intercambiar
+ancho y alto, y el dibujo del cilindro cambia de orientación
+(ver [ADR 0016](adr/0016-figuras-de-diagrama.md)).
 
 **El portapapeles es un puerto.** `PasteElementUseCase` no sabe qué es
 `UIPasteboard`: pide a `Clipboard` "qué hay copiado". Así la lógica de pegar

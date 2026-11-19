@@ -22,6 +22,7 @@ entienda **por qué** el código es como es.
 | [0013](0013-textos-e-imagenes.md) | Textos e imágenes en una capa bajo los trazos | Aceptada |
 | [0014](0014-ipa-y-pruebas-en-paralelo.md) | IPA y pruebas en paralelo en el workflow | Aceptada |
 | [0015](0015-portada-dibujada.md) | Portada dibujada a mano | Aceptada |
+| [0016](0016-figuras-de-diagrama.md) | Figuras de diagrama unidas con flechas | Aceptada |
 
 ## Cómo añadir un ADR
 

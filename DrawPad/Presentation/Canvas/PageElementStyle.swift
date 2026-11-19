@@ -32,22 +32,45 @@ enum PageElementStyle {
     /// Dibuja los elementos en el contexto gráfico actual, del fondo hacia
     /// arriba. Se usa al exportar la hoja como imagen o PDF.
     static func draw(_ elements: [PageElement], theme: CanvasTheme) {
+        // Primero las conexiones, para que las figuras queden por encima.
+        DiagramRenderer.draw(
+            DiagramGeometry.segments(for: elements, frames: displayFrames(of: elements)),
+            theme: theme
+        )
         for element in elements {
             switch element.content {
             case .text(let text):
-                let rect = CGRect(
-                    origin: element.frame.origin,
-                    size: CGSize(width: element.frame.width, height: height(of: text, width: element.frame.width))
-                )
                 (text as NSString).draw(
-                    with: rect,
+                    with: displayFrame(of: element),
                     options: [.usesLineFragmentOrigin, .usesFontLeading],
                     attributes: attributes(for: theme),
                     context: nil
                 )
             case .image(let data):
                 UIImage(data: data)?.draw(in: element.frame)
+            case .shape(let shape):
+                DiagramRenderer.draw(shape, in: element.frame, theme: theme)
+            case .connector:
+                break // Ya dibujadas arriba.
             }
         }
+    }
+
+    /// El marco que ocupa un elemento en pantalla: en un texto, con el alto
+    /// real de su contenido; en el resto, el guardado.
+    static func displayFrame(of element: PageElement) -> CGRect {
+        guard case .text(let text) = element.content else { return element.frame }
+        var frame = element.frame
+        frame.size.height = height(of: text, width: frame.width)
+        return frame
+    }
+
+    /// El marco visible de cada elemento que no es una conexión.
+    static func displayFrames(of elements: [PageElement]) -> [UUID: CGRect] {
+        var frames: [UUID: CGRect] = [:]
+        for element in elements where !element.isConnector {
+            frames[element.id] = displayFrame(of: element)
+        }
+        return frames
     }
 }
