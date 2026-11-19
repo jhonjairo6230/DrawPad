@@ -11,8 +11,8 @@ Glosario para estudiar el código. Cada entrada dice qué es y dónde verlo.
 | `@State` | Estado propio de una vista; SwiftUI lo conserva entre evaluaciones. | `isConfirmingClear` en `CanvasScreen` |
 | `@Observable` | Macro (iOS 17) que hace observable una clase: las vistas que leen sus propiedades se repintan al cambiar. | `CanvasViewModel` |
 | `@Bindable` | Permite crear enlaces de escritura (`$viewModel.x`) a un objeto `@Observable`. | `CanvasScreen` |
-| `EnvironmentKey` / `.environment(_:_:)` | Un valor propio que SwiftUI reparte a todas las vistas de debajo. | `canEdit` en `EditingCapability.swift` |
-| `UIDevice.current.userInterfaceIdiom` | Si la app corre en iPhone (`.phone`) o iPad (`.pad`). | `AppContainer.canEdit` |
+| `EnvironmentKey` / `.environment(_:_:)` | Un valor propio que SwiftUI reparte a todas las vistas de debajo. | `editing` en `EditingCapability.swift` |
+| `UIDevice.current.userInterfaceIdiom` | Si la app corre en iPhone (`.phone`) o iPad (`.pad`). | `AppContainer.editing` |
 | `TARGETED_DEVICE_FAMILY` | Para qué dispositivos se compila: `1` iPhone, `2` iPad. | `project.yml` |
 | `@Environment(\.scenePhase)` | Estado de la app: activa, inactiva o en segundo plano. | `CanvasScreen` |
 | `UIViewRepresentable` | Protocolo para usar una vista de UIKit dentro de SwiftUI. | `PencilCanvasView.swift` |

@@ -15,7 +15,7 @@ struct DrawPadApp: App {
                 makeNotebook: container.makeNotebookViewModel(notebookID:),
                 makeCoverDrawing: container.makeCoverDrawingModule(initialDrawing:color:)
             )
-            .environment(\.canEdit, container.canEdit)
+            .environment(\.editing, container.editing)
         }
     }
 }

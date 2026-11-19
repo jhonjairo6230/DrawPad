@@ -12,7 +12,7 @@ struct NotebookScreen: View {
 
     @State private var isConfirmingDelete = false
     @State private var isImportingMarkdown = false
-    @Environment(\.canEdit) private var canEdit
+    @Environment(\.editing) private var editing
 
     var body: some View {
         page
@@ -33,7 +33,7 @@ struct NotebookScreen: View {
             ) {
                 Button("Eliminar hoja", role: .destructive) { viewModel.deleteCurrentPage() }
             } message: {
-                Text("Se borrará para siempre lo dibujado en ella.")
+                Text("Se borrará para siempre lo que tiene.")
             }
             .alert(
                 viewModel.alert?.title ?? "",
@@ -86,7 +86,7 @@ struct NotebookScreen: View {
             }
             .disabled(!viewModel.canGoToPreviousPage)
 
-            if canEdit {
+            if let kind = viewModel.currentPageKind, editing.canDeletePage(of: kind) {
                 Menu {
                     Button(role: .destructive) { isConfirmingDelete = true } label: {
                         Label("Eliminar esta hoja", systemImage: "trash")
@@ -110,17 +110,21 @@ struct NotebookScreen: View {
             }
             .disabled(!viewModel.canGoToNextPage)
 
-            if canEdit {
+            if editing.canAddPages {
                 Menu {
-                    Button { viewModel.addPage(.drawing) } label: {
-                        Label("Hoja de dibujo", systemImage: "pencil.and.scribble")
+                    if editing.canDraw {
+                        Button { viewModel.addPage(.drawing) } label: {
+                            Label("Hoja de dibujo", systemImage: "pencil.and.scribble")
+                        }
                     }
-                    Button { viewModel.addPage(.markdown) } label: {
-                        Label("Hoja Markdown", systemImage: "doc.richtext")
-                    }
-                    Divider()
-                    Button { isImportingMarkdown = true } label: {
-                        Label("Importar Markdown…", systemImage: "square.and.arrow.down")
+                    if editing.canWriteMarkdown {
+                        Button { viewModel.addPage(.markdown) } label: {
+                            Label("Hoja Markdown", systemImage: "doc.richtext")
+                        }
+                        Divider()
+                        Button { isImportingMarkdown = true } label: {
+                            Label("Importar Markdown…", systemImage: "square.and.arrow.down")
+                        }
                     }
                 } label: {
                     Label("Nueva hoja", systemImage: "plus")
