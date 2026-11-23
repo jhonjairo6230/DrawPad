@@ -6,7 +6,7 @@ import XCTest
 /// Corren en el simulador de iPad con `-phoneMode`, que hace que la app se
 /// comporte como en el iPhone, y con un cuaderno de ejemplo ("Cuaderno 1",
 /// tres hojas: "Hola desde el iPad" en la primera y una hoja Markdown al
-/// final), porque en este modo no se pueden crear cuadernos.
+/// final), para tener algo hecho en el iPad.
 final class PhoneUITests: XCTestCase {
     private var app: XCUIApplication!
 
@@ -17,16 +17,41 @@ final class PhoneUITests: XCTestCase {
         app.launch()
     }
 
-    func testTheGalleryCanImportButNotCreateOrEditNotebooks() {
+    func testANotebookCanBeCreatedAndWrittenIn() {
+        XCTAssertTrue(app.buttons["Cuaderno 1"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Importar"].exists)
+
+        app.buttons["Nuevo cuaderno"].tap()
+        assertTitle(contains: "Hoja 1 de 1")
+        // La primera hoja es de dibujo: sirve para diagramas.
+        XCTAssertTrue(app.buttons["Insertar"].waitForExistence(timeout: 5))
+        app.buttons["Nueva hoja"].tap()
+        let markdown = app.buttons["Hoja Markdown"]
+        XCTAssertTrue(markdown.waitForExistence(timeout: 5))
+        markdown.tap()
+        assertTitle(contains: "Hoja 2 de 2")
+
+        app.navigationBars.buttons["Cuadernos"].tap()
+        XCTAssertTrue(app.buttons["Cuaderno 2"].waitForExistence(timeout: 5))
+    }
+
+    func testANotebookCanBeRenamedAndGetANewCoverButNotADrawnOne() {
         let card = app.buttons["Cuaderno 1"]
         XCTAssertTrue(card.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Importar"].exists)
-        XCTAssertFalse(app.buttons["Nuevo cuaderno"].exists)
 
         card.press(forDuration: 1.2)
         XCTAssertTrue(app.buttons["Exportar"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["Renombrar"].exists)
-        XCTAssertFalse(app.buttons["Cambiar portada"].exists)
+        XCTAssertTrue(app.buttons["Renombrar"].exists)
+        let cover = app.buttons["Cambiar portada"]
+        XCTAssertTrue(cover.exists)
+        cover.tap()
+
+        XCTAssertTrue(app.buttons["Guardar"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Etiqueta"].exists)
+        XCTAssertFalse(app.buttons["Dibujo"].exists)
+        app.buttons["Etiqueta"].tap()
+        app.buttons["Guardar"].tap()
+        XCTAssertTrue(app.buttons["Cuaderno 1"].waitForExistence(timeout: 5))
     }
 
     func testDrawingPagesOfferDiagramsButNoStrokeTools() {

@@ -12,10 +12,10 @@ final class EditingCapabilitiesTests: XCTestCase {
         XCTAssertTrue(editing.canDeletePage(of: .markdown))
     }
 
-    func testOnTheIPhoneMarkdownAndDiagramsCanBeChangedButNotStrokes() {
+    func testOnTheIPhoneNotebooksMarkdownAndDiagramsCanBeChangedButNotStrokes() {
         let editing = EditingCapabilities.phone
 
-        XCTAssertFalse(editing.canManageNotebooks)
+        XCTAssertTrue(editing.canManageNotebooks)
         XCTAssertFalse(editing.canDraw)
         XCTAssertTrue(editing.canEditDiagrams)
         XCTAssertTrue(editing.canWriteMarkdown)
@@ -24,6 +24,16 @@ final class EditingCapabilitiesTests: XCTestCase {
         XCTAssertTrue(editing.canAddPages)
         XCTAssertFalse(editing.canDeletePage(of: .drawing))
         XCTAssertTrue(editing.canDeletePage(of: .markdown))
+    }
+
+    func testTheDrawnCoverIsOfferedOnlyWhereYouCanDraw() {
+        XCTAssertEqual(EditingCapabilities.full.coverStyles(current: .plain), CoverStyle.allCases)
+        XCTAssertFalse(EditingCapabilities.phone.coverStyles(current: .plain).contains(.drawn))
+        XCTAssertEqual(EditingCapabilities.phone.coverStyles(current: .label), [.plain, .label, .spine])
+    }
+
+    func testADrawnCoverMadeOnTheIPadIsKeptOnTheIPhone() {
+        XCTAssertTrue(EditingCapabilities.phone.coverStyles(current: .drawn).contains(.drawn))
     }
 
     func testWithNothingAllowedNoPageCanBeAdded() {

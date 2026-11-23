@@ -4,11 +4,13 @@ import SwiftUI
 ///
 /// En el iPad, todo. En el iPhone no hay Apple Pencil ni espacio para las
 /// herramientas de dibujo, pero sí teclado y dedo: se **escribe Markdown** y
-/// se hacen **diagramas** (figuras, conexiones y Mermaid); los trazos solo se
-/// leen (ver docs/adr/0018, 0021 y 0022). Lo decide ``AppContainer`` y lo reparte por el
-/// entorno de SwiftUI, para que cada pantalla esconda lo que no aplica.
+/// se hacen **diagramas** (figuras, conexiones y Mermaid), y se crean y
+/// arreglan cuadernos; los trazos solo se leen (ver docs/adr/0018, 0021, 0022
+/// y 0024). Lo decide ``AppContainer`` y lo reparte por el entorno de
+/// SwiftUI, para que cada pantalla esconda lo que no aplica.
 struct EditingCapabilities: Equatable {
-    /// Crear, renombrar, cambiar la portada y eliminar cuadernos.
+    /// Crear, renombrar y cambiar la portada de cuadernos (la portada
+    /// dibujada, además, pide `canDraw`).
     var canManageNotebooks: Bool
     /// Dibujar trazos y el resto de herramientas del lienzo: deshacer, papel,
     /// dibujar con el dedo, suavizar, borrar todo, cuadros de texto, pegar.
@@ -26,9 +28,9 @@ struct EditingCapabilities: Equatable {
         canManageNotebooks: true, canDraw: true, canEditDiagrams: true, canWriteMarkdown: true
     )
 
-    /// iPhone: Markdown y diagramas; sin trazos.
+    /// iPhone: cuadernos, Markdown y diagramas; sin trazos.
     static let phone = EditingCapabilities(
-        canManageNotebooks: false, canDraw: false, canEditDiagrams: true, canWriteMarkdown: true
+        canManageNotebooks: true, canDraw: false, canEditDiagrams: true, canWriteMarkdown: true
     )
 
     /// ¿Se pueden añadir hojas de dibujo (para trazos o para diagramas)?
@@ -36,6 +38,13 @@ struct EditingCapabilities: Equatable {
 
     /// ¿Hay algo que hacer en una hoja de dibujo, además de leerla?
     var canEditDrawingPages: Bool { canDraw || canEditDiagrams }
+
+    /// Estilos de portada que se ofrecen. "Dibujo" se dibuja con el Pencil:
+    /// sin `canDraw` no se ofrece, salvo que la portada ya lo tenga (para no
+    /// quitárselo al guardar otro cambio).
+    func coverStyles(current: CoverStyle) -> [CoverStyle] {
+        CoverStyle.allCases.filter { $0 != .drawn || canDraw || current == .drawn }
+    }
 
     /// ¿Se puede añadir alguna clase de hoja?
     var canAddPages: Bool { canAddDrawingPages || canWriteMarkdown }

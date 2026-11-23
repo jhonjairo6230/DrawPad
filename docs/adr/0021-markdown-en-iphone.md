@@ -1,6 +1,6 @@
 # 0021. Escribir hojas Markdown en el iPhone
 
-- **Estado:** Aceptada
+- **Estado:** Aceptada; el punto 4 (crear cuadernos), cambiado por [0024](0024-cuadernos-en-iphone.md)
 - **Fecha:** 2026-11-19
 - **Cambia:** el punto 2 de [ADR 0018](0018-iphone-solo-lectura.md) (solo
   lectura en el iPhone), para las hojas Markdown.

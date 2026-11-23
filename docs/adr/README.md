@@ -27,9 +27,10 @@ entienda **por qué** el código es como es.
 | [0018](0018-iphone-solo-lectura.md) | La app en el iPhone, en solo lectura | Aceptada; cambiada por 0021 y 0022 |
 | [0019](0019-hojas-mermaid.md) | Diagramas Mermaid con WebKit, sin conexión | Aceptada |
 | [0020](0020-hojas-markdown.md) | Hojas Markdown con marked y WebKit | Aceptada |
-| [0021](0021-markdown-en-iphone.md) | Escribir hojas Markdown en el iPhone | Aceptada |
+| [0021](0021-markdown-en-iphone.md) | Escribir hojas Markdown en el iPhone | Aceptada; cambiada por 0024 |
 | [0022](0022-diagramas-en-iphone.md) | Diagramas en el iPhone, sin trazos | Aceptada |
 | [0023](0023-ipa-solo-al-fusionar.md) | El `.ipa` solo al fusionar en `develop` o `main` | Aceptada |
+| [0024](0024-cuadernos-en-iphone.md) | Crear y arreglar cuadernos en el iPhone | Aceptada |
 
 ## Cómo añadir un ADR
 
