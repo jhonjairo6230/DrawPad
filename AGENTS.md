@@ -57,14 +57,16 @@ Documentación en `docs/`; decisiones en `docs/adr/`.
 ## Comprobar un cambio
 
 Push a la rama y mirar el workflow **Compilar IPA**
-(`.github/workflows/build.yml`). Tiene dos trabajos en paralelo: **IPA**
-compila y publica `DrawPad-unsigned.ipa` (unos 3 minutos) y **Pruebas** corre
-las unitarias y de interfaz en un simulador de iPad (unos 25). Si falla, el
-error está en el log del paso correspondiente.
+(`.github/workflows/build.yml`). Tiene dos trabajos en paralelo: **Pruebas**
+corre las unitarias y de interfaz en un simulador de iPad (unos 25 minutos)
+en cada push y pull request; **IPA** compila y publica
+`DrawPad-unsigned.ipa` (unos 3) **solo al fusionar en `develop` o `main`**, o
+con Run workflow sobre una rama (ver `docs/adr/0023-ipa-solo-al-fusionar.md`).
+Si falla, el error está en el log del paso correspondiente.
 
-El `.ipa` se puede instalar y probar en el iPad mientras terminan las pruebas
-(ver `docs/adr/0014-ipa-y-pruebas-en-paralelo.md`); que haya `.ipa` solo
-significa que la app compila, no que las pruebas hayan pasado.
+El `.ipa` no espera a las pruebas (ver `docs/adr/0014-ipa-y-pruebas-en-paralelo.md`);
+que haya `.ipa` solo significa que la app compila, no que las pruebas hayan
+pasado.
 
 ## Documentación
 

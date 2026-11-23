@@ -20,7 +20,7 @@ entienda **por qué** el código es como es.
 | [0011](0011-suavizar-trazos.md) | Suavizar trazos con un algoritmo propio | Aceptada |
 | [0012](0012-portada-disenada.md) | Portada del cuaderno como tapa diseñada | Aceptada |
 | [0013](0013-textos-e-imagenes.md) | Textos e imágenes en una capa bajo los trazos | Aceptada |
-| [0014](0014-ipa-y-pruebas-en-paralelo.md) | IPA y pruebas en paralelo en el workflow | Aceptada |
+| [0014](0014-ipa-y-pruebas-en-paralelo.md) | IPA y pruebas en paralelo en el workflow | Aceptada; cambiada por 0023 |
 | [0015](0015-portada-dibujada.md) | Portada dibujada a mano | Aceptada |
 | [0016](0016-figuras-de-diagrama.md) | Figuras de diagrama unidas con flechas | Aceptada |
 | [0017](0017-exportar-importar-cuadernos.md) | Exportar e importar cuadernos en archivos `.drawpad` | Aceptada |
@@ -29,6 +29,7 @@ entienda **por qué** el código es como es.
 | [0020](0020-hojas-markdown.md) | Hojas Markdown con marked y WebKit | Aceptada |
 | [0021](0021-markdown-en-iphone.md) | Escribir hojas Markdown en el iPhone | Aceptada |
 | [0022](0022-diagramas-en-iphone.md) | Diagramas en el iPhone, sin trazos | Aceptada |
+| [0023](0023-ipa-solo-al-fusionar.md) | El `.ipa` solo al fusionar en `develop` o `main` | Aceptada |
 
 ## Cómo añadir un ADR
 

@@ -1,6 +1,6 @@
 # 0014. IPA y pruebas en paralelo en el workflow
 
-- **Estado:** Aceptada
+- **Estado:** Aceptada; cuándo se genera el `.ipa`, cambiado por [0023](0023-ipa-solo-al-fusionar.md)
 - **Fecha:** 2026-11-16
 
 ## Contexto
