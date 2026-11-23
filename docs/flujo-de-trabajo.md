@@ -20,8 +20,9 @@ Reglas:
 - **Nunca** se abre un pull request de `develop` a `main`: se pasa por una
   rama `release/`.
 - Solo esos prefijos, en minúsculas y con guiones: `feature/elegir-fondo`.
-- Antes de fusionar, el workflow **Compilar IPA** tiene que estar en verde,
-  con sus dos trabajos: **IPA** y **Pruebas**.
+- Antes de fusionar, el trabajo **Pruebas** del workflow **Compilar IPA**
+  tiene que estar en verde. El `.ipa` se genera al fusionar en `develop` o
+  `main` ([ADR 0023](adr/0023-ipa-solo-al-fusionar.md)).
 - Los pull requests se fusionan cuando el dueño lo pide.
 
 ```mermaid
@@ -73,10 +74,12 @@ sequenceDiagram
     Dev->>D: git switch develop, git pull
     Dev->>F: git switch -c feature/x
     Dev->>F: commits + git push
-    F->>CI: se ejecuta el workflow
-    CI-->>Dev: pruebas en verde + .ipa
-    Dev->>iPad: instala el .ipa y lo prueba
+    F->>CI: se ejecutan las pruebas
+    CI-->>Dev: pruebas en verde
     Dev->>D: pull request de feature/x a develop, merge
+    D->>CI: pruebas + .ipa
+    CI-->>Dev: .ipa de develop
+    Dev->>iPad: instala el .ipa y lo prueba
 ```
 
 ## Publicar una versión

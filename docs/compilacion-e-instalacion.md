@@ -11,7 +11,7 @@ flowchart LR
     A["Código Swift<br/>+ project.yml"] -->|git push| B["GitHub Actions<br/>(Mac en la nube)"]
     B -->|XcodeGen| C["DrawPad.xcodeproj"]
     C -->|xcodebuild test<br/>en paralelo| D["Pruebas en<br/>simulador de iPad"]
-    C -->|xcodebuild build| E["DrawPad.app<br/>sin firmar"]
+    C -->|xcodebuild build<br/>solo en develop y main| E["DrawPad.app<br/>sin firmar"]
     E -->|zip| F["DrawPad-unsigned.ipa<br/>(artefacto)"]
     F -->|descarga| G["PC con Windows<br/>Sideloadly"]
     G -->|firma con tu Apple ID<br/>e instala por USB| H["iPad"]
@@ -25,8 +25,12 @@ mano (pestaña **Actions → Compilar IPA → Run workflow**).
 
 Tiene **dos trabajos que corren a la vez**, cada uno en su propio Mac:
 
-- **IPA** (unos 3 minutos): compila y publica el `.ipa`.
 - **Pruebas** (unos 25 minutos): unitarias y de interfaz en un simulador.
+  Siempre.
+- **IPA** (unos 3 minutos): compila y publica el `.ipa`. **Solo al fusionar
+  en `develop` o `main`**, o con Run workflow sobre cualquier rama. En las
+  ramas `feature/` y en los pull requests aparece como omitido
+  (ver [ADR 0023](adr/0023-ipa-solo-al-fusionar.md)).
 
 El `.ipa` no espera a las pruebas: se puede descargar e instalar mientras
 terminan. Que haya `.ipa` significa que la app **compila**, no que las
@@ -41,8 +45,8 @@ sequenceDiagram
     participant M2 as Mac del trabajo Pruebas
     participant Sim as Simulador de iPad
 
-    Dev->>GH: git push
-    par trabajo IPA (unos 3 min)
+    Dev->>GH: git push (o fusiona un pull request)
+    par trabajo IPA (unos 3 min), solo en develop, main o Run workflow
         GH->>M1: arranca
         M1->>M1: checkout y xcodegen generate
         M1->>M1: xcodebuild build (Release, iOS, sin firmar)
@@ -113,8 +117,10 @@ sequenceDiagram
 
 Paso a paso:
 
-1. En GitHub: **Actions → Compilar IPA →** la ejecución más reciente en
-   verde **→ Artifacts → DrawPad-ipa**. Se descarga un `.zip`.
+1. En GitHub: **Actions → Compilar IPA →** la ejecución más reciente de
+   `develop` (o de `main`, para la versión publicada) **→ Artifacts →
+   DrawPad-ipa**. Se descarga un `.zip`. Para una rama sin fusionar, lanza
+   antes **Run workflow** sobre ella.
 2. Descomprímelo: dentro está `DrawPad-unsigned.ipa`.
 3. Abre Sideloadly con el iPad conectado. Arrastra el `.ipa` a la ventana.
 4. En **Apple ID** escribe tu correo y pulsa **Start**. Te pedirá la

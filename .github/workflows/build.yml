@@ -2,10 +2,12 @@
 # Explicación paso a paso: docs/compilacion-e-instalacion.md
 #
 # Dos trabajos en paralelo:
-#   - ipa:   compila y publica el .ipa (unos 3 minutos).
 #   - tests: pruebas unitarias y de interfaz en un simulador (unos 25 minutos).
-# El .ipa no espera a las pruebas: se puede instalar y probar en el iPad
-# mientras terminan (ver docs/adr/0014-ipa-y-pruebas-en-paralelo.md).
+#            En cada push y en cada pull request.
+#   - ipa:   compila y publica el .ipa (unos 3 minutos). Solo al fusionar en
+#            develop o main, o a mano (Run workflow) desde cualquier rama
+#            (ver docs/adr/0023-ipa-solo-al-fusionar.md).
+# El .ipa no espera a las pruebas (ver docs/adr/0014-ipa-y-pruebas-en-paralelo.md).
 name: Compilar IPA
 
 on:
@@ -30,6 +32,11 @@ permissions:
 jobs:
   ipa:
     name: IPA
+    # Solo lo que ya está fusionado (develop, main) o lo que se pide a mano.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' &&
+       (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main'))
     runs-on: macos-latest
     timeout-minutes: 20
     steps:
