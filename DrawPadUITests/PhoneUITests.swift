@@ -240,6 +240,9 @@ final class PhoneUITests: XCTestCase {
         // Es texto en las hojas de dibujo y un botón (menú) en las Markdown.
         let title = app.navigationBars.descendants(matching: .any)
             .matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
-        XCTAssertTrue(title.waitForExistence(timeout: 5), "El título no muestra \"\(text)\"", file: file, line: line)
+        if title.waitForExistence(timeout: 5) { return }
+        // Deja en el log lo que había en pantalla, para saber qué pasó.
+        print("Árbol de elementos sin \"\(text)\":\n\(app.debugDescription)")
+        XCTFail("El título no muestra \"\(text)\"", file: file, line: line)
     }
 }
