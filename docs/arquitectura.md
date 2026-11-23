@@ -225,7 +225,7 @@ DrawPad/
 │       ├── SharedFile.swift        Archivo listo para la hoja de compartir
 │       ├── ActivityView.swift      Hoja de compartir de iOS
 │       ├── UTType+DrawPad.swift    Tipo de archivo .drawpad
-│       └── EditingCapability.swift Qué se puede cambiar (EditingCapabilities): todo en el iPad, Markdown en el iPhone
+│       └── EditingCapability.swift Qué se puede cambiar (EditingCapabilities): todo en el iPad; Markdown y diagramas en el iPhone
 └── Resources/
     ├── Assets.xcassets             Icono de la app
     ├── Mermaid/                    mermaid.min.js 11.17.2 (MIT) y su licencia
@@ -257,7 +257,7 @@ DrawPadTests/
 
 DrawPadUITests/
 ├── CanvasUITests.swift             Toca la app real en el simulador
-└── PhoneUITests.swift              Modo iPhone (leer dibujos, escribir Markdown), con -phoneMode
+└── PhoneUITests.swift              Modo iPhone (Markdown y diagramas, sin trazos), con -phoneMode
 ```
 
 > **Sobre los nombres:** en la interfaz se habla de **cuadernos** y **hojas**.
@@ -1251,16 +1251,18 @@ la capa. Los elementos no son trazos: cada uno es una fila de la base de
 datos y se guarda al momento, no con el autoguardado
 (ver [ADR 0013](adr/0013-textos-e-imagenes.md)).
 
-**En el iPhone, se lee y se escribe Markdown, decidido una vez.**
+**En el iPhone, Markdown y diagramas pero no trazos, decidido una vez.**
 `AppContainer` calcula `EditingCapabilities` (`.phone` en el iPhone, o con
 `-phoneMode` en las pruebas; `.full` en el iPad) y lo reparte con el entorno
 de SwiftUI (`\.editing`). Cada pantalla esconde lo que no aplica según su
-permiso: cuadernos (`canManageNotebooks`), dibujo (`canDraw`) o Markdown
-(`canWriteMarkdown`). El lienzo se crea en modo
+permiso: cuadernos (`canManageNotebooks`), trazos (`canDraw`), figuras,
+conexiones y Mermaid (`canEditDiagrams`) o Markdown (`canWriteMarkdown`). En
+el iPhone, la barra del lienzo se queda con *Insertar* y *Compartir*. El lienzo se crea en modo
 lectura: sin paleta, sin gesto de dibujo y con la hoja ajustada al ancho
 (`CanvasGeometry.fitWidthZoom`). Los ViewModel y los casos de uso no cambian
-(ver [ADR 0018](adr/0018-iphone-solo-lectura.md) y
-[ADR 0021](adr/0021-markdown-en-iphone.md)).
+(ver [ADR 0018](adr/0018-iphone-solo-lectura.md),
+[ADR 0021](adr/0021-markdown-en-iphone.md) y
+[ADR 0022](adr/0022-diagramas-en-iphone.md)).
 
 **Exportar es un formato propio, versionado y separado del dominio.** El
 archivo `.drawpad` es un JSON con `format` y `version`, y tipos propios
