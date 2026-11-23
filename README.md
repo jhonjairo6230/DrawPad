@@ -42,7 +42,8 @@ desde Windows. No está pensada para publicarse en el App Store.
 Requiere iPadOS 17 o posterior. En el **iPhone** (iOS 17 o posterior) la app
 sirve para **leer** los cuadernos exportados desde el iPad, **escribir hojas
 Markdown** y hacer **diagramas** (figuras, conexiones y Mermaid) en ellos; lo
-dibujado con el Pencil solo se lee.
+dibujado con el Pencil solo se lee. Qué se puede hacer en cada uno:
+[docs/compilacion-e-instalacion.md](docs/compilacion-e-instalacion.md#8-instalar-en-el-iphone).
 
 ## Instalar en tu iPad
 

@@ -32,7 +32,7 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
     /// elementos (figuras, conexiones, Mermaid) se siguen moviendo en el modo
     /// de mover.
     private let isReadOnly: Bool
-    /// En solo lectura, mientras el usuario no amplíe a mano, el zoom se
+    /// Sin trazos, mientras el usuario no amplíe a mano, el zoom se
     /// mantiene ajustado al ancho (la hoja puede cambiar al cargarla o al girar).
     private var userHasZoomed = false
 
