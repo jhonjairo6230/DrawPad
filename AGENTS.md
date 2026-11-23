@@ -36,11 +36,11 @@ Documentación en `docs/`; decisiones en `docs/adr/`.
   sus elementos; borrar un elemento, sus conexiones.
 - Lo que se puede cambiar depende del dispositivo: `EditingCapabilities` en
   el entorno (`\.editing`). En el iPad, todo (`.full`); en el iPhone
-  (`.phone`), hojas Markdown y diagramas, sin trazos. Toda acción nueva que
-  edite se esconde según su permiso (`canManageNotebooks`, `canDraw`,
-  `canEditDiagrams`, `canWriteMarkdown`); un área nueva es un campo nuevo,
-  no un `if` suelto. Las pruebas de ese modo usan `-phoneMode` en el
-  simulador de iPad (`PhoneUITests`).
+  (`.phone`), cuadernos, hojas Markdown y diagramas, sin trazos. Toda
+  acción nueva que edite se esconde según su permiso (`canManageNotebooks`,
+  `canDraw`, `canEditDiagrams`, `canWriteMarkdown`); un área nueva es un
+  campo nuevo, no un `if` suelto. Las pruebas de ese modo usan `-phoneMode`
+  en el simulador de iPad (`PhoneUITests`).
 - Cada tipo lleva un comentario `///` que explica su papel (el porqué).
 - Interfaz, comentarios y documentación en español; identificadores en inglés.
 - Lógica nueva → pruebas en `DrawPadTests` con los dobles de `Doubles/`.

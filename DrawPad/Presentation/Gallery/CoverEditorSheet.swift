@@ -4,7 +4,8 @@ import SwiftUI
 /// con el estilo "Dibujo", el dibujo hecho a mano.
 ///
 /// Trabaja sobre una copia (`cover`): nada cambia hasta tocar "Guardar",
-/// tampoco el dibujo.
+/// tampoco el dibujo. Sin `canDraw` (iPhone) no se dibuja la portada: no se
+/// ofrece el estilo "Dibujo" (salvo que ya lo tenga, y entonces se conserva).
 struct CoverEditorSheet: View {
     let title: String
     /// Monta la pantalla de dibujar a partir del dibujo y el color actuales
@@ -15,6 +16,9 @@ struct CoverEditorSheet: View {
     @State private var cover: NotebookCover
     @State private var drawingModule: CoverDrawingModule?
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.editing) private var editing
+    /// Estilo con el que se abrió, para decidir si se ofrece "Dibujo".
+    private let originalStyle: CoverStyle
 
     private let swatchColumns = [GridItem(.adaptive(minimum: 52), spacing: 16)]
 
@@ -27,6 +31,7 @@ struct CoverEditorSheet: View {
         self.title = title
         self.makeCoverDrawing = makeCoverDrawing
         self.onSave = onSave
+        self.originalStyle = cover.style
         _cover = State(initialValue: cover)
     }
 
@@ -38,14 +43,20 @@ struct CoverEditorSheet: View {
                         .frame(maxHeight: 260)
 
                     Picker("Estilo", selection: $cover.style) {
-                        ForEach(CoverStyle.allCases, id: \.self) { style in
+                        ForEach(editing.coverStyles(current: originalStyle), id: \.self) { style in
                             Text(style.title).tag(style)
                         }
                     }
                     .pickerStyle(.segmented)
 
                     if cover.style == .drawn {
-                        drawingButtons
+                        if editing.canDraw {
+                            drawingButtons
+                        } else {
+                            Text("El dibujo de la portada se hace en el iPad.")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
                     }
 
                     LazyVGrid(columns: swatchColumns, spacing: 16) {

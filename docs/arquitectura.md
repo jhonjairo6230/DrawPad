@@ -225,7 +225,7 @@ DrawPad/
 │       ├── SharedFile.swift        Archivo listo para la hoja de compartir
 │       ├── ActivityView.swift      Hoja de compartir de iOS
 │       ├── UTType+DrawPad.swift    Tipo de archivo .drawpad
-│       └── EditingCapability.swift Qué se puede cambiar (EditingCapabilities): todo en el iPad; Markdown y diagramas en el iPhone
+│       └── EditingCapability.swift Qué se puede cambiar (EditingCapabilities): todo en el iPad; cuadernos, Markdown y diagramas en el iPhone
 └── Resources/
     ├── Assets.xcassets             Icono de la app
     ├── Mermaid/                    mermaid.min.js 11.17.2 (MIT) y su licencia

@@ -172,13 +172,15 @@ Developer); se pasa a mano por iCloud Drive:
 ## 8. Instalar en el iPhone
 
 El mismo `.ipa` sirve para iPad y iPhone. En el iPhone no hay Apple Pencil,
-así que **no se dibujan trazos**, pero sí se escribe y se hacen diagramas:
+así que **no se dibujan trazos**, pero sí se crean cuadernos, se escribe y se
+hacen diagramas:
 
 | | iPad | iPhone |
 | - | :-: | :-: |
 | Leer cuadernos, pasar de hoja, ampliar, compartir | ✅ | ✅ |
 | Importar y exportar cuadernos (`.drawpad`) | ✅ | ✅ |
-| Crear, renombrar y cambiar la portada de cuadernos | ✅ | — |
+| Crear, renombrar y cambiar la portada de cuadernos | ✅ | ✅ |
+| Portada con estilo "Dibujo" (dibujarla) | ✅ | — (se ve y se conserva) |
 | Dibujar (Pencil o dedo), deshacer, papel, suavizar, borrar todo | ✅ | — |
 | Cuadros de texto y pegar | ✅ | — |
 | Figuras, conexiones y diagramas Mermaid | ✅ | ✅ |
@@ -188,7 +190,8 @@ así que **no se dibujan trazos**, pero sí se escribe y se hacen diagramas:
 | Borrar hojas Markdown | ✅ | ✅ |
 
 El porqué está en los ADR [0018](adr/0018-iphone-solo-lectura.md),
-[0021](adr/0021-markdown-en-iphone.md) y [0022](adr/0022-diagramas-en-iphone.md).
+[0021](adr/0021-markdown-en-iphone.md), [0022](adr/0022-diagramas-en-iphone.md)
+y [0024](adr/0024-cuadernos-en-iphone.md).
 
 1. Conecta el iPhone al PC, desbloquéalo y toca **Confiar**.
 2. En el iPhone: **Ajustes → Privacidad y seguridad → Modo de desarrollador**
