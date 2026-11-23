@@ -18,8 +18,8 @@ final class AppContainer {
     /// con una base de datos vacía y en memoria.
     static let uiTestingArgument = "-uiTesting"
     /// Las pruebas de interfaz corren en un simulador de iPad: con este
-    /// argumento la app se comporta como en el iPhone (solo lectura).
-    static let readOnlyArgument = "-readOnly"
+    /// argumento la app se comporta como en el iPhone.
+    static let phoneModeArgument = "-phoneMode"
     /// Con este argumento (y `-uiTesting`) la app arranca con un cuaderno de
     /// ejemplo, para probar la lectura sin poder crear cuadernos.
     static let sampleNotebookArgument = "-uiTestingSampleNotebook"
@@ -28,9 +28,12 @@ final class AppContainer {
 
     private let isUITesting = ProcessInfo.processInfo.arguments.contains(AppContainer.uiTestingArgument)
 
-    /// `false` en el iPhone: la app solo lee (ver docs/adr/0018).
-    private(set) lazy var canEdit: Bool = UIDevice.current.userInterfaceIdiom != .phone
-        && !ProcessInfo.processInfo.arguments.contains(AppContainer.readOnlyArgument)
+    /// Qué se puede cambiar: todo en el iPad; en el iPhone, solo hojas
+    /// Markdown (ver docs/adr/0021).
+    private(set) lazy var editing: EditingCapabilities =
+        UIDevice.current.userInterfaceIdiom == .phone
+            || ProcessInfo.processInfo.arguments.contains(AppContainer.phoneModeArgument)
+        ? .phone : .full
 
     private(set) lazy var galleryViewModel = GalleryViewModel(
         listNotebooks: ListNotebooksUseCase(notebooks: library),
@@ -97,7 +100,7 @@ final class AppContainer {
 
     /// Monta la pantalla de una hoja: un lienzo nuevo y su ViewModel.
     func makeCanvasModule(drawingID: UUID, shareName: String) -> CanvasModule {
-        let canvas = PencilKitCanvas(isReadOnly: !canEdit)
+        let canvas = PencilKitCanvas(isReadOnly: !editing.canDraw)
         let viewModel = CanvasViewModel(
             drawingID: drawingID,
             shareName: shareName,

@@ -2,19 +2,19 @@ import SwiftUI
 
 /// Una hoja Markdown: el documento formateado o, en modo "Editar", su texto.
 ///
-/// En solo lectura (iPhone) no hay modo de edición.
+/// Se puede editar en el iPad y en el iPhone (ver docs/adr/0021).
 struct MarkdownPageScreen: View {
     @Bindable var viewModel: MarkdownPageViewModel
     let renderer: WebKitMarkdownRenderer
 
     @Environment(\.scenePhase) private var scenePhase
-    @Environment(\.canEdit) private var canEdit
+    @Environment(\.editing) private var editing
 
     var body: some View {
         content
             .toolbar {
                 ToolbarItemGroup(placement: .topBarTrailing) {
-                    if canEdit {
+                    if editing.canWriteMarkdown {
                         Picker("Modo", selection: $viewModel.mode) {
                             Text("Ver").tag(MarkdownPageViewModel.Mode.read)
                             Text("Editar").tag(MarkdownPageViewModel.Mode.edit)
@@ -51,7 +51,7 @@ struct MarkdownPageScreen: View {
 
     @ViewBuilder
     private var content: some View {
-        if canEdit && viewModel.mode == .edit {
+        if editing.canWriteMarkdown && viewModel.mode == .edit {
             TextEditor(text: Binding(
                 get: { viewModel.text },
                 set: { viewModel.updateText($0) }

@@ -157,6 +157,17 @@ final class NotebookViewModelTests: XCTestCase {
         XCTAssertEqual(page.markdown, AddMarkdownPageUseCase.template)
     }
 
+    func testTheCurrentPageKindFollowsThePageOnScreen() {
+        let (viewModel, _) = makeLoadedViewModel(pageCount: 1)
+        XCTAssertEqual(viewModel.currentPageKind, .drawing)
+
+        viewModel.addPage(.markdown)
+        XCTAssertEqual(viewModel.currentPageKind, .markdown)
+
+        viewModel.goToPreviousPage()
+        XCTAssertEqual(viewModel.currentPageKind, .drawing)
+    }
+
     func testImportingAMarkdownFileAddsItAsANewPage() {
         let (viewModel, _) = makeLoadedViewModel(pageCount: 1)
         reader.data = Data("# Spec\n\nTexto".utf8)

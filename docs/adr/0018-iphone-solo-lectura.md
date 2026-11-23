@@ -1,6 +1,6 @@
 # 0018. La app en el iPhone, en solo lectura
 
-- **Estado:** Aceptada
+- **Estado:** Aceptada; las hojas Markdown, cambiado por [0021](0021-markdown-en-iphone.md)
 - **Fecha:** 2026-11-19
 
 ## Contexto
