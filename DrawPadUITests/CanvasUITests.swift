@@ -651,8 +651,11 @@ final class CanvasUITests: XCTestCase {
         canvasPoint(0.5, 0.5).tap()
     }
 
+    /// Un trazo (con "dibujar con el dedo") o un desplazamiento (sin él).
+    /// Vertical: desde iOS 26, deslizar a la derecha en cualquier punto de la
+    /// pantalla es "volver", y sin dedo que dibuje a veces gana ese gesto.
     private func dragOnCanvas() {
-        canvasPoint(0.3, 0.4).press(forDuration: 0.1, thenDragTo: canvasPoint(0.7, 0.6))
+        canvasPoint(0.45, 0.35).press(forDuration: 0.1, thenDragTo: canvasPoint(0.5, 0.65))
     }
 
     private func assertAppIsRunning(file: StaticString = #filePath, line: UInt = #line) {
