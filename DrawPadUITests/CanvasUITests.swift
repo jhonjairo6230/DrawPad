@@ -188,8 +188,9 @@ final class CanvasUITests: XCTestCase {
         app.buttons["Editar"].tap()
         let editor = app.textViews["Texto Markdown"]
         XCTAssertTrue(editor.waitForExistence(timeout: 5))
-        editor.tap()
-        editor.typeText("\n# Notas de prueba\n")
+        // Al final del texto, para no escribir dentro del bloque mermaid.
+        editor.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.98)).tap()
+        editor.typeText("\n\n# Notas de prueba\n")
 
         app.buttons["Ver"].tap()
         XCTAssertTrue(app.staticTexts["Notas de prueba"].waitForExistence(timeout: 10))
