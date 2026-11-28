@@ -1,4 +1,4 @@
-# 0025. Pruebas más rápidas: sin ejecuciones repetidas y en paralelo
+# 0025. Pruebas más rápidas: sin ejecuciones repetidas
 
 - **Estado:** Aceptada
 - **Fecha:** 2026-11-28
@@ -31,22 +31,27 @@ Dos causas:
    Siguen corriendo por `push` `develop` y `main` (pruebas y `.ipa` al
    fusionar), `release/`, `hotfix/` y `backport/`; y cualquier rama con
    **Run workflow**.
-2. **Pruebas en paralelo en 2 simuladores**
-   (`-parallel-testing-enabled YES -parallel-testing-worker-count 2`).
-3. `xcodebuild` reparte **clases** de prueba entre los simuladores, no pruebas
-   sueltas. Por eso las 32 pruebas de `CanvasUITests` se separan **por tema**
-   en clases de tamaño parecido (unos 4 minutos cada una):
+2. **Las pruebas siguen en serie, en un solo simulador.** Se probó a
+   repartirlas en 2 simuladores (`-parallel-testing-enabled YES
+   -parallel-testing-worker-count 2`) y **no ahorra tiempo**: el reparto
+   funcionó (unos 22 minutos de pruebas en cada simulador), pero el Mac de
+   GitHub tiene 3 núcleos y cada prueba fue el doble de lenta
+   (`CanvasUITests`: 679 s en vez de ~295 s). En total, 29 minutos frente a
+   ~24 en serie.
+3. Las pruebas de `CanvasUITests` (32) quedan **separadas por tema** en
    `NotebookUITests`, `PageUITests`, `CanvasUITests`, `TextAndImageUITests` y
-   `DiagramUITests`, más `PhoneUITests`. Las utilidades comunes van en la clase
-   base `DrawPadUITestCase`. Las pruebas en sí no cambian.
+   `DiagramUITests`, más `PhoneUITests`, con las utilidades en la clase base
+   `DrawPadUITestCase`. No acelera nada por sí solo, pero cada archivo es más
+   corto y fácil de leer, y deja listo el reparto si algún día hay Mac más
+   potentes.
 
 ## Alternativas consideradas
 
 - **Quitar o juntar pruebas de interfaz:** más rápido, pero han cazado fallos
   reales (cierre al tocar con el dedo, el gesto de volver de iOS 26).
-- **3 o más simuladores:** el Mac de GitHub es modesto (3 núcleos); con más
-  simuladores a la vez es más probable que alguna prueba falle por lentitud.
-  Se empieza con 2; si van estables, se puede subir a 3 cambiando un número.
+- **Pruebas en paralelo (2 o más simuladores):** probado con 2 y no ahorra
+  tiempo en el Mac de GitHub (ver la decisión 2). Con más simuladores sería
+  peor.
 - **Guardar la compilación entre ejecuciones (caché):** ahorra unos minutos,
   pero con proyectos de Xcode a menudo no se reutiliza bien. Se deja para más
   adelante.
@@ -57,7 +62,6 @@ Dos causas:
 
 - Una rama `feature/` sin PR no tiene pruebas automáticas: hay que abrir el PR
   o usar Run workflow.
-- Las pruebas de interfaz deberían tardar la mitad (unos 12 minutos en vez de
-  23), más un poco por preparar las copias del simulador.
-- Una prueba nueva de interfaz va en la clase de su tema; si una clase crece
-  mucho más que las otras, conviene partirla para que el reparto siga parejo.
+- La duración de una ejecución no cambia (unos 30 minutos), pero hay la mitad
+  de ejecuciones, así que se espera menos en la cola de Mac.
+- Una prueba nueva de interfaz va en la clase de su tema.

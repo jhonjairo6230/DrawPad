@@ -27,8 +27,8 @@ pull request ([ADR 0025](adr/0025-pruebas-mas-rapidas.md)).
 
 Tiene **dos trabajos que corren a la vez**, cada uno en su propio Mac:
 
-- **Pruebas** (unos 20 minutos): unitarias y de interfaz, repartidas entre
-  **dos simuladores** a la vez. Siempre.
+- **Pruebas** (unos 30 minutos): unitarias y de interfaz en un simulador.
+  Siempre.
 - **IPA** (unos 3 minutos): compila y publica el `.ipa`. **Solo al fusionar
   en `develop` o `main`**, o con Run workflow sobre cualquier rama. En las
   ramas `feature/` y en los pull requests aparece como omitido
@@ -59,7 +59,7 @@ sequenceDiagram
         else error de compilación
             M1-->>GH: IPA en rojo, no hay .ipa
         end
-    and trabajo Pruebas (unos 20 min, en dos simuladores)
+    and trabajo Pruebas (unos 30 min)
         GH->>M2: arranca
         M2->>M2: checkout y xcodegen generate
         M2->>Sim: arranca el simulador y espera a que esté listo

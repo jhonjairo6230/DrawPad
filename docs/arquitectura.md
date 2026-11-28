@@ -1419,7 +1419,7 @@ la interfaz va en el hilo principal). El temporizador de autoguardado es una
 | ViewModel de la galería | `Presentation/GalleryViewModelTests.swift` | Biblioteca en memoria. |
 | ViewModel del cuaderno | `Presentation/NotebookViewModelTests.swift` | Biblioteca en memoria y hojas abiertas falsas. |
 
-| Pantallas reales | `DrawPadUITests/*UITests.swift` (una clase por tema, en paralelo) | Lanza la app en el simulador (con `-uiTesting`: base de datos vacía en memoria), crea cuadernos y hojas, navega y toca el lienzo con el "dedo". |
+| Pantallas reales | `DrawPadUITests/*UITests.swift` (una clase por tema) | Lanza la app en el simulador (con `-uiTesting`: base de datos vacía en memoria), crea cuadernos y hojas, navega y toca el lienzo con el "dedo". |
 
 `PencilKitCanvas`, `PhotoLibraryImageExporter` y las vistas no tienen pruebas
 unitarias: son adaptadores finos sobre frameworks de Apple. Las pruebas de

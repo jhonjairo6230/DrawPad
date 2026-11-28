@@ -3,9 +3,8 @@ import XCTest
 /// Base de las pruebas de interfaz del iPad: arranca la app y reúne las
 /// utilidades que usan todas (abrir un cuaderno, menús, tocar el lienzo…).
 ///
-/// Las pruebas están repartidas en varias clases por tema para que corran en
-/// paralelo: `xcodebuild` reparte **clases**, no pruebas sueltas, entre los
-/// simuladores (ver docs/adr/0025-pruebas-mas-rapidas.md).
+/// Las pruebas están repartidas en varias clases por tema, para que cada
+/// archivo sea corto (ver docs/adr/0025-pruebas-mas-rapidas.md).
 ///
 /// En el simulador todo toque es un "dedo" (no hay Apple Pencil), así que
 /// estas pruebas cubren justo lo que las unitarias no pueden: que PencilKit,
