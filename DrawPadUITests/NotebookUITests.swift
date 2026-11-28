@@ -72,11 +72,7 @@ final class NotebookUITests: DrawPadUITestCase {
 
         openCoverEditor(of: "Cuaderno 1")
         app.buttons["Dibujo"].tap()
-        app.buttons["Dibujar portada"].tap()
-        XCTAssertTrue(app.buttons["Usar dibujo"].waitForExistence(timeout: 5))
-        app.buttons["Dibujar con el dedo"].tap()
-        canvasPoint(0.45, 0.4).press(forDuration: 0.1, thenDragTo: canvasPoint(0.55, 0.55))
-        app.buttons["Usar dibujo"].tap()
+        drawCover()
 
         // De vuelta en el editor, ya hay dibujo.
         XCTAssertTrue(app.buttons["Editar dibujo"].waitForExistence(timeout: 5))

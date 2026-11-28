@@ -160,6 +160,25 @@ class DrawPadUITestCase: XCTestCase {
         canvasPoint(0.45, 0.35).press(forDuration: 0.1, thenDragTo: canvasPoint(0.5, 0.65))
     }
 
+    /// Desde el editor de portada (estilo "Dibujo"): abre "Dibujar portada",
+    /// hace un trazo con el dedo y toca "Usar dibujo".
+    ///
+    /// A veces el primer trazo justo después de activar "Dibujar con el dedo"
+    /// no llega al lienzo; la portada queda vacía y el editor vuelve a ofrecer
+    /// "Dibujar portada". Entonces se dibuja otra vez, una sola vez. "Dibujar
+    /// con el dedo" se recuerda entre aperturas: solo se toca la primera.
+    func drawCover(file: StaticString = #filePath, line: UInt = #line) {
+        for attempt in 0..<2 {
+            app.buttons["Dibujar portada"].tap()
+            XCTAssertTrue(app.buttons["Usar dibujo"].waitForExistence(timeout: 5), file: file, line: line)
+            if attempt == 0 { app.buttons["Dibujar con el dedo"].tap() }
+            canvasPoint(0.45, 0.4).press(forDuration: 0.1, thenDragTo: canvasPoint(0.55, 0.55))
+            app.buttons["Usar dibujo"].tap()
+            if app.buttons["Editar dibujo"].waitForExistence(timeout: 5) { return }
+        }
+        XCTFail("El trazo no llegó a la portada", file: file, line: line)
+    }
+
     func assertAppIsRunning(file: StaticString = #filePath, line: UInt = #line) {
         // Deja tiempo a que un cierre diferido llegue a ocurrir.
         _ = app.wait(for: .notRunning, timeout: 2)
