@@ -18,6 +18,19 @@ entienda **por qué** el código es como es.
 | [0009](0009-zoom-y-tamano-de-hoja.md) | Zoom y tamaño de la hoja | Aceptada |
 | [0010](0010-cuadernos-y-hojas.md) | Cuadernos con hojas | Aceptada |
 | [0011](0011-suavizar-trazos.md) | Suavizar trazos con un algoritmo propio | Aceptada |
+| [0012](0012-portada-disenada.md) | Portada del cuaderno como tapa diseñada | Aceptada |
+| [0013](0013-textos-e-imagenes.md) | Textos e imágenes en una capa bajo los trazos | Aceptada |
+| [0014](0014-ipa-y-pruebas-en-paralelo.md) | IPA y pruebas en paralelo en el workflow | Aceptada; cambiada por 0023 |
+| [0015](0015-portada-dibujada.md) | Portada dibujada a mano | Aceptada |
+| [0016](0016-figuras-de-diagrama.md) | Figuras de diagrama unidas con flechas | Aceptada |
+| [0017](0017-exportar-importar-cuadernos.md) | Exportar e importar cuadernos en archivos `.drawpad` | Aceptada |
+| [0018](0018-iphone-solo-lectura.md) | La app en el iPhone, en solo lectura | Aceptada; cambiada por 0021 y 0022 |
+| [0019](0019-hojas-mermaid.md) | Diagramas Mermaid con WebKit, sin conexión | Aceptada |
+| [0020](0020-hojas-markdown.md) | Hojas Markdown con marked y WebKit | Aceptada |
+| [0021](0021-markdown-en-iphone.md) | Escribir hojas Markdown en el iPhone | Aceptada; cambiada por 0024 |
+| [0022](0022-diagramas-en-iphone.md) | Diagramas en el iPhone, sin trazos | Aceptada |
+| [0023](0023-ipa-solo-al-fusionar.md) | El `.ipa` solo al fusionar en `develop` o `main` | Aceptada |
+| [0024](0024-cuadernos-en-iphone.md) | Crear y arreglar cuadernos en el iPhone | Aceptada |
 
 ## Cómo añadir un ADR
 

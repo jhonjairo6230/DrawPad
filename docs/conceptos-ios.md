@@ -11,12 +11,32 @@ Glosario para estudiar el código. Cada entrada dice qué es y dónde verlo.
 | `@State` | Estado propio de una vista; SwiftUI lo conserva entre evaluaciones. | `isConfirmingClear` en `CanvasScreen` |
 | `@Observable` | Macro (iOS 17) que hace observable una clase: las vistas que leen sus propiedades se repintan al cambiar. | `CanvasViewModel` |
 | `@Bindable` | Permite crear enlaces de escritura (`$viewModel.x`) a un objeto `@Observable`. | `CanvasScreen` |
+| `EnvironmentKey` / `.environment(_:_:)` | Un valor propio que SwiftUI reparte a todas las vistas de debajo. | `editing` en `EditingCapability.swift` |
+| `UIDevice.current.userInterfaceIdiom` | Si la app corre en iPhone (`.phone`) o iPad (`.pad`). | `AppContainer.editing` |
+| `TARGETED_DEVICE_FAMILY` | Para qué dispositivos se compila: `1` iPhone, `2` iPad. | `project.yml` |
 | `@Environment(\.scenePhase)` | Estado de la app: activa, inactiva o en segundo plano. | `CanvasScreen` |
 | `UIViewRepresentable` | Protocolo para usar una vista de UIKit dentro de SwiftUI. | `PencilCanvasView.swift` |
 | `Menu` + `Picker` | Menú desplegable con una opción marcada. | Menú "Fondo" en `CanvasScreen` |
 | `UIColor(patternImage:)` | Un "color" que en realidad es una imagen pequeña repetida. | `CanvasBackgroundPattern.swift` |
 | `UIGraphicsImageRenderer` | Dibuja en una imagen con Core Graphics. | Baldosas de fondo y exportación |
 | `UIGraphicsPDFRenderer` | Lo mismo, pero el resultado es un PDF. | `renderPDF()` en `PencilKitCanvas` |
+| `UIPasteboard` | El portapapeles del sistema. Leerlo puede mostrar un aviso de permiso. | `SystemClipboard.swift` |
+| `UIBezierPath` | Un contorno (rectas y curvas) que se puede trazar o rellenar. | `DiagramRenderer.swift` |
+| `draw(_:)` de `UIView` | Dibujo propio de una vista con Core Graphics; `setNeedsDisplay()` pide repintarla. | Figuras y conexiones en `PageElementsLayer.swift` |
+| `UIGestureRecognizer` | Reconoce gestos (toque, arrastre, pellizco) sobre una vista de UIKit. | `PageElementsLayer.swift` |
+| `isUserInteractionEnabled` | Si es `false`, la vista ignora los toques y pasan a la que tiene debajo. | Modo "mover" en `PencilKitCanvas` |
+| `TextEditor` + `@FocusState` | Campo de texto de varias líneas, y control de si tiene el teclado. | `TextElementEditorSheet.swift` |
+| `Codable` | Convierte tipos de Swift a JSON y al revés. | `JSONNotebookArchiveCoder.swift` |
+| `UTType` + `UTExportedTypeDeclarations` | Declara un tipo de archivo propio (`.drawpad`) para que el sistema sepa qué app lo abre. | `UTType+DrawPad.swift`, `project.yml` |
+| `CFBundleDocumentTypes` | Los tipos de archivo que la app sabe abrir desde Archivos. | `project.yml` |
+| `.fileImporter` | Abre el selector de archivos del sistema (Archivos, iCloud Drive). | `GalleryScreen` |
+| `.onOpenURL` | Recibe el archivo con el que se abrió la app. | `GalleryScreen` |
+| `startAccessingSecurityScopedResource` | Permiso temporal para leer un archivo de fuera de la app. | `SecurityScopedFileReader.swift` |
+| `WKWebView` | Una vista web (WebKit). Aquí ejecuta Mermaid y marked sin conexión. | `WebKitMermaidPreview.swift`, `WebKitMarkdownRenderer.swift` |
+| `WKUserScript` | JavaScript que se inyecta en la página al cargarla. | `mermaid.min.js` en `WebKitMermaidPreview`, `marked.umd.js` en `WebKitMarkdownRenderer` |
+| `fileImporter` | Abre Archivos / iCloud Drive para elegir un archivo. | Importar `.drawpad` y `.md` |
+| `callAsyncJavaScript` | Llama a JavaScript asíncrono desde Swift y espera su resultado. | `render(source:theme:)` |
+| `WKWebView.pdf(configuration:)` | PDF de una parte de la página; luego se convierte en PNG. | `snapshot()` |
 | `UIActivityViewController` | La hoja de compartir del sistema. | `ActivityView.swift` |
 | `UIViewControllerRepresentable` | Como `UIViewRepresentable`, para un controlador de UIKit. | `ActivityView.swift` |
 | `.sheet(item:)` | Presenta una hoja mientras un valor opcional no sea `nil`. | Hoja de compartir en `CanvasScreen` |

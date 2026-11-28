@@ -9,8 +9,18 @@ import Foundation
 protocol DrawingCanvas: AnyObject {
     /// Se llama cada vez que cambian los trazos (dibujar, borrar, deshacer…).
     var onDrawingChanged: (() -> Void)? { get set }
-    /// `true` si no hay ningún trazo.
+    /// El usuario movió o cambió de tamaño un texto o una imagen.
+    var onElementMoved: ((UUID, CGRect) -> Void)? { get set }
+    /// El usuario tocó un texto o una imagen (o el fondo: `nil`).
+    var onElementSelected: ((UUID?) -> Void)? { get set }
+    /// `true` si la hoja no tiene trazos, textos ni imágenes.
     var isEmpty: Bool { get }
+    /// `true` si hay al menos un trazo.
+    var hasStrokes: Bool { get }
+    /// El punto de la hoja que se ve en el centro de la pantalla.
+    var visibleCenter: CGPoint { get }
+    /// Tamaño de la parte de la hoja que cabe en pantalla sin zoom.
+    var viewportSize: CGSize { get }
 
     /// Trazos actuales serializados (ver ``Drawing/strokesData``).
     func currentData() -> Data
@@ -25,15 +35,24 @@ protocol DrawingCanvas: AnyObject {
     func smoothStrokes()
     /// `false`: solo dibuja el Apple Pencil (el dedo no deja trazo).
     func setFingerDrawingEnabled(_ enabled: Bool)
+    /// Muestra estos textos e imágenes bajo los trazos, marcando el seleccionado.
+    func showElements(_ elements: [PageElement], selectedID: UUID?)
+    /// `true`: los toques mueven textos e imágenes y no se puede dibujar,
+    /// ampliar ni desplazar. `false`: el lienzo funciona como siempre.
+    func setArrangingElements(_ enabled: Bool)
+    /// Pinta el papel de un color de tapa (lienzo de la portada).
+    func setPaperColor(_ color: CoverColor)
+    /// Solo los trazos, con fondo transparente, como PNG; `nil` si no hay
+    /// trazos. Es la imagen de una portada dibujada.
+    func renderStrokesPNG() -> Data?
     /// Cambia el papel: su patrón y si es claro u oscuro. No modifica los
     /// trazos, aunque en papel oscuro la tinta negra se muestra blanca.
     func setBackground(_ background: CanvasBackground, theme: CanvasTheme)
-    /// El dibujo como PNG sobre su papel de fondo, o `nil` si está vacío.
+    /// La hoja como PNG (papel, textos, imágenes y trazos), o `nil` si está vacía.
     func renderPNG() -> Data?
-    /// El dibujo como PDF de una página sobre su papel de fondo, o `nil` si
-    /// está vacío.
+    /// La hoja como PDF de una página, o `nil` si está vacía.
     func renderPDF() -> Data?
-    /// Versión pequeña del dibujo para la galería, sobre papel liso (el
-    /// patrón en pequeño ensucia la miniatura); `nil` si está vacío.
+    /// Versión pequeña de la hoja, sobre papel liso (el patrón en pequeño
+    /// ensucia la miniatura); `nil` si está vacía.
     func renderThumbnail() -> Data?
 }

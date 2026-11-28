@@ -2,6 +2,9 @@ import Foundation
 
 /// Crea un cuaderno con un título por defecto ("Cuaderno 3") y su primera
 /// hoja en blanco: un cuaderno nunca está sin hojas.
+///
+/// Cada cuaderno nuevo recibe el siguiente color de tapa de la lista, para
+/// que en la galería no salgan todos iguales.
 struct CreateNotebookUseCase {
     private let notebooks: NotebookRepository
     private let drawings: DrawingRepository
@@ -26,7 +29,13 @@ struct CreateNotebookUseCase {
     func execute() throws -> Notebook {
         let number = try notebooks.listNotebooks().count + 1
         let date = now()
-        let notebook = Notebook(id: makeID(), title: "Cuaderno \(number)", createdAt: date)
+        let colors = CoverColor.allCases
+        let notebook = Notebook(
+            id: makeID(),
+            title: "Cuaderno \(number)",
+            createdAt: date,
+            cover: NotebookCover(color: colors[(number - 1) % colors.count], style: NotebookCover.standard.style)
+        )
         try notebooks.save(notebook)
         try drawings.save(Drawing(
             id: makeID(),

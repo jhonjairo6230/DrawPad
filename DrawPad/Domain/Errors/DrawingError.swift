@@ -21,6 +21,20 @@ enum DrawingError: Error, Equatable {
     case exportFailed
     /// No se pudo preparar el archivo para compartir.
     case shareFailed
+    /// Se intentó guardar un cuadro de texto vacío.
+    case emptyText
+    /// No hay texto ni imágenes en el portapapeles.
+    case clipboardEmpty
+    /// El texto o la imagen ya no existe en la hoja.
+    case elementNotFound
+    /// Se intentó unir un elemento consigo mismo, o con una conexión.
+    case invalidConnection
+    /// El texto de Mermaid no se pudo dibujar; lleva el motivo que dio Mermaid.
+    case invalidDiagram(String)
+    /// El archivo no es un cuaderno de DrawPad o está dañado.
+    case importFailed
+    /// El archivo lo creó una versión de DrawPad más nueva que esta.
+    case unsupportedArchiveVersion
     /// Se intentó exportar una hoja sin trazos.
     case emptyDrawing
 }
@@ -44,6 +58,20 @@ extension DrawingError: LocalizedError {
             return "No se pudo guardar la imagen en Fotos."
         case .shareFailed:
             return "No se pudo preparar el archivo para compartir."
+        case .emptyText:
+            return "Escribe algo antes de guardar."
+        case .clipboardEmpty:
+            return "No hay texto ni imágenes en el portapapeles. Copia algo primero."
+        case .elementNotFound:
+            return "Ese elemento ya no está en la hoja."
+        case .invalidDiagram(let reason):
+            return "El diagrama tiene un error: \(reason)"
+        case .invalidConnection:
+            return "Elige otro elemento: no se puede unir uno consigo mismo."
+        case .importFailed:
+            return "El archivo no es un cuaderno de DrawPad o está dañado."
+        case .unsupportedArchiveVersion:
+            return "Este cuaderno se exportó con una versión más nueva de DrawPad. Actualiza la app para abrirlo."
         case .emptyDrawing:
             return "La hoja está vacía: dibuja algo antes de exportar o compartir."
         }

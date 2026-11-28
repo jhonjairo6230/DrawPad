@@ -8,10 +8,13 @@ import UIKit
 /// paleta de herramientas del Apple Pencil (ver docs/adr/0005-pencilkit.md).
 @MainActor
 final class PencilKitCanvas: NSObject, DrawingCanvas {
-    /// La vista que SwiftUI muestra a través de ``PencilCanvasView``: el papel
-    /// de fondo y, encima, el lienzo transparente de PencilKit.
+    /// La vista que SwiftUI muestra a través de ``PencilCanvasView``. De abajo
+    /// arriba: el papel, los textos e imágenes y el lienzo transparente de
+    /// PencilKit con los trazos.
     let view: UIView = CanvasContainerView()
     private let paperView = UIView()
+    private let elementsLayer = PageElementsLayer()
+    private var elements: [PageElement] = []
     /// Tamaño de la hoja en coordenadas de dibujo (ver ``CanvasGeometry``).
     private var pageSize = CGSize.zero
     private let canvasView = PKCanvasView()
@@ -24,7 +27,27 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
 
     var onDrawingChanged: (() -> Void)?
 
-    override init() {
+    /// Sin trazos (iPhone): no se dibuja, no hay paleta y la hoja empieza
+    /// ajustada al ancho de la pantalla. Se puede desplazar y ampliar, y los
+    /// elementos (figuras, conexiones, Mermaid) se siguen moviendo en el modo
+    /// de mover.
+    private let isReadOnly: Bool
+    /// Sin trazos, mientras el usuario no amplíe a mano, el zoom se
+    /// mantiene ajustado al ancho (la hoja puede cambiar al cargarla o al girar).
+    private var userHasZoomed = false
+
+    var onElementMoved: ((UUID, CGRect) -> Void)? {
+        get { elementsLayer.onElementMoved }
+        set { elementsLayer.onElementMoved = newValue }
+    }
+
+    var onElementSelected: ((UUID?) -> Void)? {
+        get { elementsLayer.onElementSelected }
+        set { elementsLayer.onElementSelected = newValue }
+    }
+
+    init(isReadOnly: Bool = false) {
+        self.isReadOnly = isReadOnly
         super.init()
         canvasView.delegate = self
         canvasView.drawingPolicy = .pencilOnly
@@ -45,6 +68,7 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
         view.backgroundColor = .systemGray5
         view.clipsToBounds = true
         view.addSubview(paperView)
+        view.addSubview(elementsLayer)
         canvasView.frame = view.bounds
         canvasView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         view.addSubview(canvasView)
@@ -52,11 +76,16 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
             self?.updatePageSize()
         }
         setBackground(background, theme: theme)
+        if isReadOnly {
+            // Sin trazos nuevos; el desplazamiento y el zoom siguen funcionando.
+            canvasView.drawingGestureRecognizer.isEnabled = false
+        }
     }
 
     /// Muestra la paleta flotante de herramientas. Debe llamarse cuando el
     /// lienzo ya está en una ventana (por eso ``PencilCanvasView`` lo difiere).
     func showToolPicker() {
+        guard !isReadOnly else { return }
         toolPicker.addObserver(canvasView)
         toolPicker.setVisible(true, forFirstResponder: canvasView)
         canvasView.becomeFirstResponder()
@@ -64,7 +93,32 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
 
     // MARK: - DrawingCanvas
 
-    var isEmpty: Bool { canvasView.drawing.strokes.isEmpty }
+    var isEmpty: Bool { !hasStrokes && elements.isEmpty }
+
+    var hasStrokes: Bool { !canvasView.drawing.strokes.isEmpty }
+
+    var viewportSize: CGSize { canvasView.bounds.size }
+
+    var visibleCenter: CGPoint {
+        CanvasGeometry.visibleCenter(
+            viewport: canvasView.bounds.size,
+            zoomScale: canvasView.zoomScale,
+            contentOffset: canvasView.contentOffset
+        )
+    }
+
+    func showElements(_ elements: [PageElement], selectedID: UUID?) {
+        self.elements = elements
+        elementsLayer.show(elements, selectedID: selectedID)
+        updatePageSize()
+    }
+
+    func setArrangingElements(_ enabled: Bool) {
+        // El lienzo está encima y se quedaría con todos los toques: mientras
+        // se mueven elementos, deja de atenderlos y los recibe la capa.
+        canvasView.isUserInteractionEnabled = !enabled
+        elementsLayer.isArranging = enabled
+    }
 
     func currentData() -> Data {
         canvasView.drawing.dataRepresentation()
@@ -81,6 +135,7 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
     }
 
     func smoothStrokes() {
+        guard hasStrokes else { return }
         let smoothed = canvasView.drawing.strokes.map(Self.smoothed)
         replaceDrawing(with: PKDrawing(strokes: smoothed))
     }
@@ -94,6 +149,7 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
     }
 
     func setFingerDrawingEnabled(_ enabled: Bool) {
+        guard !isReadOnly else { return }
         canvasView.drawingPolicy = enabled ? .anyInput : .pencilOnly
     }
 
@@ -101,6 +157,7 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
         self.background = background
         self.theme = theme
         paperView.backgroundColor = CanvasBackgroundPattern.color(for: background, theme: theme)
+        elementsLayer.theme = theme
         // El aspecto del lienzo lo decide el papel, no el modo del sistema:
         // PencilKit adapta la tinta al aspecto (en oscuro, el negro se ve
         // blanco) y la paleta enseña los colores tal como quedarán.
@@ -110,6 +167,17 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
 
     func renderPNG() -> Data? {
         renderImage(scale: canvasView.traitCollection.displayScale, paper: background)?.pngData()
+    }
+
+    func setPaperColor(_ color: CoverColor) {
+        paperView.backgroundColor = color.uiColor
+    }
+
+    func renderStrokesPNG() -> Data? {
+        guard hasStrokes else { return nil }
+        let rect = renderRect
+        guard rect.width > 0, rect.height > 0 else { return nil }
+        return strokesImage(in: rect, scale: Self.coverImageScale).pngData()
     }
 
     func renderPDF() -> Data? {
@@ -123,6 +191,7 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
             context.beginPage()
             CanvasBackgroundPattern.color(for: background, theme: theme).setFill()
             context.fill(page)
+            PageElementStyle.draw(elements, theme: theme)
             strokes.draw(in: page)
         }
     }
@@ -138,6 +207,8 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
 
     private static let thumbnailMaxSide: CGFloat = 480
     private static let pdfImageScale: CGFloat = 3
+    /// Resolución de la imagen de una portada dibujada.
+    private static let coverImageScale: CGFloat = 2
 
     private var interfaceStyle: UIUserInterfaceStyle {
         theme == .dark ? .dark : .light
@@ -200,8 +271,18 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
         let drawing = canvasView.drawing
         pageSize = CanvasGeometry.pageSize(
             viewport: viewport,
-            drawingBounds: drawing.strokes.isEmpty ? nil : drawing.bounds
+            drawingBounds: CanvasGeometry.contentBounds(
+                strokes: drawing.strokes.isEmpty ? nil : drawing.bounds,
+                elements: elements.map(\.frame)
+            )
         )
+        if isReadOnly {
+            let fit = CanvasGeometry.fitWidthZoom(viewport: viewport, pageSize: pageSize)
+            canvasView.minimumZoomScale = fit
+            if !userHasZoomed, canvasView.zoomScale != fit {
+                canvasView.zoomScale = fit
+            }
+        }
         let contentSize = CanvasGeometry.contentSize(pageSize: pageSize, zoomScale: canvasView.zoomScale)
         if canvasView.contentSize != contentSize {
             canvasView.contentSize = contentSize
@@ -209,16 +290,20 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
         updatePaperPlacement()
     }
 
-    /// Coloca el papel bajo los trazos: mismo zoom y mismo desplazamiento.
+    /// Coloca el papel y la capa de elementos bajo los trazos: mismo zoom y
+    /// mismo desplazamiento.
     private func updatePaperPlacement() {
         let zoom = canvasView.zoomScale
-        paperView.bounds = CGRect(origin: .zero, size: pageSize)
-        paperView.transform = CGAffineTransform(scaleX: zoom, y: zoom)
-        paperView.center = CanvasGeometry.paperCenter(
+        let center = CanvasGeometry.paperCenter(
             pageSize: pageSize,
             zoomScale: zoom,
             contentOffset: canvasView.contentOffset
         )
+        for underlay in [paperView, elementsLayer] {
+            underlay.bounds = CGRect(origin: .zero, size: pageSize)
+            underlay.transform = CGAffineTransform(scaleX: zoom, y: zoom)
+            underlay.center = center
+        }
     }
 
     /// El dibujo sobre el papel indicado. `scale` = píxeles por punto.
@@ -233,14 +318,15 @@ final class PencilKitCanvas: NSObject, DrawingCanvas {
         return UIGraphicsImageRenderer(bounds: rect, format: format).image { context in
             CanvasBackgroundPattern.color(for: paper, theme: theme).setFill()
             context.fill(rect)
+            PageElementStyle.draw(elements, theme: theme)
             strokes.draw(in: rect)
         }
     }
 
-    /// `renderRect` si hay algo que dibujar; `nil` si el lienzo está vacío.
+    /// `renderRect` si hay algo que dibujar; `nil` si la hoja está vacía.
     private var nonEmptyRenderRect: CGRect? {
         let rect = renderRect
-        guard !canvasView.drawing.strokes.isEmpty, rect.width > 0, rect.height > 0 else { return nil }
+        guard !isEmpty, rect.width > 0, rect.height > 0 else { return nil }
         return rect
     }
 
@@ -273,6 +359,10 @@ extension PencilKitCanvas: PKCanvasViewDelegate {
 
     func scrollViewDidZoom(_ scrollView: UIScrollView) {
         updatePaperPlacement()
+    }
+
+    func scrollViewWillBeginZooming(_ scrollView: UIScrollView, with view: UIView?) {
+        userHasZoomed = true
     }
 }
 

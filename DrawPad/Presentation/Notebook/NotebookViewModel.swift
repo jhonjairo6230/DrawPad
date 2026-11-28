@@ -21,25 +21,32 @@ final class NotebookViewModel {
     private let loadNotebook: LoadNotebookUseCase
     private let listPages: ListPagesUseCase
     private let addPageUseCase: AddPageUseCase
+    private let addMarkdownPage: AddMarkdownPageUseCase
+    private let importMarkdownPage: ImportMarkdownPageUseCase
     private let deletePage: DeletePageUseCase
-    private let makeSession: (_ pageID: UUID, _ shareName: String) -> PageSession
+    private let makeSession: (_ page: DrawingSummary, _ shareName: String) -> PageSession
 
     @ObservationIgnored private var hasLoaded = false
 
-    /// - Parameter makeSession: monta la pantalla de una hoja. Recibe su
-    ///   identificador y el nombre para el archivo al compartir.
+    /// - Parameter makeSession: monta la pantalla de una hoja (de dibujo o
+    ///   Markdown, según su tipo). Recibe la hoja y el nombre para el archivo
+    ///   al compartir.
     init(
         notebookID: UUID,
         loadNotebook: LoadNotebookUseCase,
         listPages: ListPagesUseCase,
         addPage: AddPageUseCase,
+        addMarkdownPage: AddMarkdownPageUseCase,
+        importMarkdownPage: ImportMarkdownPageUseCase,
         deletePage: DeletePageUseCase,
-        makeSession: @escaping (_ pageID: UUID, _ shareName: String) -> PageSession
+        makeSession: @escaping (_ page: DrawingSummary, _ shareName: String) -> PageSession
     ) {
         self.notebookID = notebookID
         self.loadNotebook = loadNotebook
         self.listPages = listPages
         self.addPageUseCase = addPage
+        self.addMarkdownPage = addMarkdownPage
+        self.importMarkdownPage = importMarkdownPage
         self.deletePage = deletePage
         self.makeSession = makeSession
     }
@@ -49,6 +56,11 @@ final class NotebookViewModel {
     /// "Hoja 2 de 5".
     var pageLabel: String {
         pages.isEmpty ? "" : "Hoja \(currentIndex + 1) de \(pages.count)"
+    }
+
+    /// Tipo de la hoja que se ve; `nil` hasta que carga el cuaderno.
+    var currentPageKind: PageKind? {
+        pages.indices.contains(currentIndex) ? pages[currentIndex].kind : nil
     }
 
     var canGoToPreviousPage: Bool { currentIndex > 0 }
@@ -88,13 +100,29 @@ final class NotebookViewModel {
         open(pageAt: currentIndex + 1)
     }
 
-    /// Añade una hoja al final y la abre.
-    func addPage() {
+    /// Añade una hoja al final (de dibujo o Markdown) y la abre.
+    func addPage(_ kind: PageKind = .drawing) {
         perform {
-            let page = try addPageUseCase.execute(notebookID: notebookID)
-            pages = try listPages.execute(notebookID: notebookID)
-            open(pageAt: pages.firstIndex { $0.id == page.id } ?? pages.count - 1)
+            let page: Drawing
+            switch kind {
+            case .drawing: page = try addPageUseCase.execute(notebookID: notebookID)
+            case .markdown: page = try addMarkdownPage.execute(notebookID: notebookID)
+            }
+            try openNewPage(page)
         }
+    }
+
+    /// Trae un archivo `.md` como hoja nueva al final y la abre.
+    func importMarkdown(from url: URL) {
+        perform {
+            let page = try importMarkdownPage.execute(notebookID: notebookID, fileURL: url)
+            try openNewPage(page)
+        }
+    }
+
+    private func openNewPage(_ page: Drawing) throws {
+        pages = try listPages.execute(notebookID: notebookID)
+        open(pageAt: pages.firstIndex { $0.id == page.id } ?? pages.count - 1)
     }
 
     /// Elimina la hoja que se está viendo y abre la que queda en su lugar.
@@ -117,7 +145,7 @@ final class NotebookViewModel {
         guard pages.indices.contains(index) else { return }
         session?.flushPendingSave()
         currentIndex = index
-        session = makeSession(pages[index].id, "\(title) - Hoja \(index + 1)")
+        session = makeSession(pages[index], "\(title) - Hoja \(index + 1)")
     }
 
     /// Ejecuta una operación y convierte cualquier error en una alerta.

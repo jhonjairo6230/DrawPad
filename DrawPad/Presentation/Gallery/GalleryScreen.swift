@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Pantalla inicial: la cuadrícula de cuadernos.
 ///
@@ -8,22 +9,32 @@ struct GalleryScreen: View {
     @Bindable var viewModel: GalleryViewModel
     /// Fábrica que monta un cuaderno abierto (la da ``AppContainer``).
     let makeNotebook: (UUID) -> NotebookViewModel
+    /// Fábrica de la pantalla para dibujar una portada (la da ``AppContainer``).
+    let makeCoverDrawing: (CoverDrawing?, CoverColor) -> CoverDrawingModule
 
     @State private var openNotebook: NotebookViewModel?
     @State private var notebookToRename: NotebookSummary?
     @State private var newTitle = ""
     @State private var notebookToDelete: NotebookSummary?
+    @State private var notebookToRestyle: NotebookSummary?
+    @State private var isImporting = false
+    @Environment(\.editing) private var editing
 
-    private let columns = [GridItem(.adaptive(minimum: 220), spacing: 24)]
+    private let columns = [GridItem(.adaptive(minimum: 170), spacing: 28)]
 
     var body: some View {
         NavigationStack {
             content
                 .navigationTitle("Cuadernos")
                 .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button { createAndOpen() } label: {
-                            Label("Nuevo cuaderno", systemImage: "plus")
+                    ToolbarItemGroup(placement: .topBarTrailing) {
+                        Button { isImporting = true } label: {
+                            Label("Importar", systemImage: "square.and.arrow.down.on.square")
+                        }
+                        if editing.canManageNotebooks {
+                            Button { createAndOpen() } label: {
+                                Label("Nuevo cuaderno", systemImage: "plus")
+                            }
                         }
                     }
                 }
@@ -32,12 +43,35 @@ struct GalleryScreen: View {
                 }
         }
         .onAppear { viewModel.load() }
+        // Elegir un archivo .drawpad en Archivos / iCloud Drive.
+        .fileImporter(isPresented: $isImporting, allowedContentTypes: [.drawPadNotebook]) { result in
+            if case .success(let url) = result {
+                viewModel.importNotebook(from: url)
+            }
+        }
+        // Tocar un archivo .drawpad en la app Archivos abre DrawPad con él.
+        .onOpenURL { url in
+            openNotebook = nil
+            viewModel.importNotebook(from: url)
+        }
+        .sheet(item: $viewModel.sharedFile) { file in
+            ActivityView(items: [file.url])
+        }
         .onChange(of: openNotebook) { closed, opened in
             // Al volver de un cuaderno: guardar lo pendiente y refrescar la
             // lista, en ese orden, para que la portada salga actualizada.
             guard opened == nil else { return }
             closed?.flushPendingSave()
             viewModel.load()
+        }
+        .sheet(item: $notebookToRestyle) { notebook in
+            CoverEditorSheet(
+                title: notebook.title,
+                cover: notebook.cover,
+                makeCoverDrawing: makeCoverDrawing
+            ) { cover in
+                viewModel.changeCover(id: notebook.id, to: cover)
+            }
         }
         .alert("Renombrar cuaderno", isPresented: isRenaming) {
             TextField("Título", text: $newTitle)
@@ -78,7 +112,9 @@ struct GalleryScreen: View {
             ContentUnavailableView(
                 "Aún no hay cuadernos",
                 systemImage: "book.closed",
-                description: Text("Toca + para crear el primero.")
+                description: Text(editing.canManageNotebooks
+                    ? "Toca + para crear el primero."
+                    : "Exporta un cuaderno en el iPad y ábrelo aquí con Importar.")
             )
         } else {
             ScrollView {
@@ -90,11 +126,23 @@ struct GalleryScreen: View {
                         .buttonStyle(.plain)
                         .accessibilityLabel(notebook.title)
                         .contextMenu {
+                            if editing.canManageNotebooks {
+                                Button {
+                                    newTitle = notebook.title
+                                    notebookToRename = notebook
+                                } label: {
+                                    Label("Renombrar", systemImage: "pencil")
+                                }
+                                Button {
+                                    notebookToRestyle = notebook
+                                } label: {
+                                    Label("Cambiar portada", systemImage: "paintpalette")
+                                }
+                            }
                             Button {
-                                newTitle = notebook.title
-                                notebookToRename = notebook
+                                viewModel.export(id: notebook.id)
                             } label: {
-                                Label("Renombrar", systemImage: "pencil")
+                                Label("Exportar", systemImage: "square.and.arrow.up")
                             }
                             Button(role: .destructive) {
                                 notebookToDelete = notebook

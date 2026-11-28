@@ -31,6 +31,10 @@ final class DrawingRecord {
     /// Cuaderno al que pertenece. `nil` solo en dibujos anteriores a los
     /// cuadernos, hasta que se les crea uno al arrancar.
     var notebookID: UUID?
+    /// `PageKind.rawValue`. `nil` en hojas anteriores a Markdown: son de dibujo.
+    var pageKindRaw: String?
+    /// Texto de una hoja Markdown.
+    var markdownText: String?
 
     init(
         id: UUID,

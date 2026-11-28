@@ -7,6 +7,7 @@ final class NotebookViewModelTests: XCTestCase {
     private var notebook: Notebook!
     /// Todas las hojas que el ViewModel ha abierto, en orden.
     private var sessions: [FakePageSession] = []
+    private let reader = FakeFileReader()
 
     private func date(_ seconds: TimeInterval) -> Date {
         Date(timeIntervalSince1970: seconds)
@@ -32,9 +33,14 @@ final class NotebookViewModelTests: XCTestCase {
             listPages: ListPagesUseCase(drawings: library),
             // Reloj posterior a las hojas de ejemplo: la nueva queda al final.
             addPage: AddPageUseCase(drawings: library, now: { Date(timeIntervalSince1970: 1_000) }),
+            addMarkdownPage: AddMarkdownPageUseCase(drawings: library, now: { Date(timeIntervalSince1970: 1_000) }),
+            importMarkdownPage: ImportMarkdownPageUseCase(
+                reader: reader,
+                addPage: AddMarkdownPageUseCase(drawings: library, now: { Date(timeIntervalSince1970: 1_000) })
+            ),
             deletePage: DeletePageUseCase(drawings: library),
-            makeSession: { [unowned self] pageID, shareName in
-                let session = FakePageSession(pageID: pageID, shareName: shareName)
+            makeSession: { [unowned self] page, shareName in
+                let session = FakePageSession(pageID: page.id, kind: page.kind, shareName: shareName)
                 self.sessions.append(session)
                 return session
             }
@@ -135,6 +141,61 @@ final class NotebookViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.alert, AlertMessage(error: DrawingError.storageFailed))
         XCTAssertEqual(currentSession(of: viewModel)?.pageID, pages[0].id)
         XCTAssertEqual(viewModel.pages.count, 1)
+    }
+
+    // MARK: - Hojas Markdown
+
+    func testAddingAMarkdownPageOpensItAsMarkdown() throws {
+        let (viewModel, _) = makeLoadedViewModel(pageCount: 1)
+
+        viewModel.addPage(.markdown)
+
+        XCTAssertEqual(viewModel.pageLabel, "Hoja 2 de 2")
+        XCTAssertEqual(currentSession(of: viewModel)?.kind, .markdown)
+        XCTAssertEqual(viewModel.pages.last?.kind, .markdown)
+        let page = try XCTUnwrap(library.drawings[viewModel.pages[1].id])
+        XCTAssertEqual(page.markdown, AddMarkdownPageUseCase.template)
+    }
+
+    func testTheCurrentPageKindFollowsThePageOnScreen() {
+        let (viewModel, _) = makeLoadedViewModel(pageCount: 1)
+        XCTAssertEqual(viewModel.currentPageKind, .drawing)
+
+        viewModel.addPage(.markdown)
+        XCTAssertEqual(viewModel.currentPageKind, .markdown)
+
+        viewModel.goToPreviousPage()
+        XCTAssertEqual(viewModel.currentPageKind, .drawing)
+    }
+
+    func testImportingAMarkdownFileAddsItAsANewPage() {
+        let (viewModel, _) = makeLoadedViewModel(pageCount: 1)
+        reader.data = Data("# Spec\n\nTexto".utf8)
+
+        viewModel.importMarkdown(from: URL(fileURLWithPath: "/tmp/spec.md"))
+
+        XCTAssertEqual(viewModel.pageLabel, "Hoja 2 de 2")
+        XCTAssertEqual(currentSession(of: viewModel)?.kind, .markdown)
+        XCTAssertEqual(library.drawings[viewModel.pages[1].id]?.markdown, "# Spec\n\nTexto")
+    }
+
+    func testImportingSomethingThatIsNotTextShowsAnAlert() {
+        let (viewModel, _) = makeLoadedViewModel(pageCount: 1)
+        reader.data = Data([0xFF, 0xFE, 0xFD])
+
+        viewModel.importMarkdown(from: URL(fileURLWithPath: "/tmp/foto.md"))
+
+        XCTAssertEqual(viewModel.alert, AlertMessage(error: DrawingError.importFailed))
+        XCTAssertEqual(viewModel.pages.count, 1)
+    }
+
+    func testAMarkdownPageAlreadyInTheNotebookOpensAsMarkdown() throws {
+        let (viewModel, _) = makeLoadedViewModel(pageCount: 1)
+        try library.save(Drawing.sample(notebookID: notebook.id, createdAt: date(5), kind: .markdown, markdown: "# Hola"))
+        viewModel.addPage() // fuerza a releer las hojas
+        viewModel.goToPreviousPage()
+
+        XCTAssertEqual(currentSession(of: viewModel)?.kind, .markdown)
     }
 
     // MARK: - Eliminar hojas

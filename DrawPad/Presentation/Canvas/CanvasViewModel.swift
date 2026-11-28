@@ -10,6 +10,12 @@ import Observation
 ///   través de los casos de uso; nunca con PencilKit, SwiftData ni Fotos.
 /// - Publica estado observable (`background`, `isExporting`, `alert`…).
 ///
+/// **Elementos:** además de los trazos, la hoja tiene textos, imágenes,
+/// figuras y conexiones (``PageElement``). Se guardan al momento, cada uno
+/// por separado, y se mueven en un modo aparte (`isArrangingElements`) en el
+/// que no se dibuja. Unir dos elementos es un paso más dentro de ese modo:
+/// se elige el origen, "Conectar", y se toca el destino (`connectionDraft`).
+///
 /// **Autoguardado:** cada cambio de trazos reinicia un temporizador
 /// (`autosaveDelay`). Cuando pasa ese tiempo sin cambios se guarda una sola
 /// vez (*debounce*). Al salir de la hoja o de la app se guarda lo pendiente de
@@ -25,6 +31,19 @@ final class CanvasViewModel {
     /// Archivo listo para compartir; la vista muestra la hoja mientras no sea `nil`.
     var sharedFile: SharedFile?
 
+    /// Textos e imágenes de la hoja, del fondo hacia arriba.
+    private(set) var elements: [PageElement] = []
+    private(set) var selectedElementID: UUID?
+    /// `true`: los toques mueven textos e imágenes en lugar de dibujar.
+    private(set) var isArrangingElements = false
+    /// Editor de texto abierto; la vista lo muestra mientras no sea `nil`.
+    var textEditor: TextEditorRequest?
+    /// Editor de diagramas de Mermaid abierto; la vista lo muestra mientras no
+    /// sea `nil`.
+    var mermaidEditor: MermaidEditorRequest?
+    /// Conexión a medio hacer: ya se eligió el origen y falta tocar el destino.
+    private(set) var connectionDraft: ConnectionDraft?
+
     private let drawingID: UUID
     /// Nombre de la hoja para el archivo al compartir ("Cuaderno 1 - Hoja 2").
     private let shareName: String
@@ -35,6 +54,7 @@ final class CanvasViewModel {
     private let changeBackground: ChangeBackgroundUseCase
     private let exportDrawing: ExportDrawingUseCase
     private let prepareShareFile: PrepareShareFileUseCase
+    private let elementUseCases: PageElementUseCases
     private let autosaveDelay: Duration
 
     @ObservationIgnored private var pendingSave: Task<Void, Never>?
@@ -51,6 +71,7 @@ final class CanvasViewModel {
         changeBackground: ChangeBackgroundUseCase,
         exportDrawing: ExportDrawingUseCase,
         prepareShareFile: PrepareShareFileUseCase,
+        elementUseCases: PageElementUseCases,
         autosaveDelay: Duration = .seconds(1)
     ) {
         self.drawingID = drawingID
@@ -62,9 +83,16 @@ final class CanvasViewModel {
         self.changeBackground = changeBackground
         self.exportDrawing = exportDrawing
         self.prepareShareFile = prepareShareFile
+        self.elementUseCases = elementUseCases
         self.autosaveDelay = autosaveDelay
         canvas.onDrawingChanged = { [weak self] in
             self?.drawingDidChange()
+        }
+        canvas.onElementMoved = { [weak self] id, frame in
+            self?.elementMoved(id: id, to: frame)
+        }
+        canvas.onElementSelected = { [weak self] id in
+            self?.selectElement(id)
         }
     }
 
@@ -87,6 +115,8 @@ final class CanvasViewModel {
             isRestoring = true
             defer { isRestoring = false }
             try canvas.load(drawing.strokesData)
+            elements = try elementUseCases.list.execute(pageID: drawingID)
+            refreshCanvasElements()
         } catch {
             alert = AlertMessage(error: error)
         }
@@ -113,7 +143,7 @@ final class CanvasViewModel {
     /// Reduce el temblor de los trazos de la hoja. El cambio entra por el
     /// autoguardado, como cualquier otro, y se puede deshacer.
     func smoothStrokes() {
-        guard !canvas.isEmpty else { return }
+        guard canvas.hasStrokes else { return }
         canvas.smoothStrokes()
     }
 
@@ -184,6 +214,220 @@ final class CanvasViewModel {
         }
     }
 
+    // MARK: - Textos e imágenes
+
+    var selectedElement: PageElement? {
+        elements.first { $0.id == selectedElementID }
+    }
+
+    /// Abre el editor para escribir un cuadro de texto nuevo.
+    func beginNewText() {
+        textEditor = TextEditorRequest(elementID: nil, text: "")
+    }
+
+    /// Abre el editor con el texto del cuadro o de la figura seleccionados.
+    func beginEditingSelectedText() {
+        guard let element = selectedElement else { return }
+        switch element.content {
+        case .text(let text):
+            textEditor = TextEditorRequest(elementID: element.id, text: text)
+        case .shape(let shape):
+            textEditor = TextEditorRequest(elementID: element.id, text: shape.label, isShapeLabel: true)
+        case .image, .connector, .mermaid:
+            break
+        }
+    }
+
+    // MARK: - Diagramas de Mermaid
+
+    /// Abre el editor con un diagrama de ejemplo.
+    func beginNewMermaid() {
+        mermaidEditor = MermaidEditorRequest(elementID: nil, source: MermaidEditorRequest.template)
+    }
+
+    /// Abre el editor con el texto del diagrama seleccionado.
+    func beginEditingSelectedMermaid() {
+        guard let element = selectedElement, case .mermaid(let diagram) = element.content else { return }
+        mermaidEditor = MermaidEditorRequest(elementID: element.id, source: diagram.source)
+    }
+
+    /// Guarda lo que devolvió el editor: un diagrama nuevo en el centro de lo
+    /// visible, o el cambio de uno existente.
+    func commitMermaid(source: String, snapshot: MermaidSnapshot, for request: MermaidEditorRequest) {
+        let viewport = canvas.viewportSize
+        // Recién dibujado, un diagrama ocupa como mucho el 80 % de la pantalla.
+        let maxSize = CGSize(width: viewport.width * 0.8, height: viewport.height * 0.8)
+        performOnElements {
+            if let elementID = request.elementID {
+                let updated = try elementUseCases.updateMermaid.execute(
+                    id: elementID, source: source, image: snapshot.image,
+                    imageSize: snapshot.size, maxSize: maxSize
+                )
+                replaceElement(updated)
+            } else {
+                let added = try elementUseCases.addMermaid.execute(
+                    pageID: drawingID, source: source, image: snapshot.image,
+                    imageSize: snapshot.size, centeredAt: canvas.visibleCenter, maxSize: maxSize
+                )
+                insertAndSelect(added)
+            }
+        }
+    }
+
+    // MARK: - Figuras y conexiones
+
+    var isConnecting: Bool { connectionDraft != nil }
+
+    /// Añade una figura en el centro de lo que se está viendo.
+    func insertShape(_ kind: ShapeKind) {
+        performOnElements {
+            let added = try elementUseCases.addShape.execute(
+                pageID: drawingID, kind: kind, centeredAt: canvas.visibleCenter
+            )
+            insertAndSelect(added)
+        }
+    }
+
+    /// Gira la figura seleccionada un cuarto de vuelta.
+    func rotateSelectedShape() {
+        guard let element = selectedElement, element.isShape else { return }
+        performOnElements {
+            let rotated = try elementUseCases.rotate.execute(id: element.id)
+            replaceElement(rotated)
+        }
+    }
+
+    /// Empieza a unir el elemento seleccionado con otro: el siguiente que se
+    /// toque será el destino.
+    func beginConnecting(_ style: ConnectorStyle) {
+        guard let element = selectedElement, !element.isConnector else { return }
+        connectionDraft = ConnectionDraft(fromID: element.id, style: style)
+    }
+
+    func cancelConnecting() {
+        connectionDraft = nil
+    }
+
+    /// Une el origen de `draft` con `destinationID` y selecciona la conexión.
+    private func finishConnecting(_ draft: ConnectionDraft, to destinationID: UUID) {
+        performOnElements {
+            let connector = try elementUseCases.connect.execute(
+                pageID: drawingID, from: draft.fromID, to: destinationID, style: draft.style
+            )
+            elements = try elementUseCases.list.execute(pageID: drawingID)
+            selectedElementID = connector.id
+        }
+    }
+
+    /// Guarda lo escrito en el editor: crea el cuadro o cambia el existente.
+    func commitText(_ text: String, for request: TextEditorRequest) {
+        performOnElements {
+            if let elementID = request.elementID {
+                let updated = try elementUseCases.updateText.execute(id: elementID, text: text)
+                replaceElement(updated)
+            } else {
+                let added = try elementUseCases.addText.execute(
+                    pageID: drawingID, text: text, centeredAt: canvas.visibleCenter
+                )
+                insertAndSelect(added)
+            }
+        }
+    }
+
+    /// Pega el texto o la imagen del portapapeles en el centro de lo visible.
+    func paste() {
+        performOnElements {
+            let viewport = canvas.viewportSize
+            let added = try elementUseCases.paste.execute(
+                pageID: drawingID,
+                centeredAt: canvas.visibleCenter,
+                // Recién pegada, una imagen ocupa como mucho el 60 % de la pantalla.
+                maxImageSize: CGSize(width: viewport.width * 0.6, height: viewport.height * 0.6)
+            )
+            insertAndSelect(added)
+        }
+    }
+
+    /// Entra o sale del modo en que los toques mueven textos e imágenes.
+    func setArrangingElements(_ enabled: Bool) {
+        guard enabled != isArrangingElements else { return }
+        isArrangingElements = enabled
+        if !enabled {
+            selectedElementID = nil
+            connectionDraft = nil
+        }
+        canvas.setArrangingElements(enabled)
+        refreshCanvasElements()
+    }
+
+    func deleteSelectedElement() {
+        guard let id = selectedElementID else { return }
+        connectionDraft = nil
+        performOnElements {
+            try elementUseCases.delete.execute(id: id)
+            // Se vuelve a leer: al quitar una figura se van también sus conexiones.
+            elements = try elementUseCases.list.execute(pageID: drawingID)
+            selectedElementID = nil
+        }
+    }
+
+    /// El usuario tocó un elemento (o el fondo) en el modo de mover. Si se
+    /// estaba uniendo, ese toque elige el destino; tocar el fondo o el mismo
+    /// origen lo cancela.
+    private func selectElement(_ id: UUID?) {
+        if let draft = connectionDraft {
+            connectionDraft = nil
+            if let id, id != draft.fromID {
+                finishConnecting(draft, to: id)
+                return
+            }
+        }
+        selectedElementID = id
+        refreshCanvasElements()
+    }
+
+    /// El usuario soltó un elemento en otro sitio o con otro tamaño.
+    private func elementMoved(id: UUID, to frame: CGRect) {
+        performOnElements {
+            let moved = try elementUseCases.move.execute(id: id, frame: frame)
+            replaceElement(moved)
+            selectedElementID = id
+        }
+    }
+
+    /// Recién añadido, un elemento queda seleccionado y listo para moverlo:
+    /// casi nunca cae justo donde se quería.
+    private func insertAndSelect(_ element: PageElement) {
+        elements.append(element)
+        selectedElementID = element.id
+        if !isArrangingElements {
+            isArrangingElements = true
+            canvas.setArrangingElements(true)
+        }
+    }
+
+    private func replaceElement(_ element: PageElement) {
+        guard let index = elements.firstIndex(where: { $0.id == element.id }) else { return }
+        elements[index] = element
+    }
+
+    /// Ejecuta un cambio en los elementos; después repinta el lienzo (también
+    /// si falló, para deshacer lo que el gesto dejó a medias) y programa un
+    /// guardado, porque la miniatura de la hoja incluye los elementos.
+    private func performOnElements(_ operation: () throws -> Void) {
+        do {
+            try operation()
+            scheduleAutosave()
+        } catch {
+            alert = AlertMessage(error: error)
+        }
+        refreshCanvasElements()
+    }
+
+    private func refreshCanvasElements() {
+        canvas.showElements(elements, selectedID: selectedElementID)
+    }
+
     // MARK: - Autoguardado
 
     private func drawingDidChange() {
@@ -217,4 +461,10 @@ final class CanvasViewModel {
             alert = AlertMessage(error: error)
         }
     }
+}
+
+/// Una conexión a medio hacer: el origen elegido y el tipo de línea.
+struct ConnectionDraft: Equatable {
+    let fromID: UUID
+    let style: ConnectorStyle
 }

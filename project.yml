@@ -12,7 +12,7 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "0.1.0"
+    MARKETING_VERSION: "0.2.0"
     CURRENT_PROJECT_VERSION: "1"
 
 targets:
@@ -21,6 +21,15 @@ targets:
     platform: iOS
     sources:
       - path: DrawPad
+        excludes:
+          - "Resources/Mermaid/**"
+          - "Resources/Markdown/**"
+      # Mermaid y marked (JavaScript, licencia MIT) van como recursos, no
+      # como código.
+      - path: DrawPad/Resources/Mermaid
+        buildPhase: resources
+      - path: DrawPad/Resources/Markdown
+        buildPhase: resources
     info:
       path: DrawPad/Resources/Info.plist
       properties:
@@ -29,16 +38,40 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
         UIApplicationSupportsIndirectInputEvents: true
+        # iPhone: solo lectura (ver docs/adr/0018).
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
         UISupportedInterfaceOrientations~ipad:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationPortraitUpsideDown
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         NSPhotoLibraryAddUsageDescription: DrawPad necesita permiso para guardar tus dibujos en Fotos.
+        # Archivos .drawpad: cuadernos exportados (ver docs/adr/0017).
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: com.jhonjairo6230.drawpad.notebook
+            UTTypeDescription: Cuaderno de DrawPad
+            UTTypeConformsTo:
+              - public.data
+              - public.content
+            UTTypeTagSpecification:
+              public.filename-extension:
+                - drawpad
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Cuaderno de DrawPad
+            CFBundleTypeRole: Editor
+            LSHandlerRank: Owner
+            LSItemContentTypes:
+              - com.jhonjairo6230.drawpad.notebook
+        # iOS copia el archivo a la app al abrirlo desde Archivos, en lugar de
+        # editarlo donde está.
+        LSSupportsOpeningDocumentsInPlace: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jhonjairo6230.drawpad
-        TARGETED_DEVICE_FAMILY: "2" # Solo iPad
+        TARGETED_DEVICE_FAMILY: "1,2" # iPhone (solo lectura) y iPad
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
 
   DrawPadTests:
@@ -51,7 +84,7 @@ targets:
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
-        TARGETED_DEVICE_FAMILY: "2"
+        TARGETED_DEVICE_FAMILY: "1,2"
 
   DrawPadUITests:
     type: bundle.ui-testing
@@ -63,7 +96,7 @@ targets:
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
-        TARGETED_DEVICE_FAMILY: "2"
+        TARGETED_DEVICE_FAMILY: "1,2"
 
 schemes:
   DrawPad:

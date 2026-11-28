@@ -6,10 +6,17 @@ import Foundation
 final class CanvasModule: Identifiable {
     let viewModel: CanvasViewModel
     let canvas: PencilKitCanvas
+    /// Monta el editor de un diagrama de Mermaid (texto inicial y tema de la hoja).
+    let makeMermaidEditor: (String, CanvasTheme) -> MermaidEditorModule
 
-    init(viewModel: CanvasViewModel, canvas: PencilKitCanvas) {
+    init(
+        viewModel: CanvasViewModel,
+        canvas: PencilKitCanvas,
+        makeMermaidEditor: @escaping (String, CanvasTheme) -> MermaidEditorModule
+    ) {
         self.viewModel = viewModel
         self.canvas = canvas
+        self.makeMermaidEditor = makeMermaidEditor
     }
 }
 

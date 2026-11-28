@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import UIKit
 
 /// *Composition root*: el único lugar donde se crean las implementaciones
 /// concretas y se conectan entre sí (inyección de dependencias manual).
@@ -16,14 +17,38 @@ final class AppContainer {
     /// Argumento de lanzamiento que usan las pruebas de interfaz para arrancar
     /// con una base de datos vacía y en memoria.
     static let uiTestingArgument = "-uiTesting"
+    /// Las pruebas de interfaz corren en un simulador de iPad: con este
+    /// argumento la app se comporta como en el iPhone.
+    static let phoneModeArgument = "-phoneMode"
+    /// Con este argumento (y `-uiTesting`) la app arranca con un cuaderno de
+    /// ejemplo, para probar la lectura sin poder crear cuadernos.
+    static let sampleNotebookArgument = "-uiTestingSampleNotebook"
+    /// Lo que "hay en el portapapeles" durante las pruebas de interfaz.
+    static let uiTestingClipboardText = "Texto pegado"
 
     private let isUITesting = ProcessInfo.processInfo.arguments.contains(AppContainer.uiTestingArgument)
+
+    /// Qué se puede cambiar: todo en el iPad; en el iPhone, solo hojas
+    /// Markdown (ver docs/adr/0021).
+    private(set) lazy var editing: EditingCapabilities =
+        UIDevice.current.userInterfaceIdiom == .phone
+            || ProcessInfo.processInfo.arguments.contains(AppContainer.phoneModeArgument)
+        ? .phone : .full
 
     private(set) lazy var galleryViewModel = GalleryViewModel(
         listNotebooks: ListNotebooksUseCase(notebooks: library),
         createNotebook: CreateNotebookUseCase(notebooks: library, drawings: library),
         renameNotebook: RenameNotebookUseCase(notebooks: library),
-        deleteNotebook: DeleteNotebookUseCase(notebooks: library)
+        deleteNotebook: DeleteNotebookUseCase(notebooks: library),
+        changeCover: ChangeCoverUseCase(notebooks: library),
+        exportNotebook: ExportNotebookUseCase(
+            notebooks: library, drawings: library, elements: library,
+            coder: archiveCoder, store: exportFileStore
+        ),
+        importNotebook: ImportNotebookUseCase(
+            notebooks: library, drawings: library, elements: library,
+            coder: archiveCoder, reader: SecurityScopedFileReader()
+        )
     )
 
     /// Monta un cuaderno abierto. Cada hoja que muestre la crea con
@@ -34,16 +59,48 @@ final class AppContainer {
             loadNotebook: LoadNotebookUseCase(notebooks: library),
             listPages: ListPagesUseCase(drawings: library),
             addPage: AddPageUseCase(drawings: library),
+            addMarkdownPage: AddMarkdownPageUseCase(drawings: library),
+            importMarkdownPage: ImportMarkdownPageUseCase(
+                reader: SecurityScopedFileReader(),
+                addPage: AddMarkdownPageUseCase(drawings: library)
+            ),
             deletePage: DeletePageUseCase(drawings: library),
-            makeSession: { [unowned self] pageID, shareName in
-                makeCanvasModule(drawingID: pageID, shareName: shareName)
+            makeSession: { [unowned self] page, shareName in
+                switch page.kind {
+                case .drawing: return makeCanvasModule(drawingID: page.id, shareName: shareName)
+                case .markdown: return makeMarkdownModule(pageID: page.id, shareName: shareName)
+                }
             }
         )
     }
 
+    /// Monta la pantalla para dibujar una portada: un lienzo nuevo y su ViewModel.
+    func makeCoverDrawingModule(initialDrawing: CoverDrawing?, color: CoverColor) -> CoverDrawingModule {
+        let canvas = PencilKitCanvas()
+        let viewModel = CoverDrawingViewModel(
+            canvas: canvas,
+            initialDrawing: initialDrawing,
+            color: color,
+            preferences: canvasPreferences
+        )
+        return CoverDrawingModule(viewModel: viewModel, canvas: canvas)
+    }
+
+    /// Monta una hoja Markdown: su ViewModel y la vista web que la formatea.
+    func makeMarkdownModule(pageID: UUID, shareName: String) -> MarkdownPageModule {
+        let viewModel = MarkdownPageViewModel(
+            pageID: pageID,
+            shareName: shareName,
+            loadPage: LoadDrawingUseCase(repository: library),
+            saveMarkdown: SaveMarkdownUseCase(drawings: library),
+            exportMarkdown: ExportMarkdownUseCase(drawings: library, store: exportFileStore)
+        )
+        return MarkdownPageModule(viewModel: viewModel, renderer: WebKitMarkdownRenderer())
+    }
+
     /// Monta la pantalla de una hoja: un lienzo nuevo y su ViewModel.
     func makeCanvasModule(drawingID: UUID, shareName: String) -> CanvasModule {
-        let canvas = PencilKitCanvas()
+        let canvas = PencilKitCanvas(isReadOnly: !editing.canDraw)
         let viewModel = CanvasViewModel(
             drawingID: drawingID,
             shareName: shareName,
@@ -53,9 +110,14 @@ final class AppContainer {
             saveDrawing: SaveDrawingUseCase(repository: library),
             changeBackground: ChangeBackgroundUseCase(repository: library),
             exportDrawing: ExportDrawingUseCase(library: imageLibrary),
-            prepareShareFile: PrepareShareFileUseCase(store: exportFileStore)
+            prepareShareFile: PrepareShareFileUseCase(store: exportFileStore),
+            elementUseCases: PageElementUseCases(elements: library, clipboard: clipboard)
         )
-        return CanvasModule(viewModel: viewModel, canvas: canvas)
+        return CanvasModule(viewModel: viewModel, canvas: canvas) { source, theme in
+            let preview = WebKitMermaidPreview()
+            let editor = MermaidEditorViewModel(source: source, theme: theme, preview: preview)
+            return MermaidEditorModule(viewModel: editor, preview: preview)
+        }
     }
 
     // MARK: - Implementaciones concretas
@@ -67,6 +129,9 @@ final class AppContainer {
             let library = SwiftDataLibrary(container: container)
             // Dibujos guardados antes de que existieran los cuadernos.
             try library.adoptOrphanDrawings()
+            if isUITesting, ProcessInfo.processInfo.arguments.contains(AppContainer.sampleNotebookArgument) {
+                try AppContainer.addSampleNotebook(to: library)
+            }
             return library
         } catch {
             // Sin base de datos la app no puede hacer nada útil.
@@ -74,7 +139,25 @@ final class AppContainer {
         }
     }()
 
+    /// "Cuaderno 1" con tres hojas: un texto en la primera, la segunda en
+    /// blanco y la tercera de Markdown.
+    private static func addSampleNotebook(to library: SwiftDataLibrary) throws {
+        let notebook = try CreateNotebookUseCase(notebooks: library, drawings: library).execute()
+        let firstPage = try ListPagesUseCase(drawings: library).execute(notebookID: notebook.id)[0]
+        _ = try AddTextElementUseCase(elements: library)
+            .execute(pageID: firstPage.id, text: "Hola desde el iPad", centeredAt: CGPoint(x: 260, y: 200))
+        _ = try AddPageUseCase(drawings: library).execute(notebookID: notebook.id)
+        _ = try AddMarkdownPageUseCase(drawings: library)
+            .execute(notebookID: notebook.id, markdown: "# Hola Markdown\n\nUn spec de ejemplo.")
+    }
+
     private lazy var canvasPreferences = CanvasPreferences()
     private lazy var imageLibrary: ImageLibrary = PhotoLibraryImageExporter()
     private lazy var exportFileStore: ExportFileStore = TemporaryExportFileStore.live()
+    private lazy var archiveCoder: NotebookArchiveCoder = JSONNotebookArchiveCoder()
+    /// En las pruebas de interfaz, un portapapeles fijo: leer el del sistema
+    /// muestra un aviso de permiso de iOS que una prueba no puede aceptar.
+    private lazy var clipboard: Clipboard = isUITesting
+        ? FixedClipboard(content: .text(AppContainer.uiTestingClipboardText))
+        : SystemClipboard()
 }
