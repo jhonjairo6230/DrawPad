@@ -74,9 +74,10 @@ sequenceDiagram
     Dev->>D: git switch develop, git pull
     Dev->>F: git switch -c feature/x
     Dev->>F: commits + git push
-    F->>CI: se ejecutan las pruebas
+    Dev->>D: pull request de feature/x a develop
+    F->>CI: se ejecutan las pruebas (por el pull request)
     CI-->>Dev: pruebas en verde
-    Dev->>D: pull request de feature/x a develop, merge
+    Dev->>D: merge
     D->>CI: pruebas + .ipa
     CI-->>Dev: .ipa de develop
     Dev->>iPad: instala el .ipa y lo prueba

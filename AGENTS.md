@@ -45,7 +45,8 @@ Documentación en `docs/`; decisiones en `docs/adr/`.
 - Interfaz, comentarios y documentación en español; identificadores en inglés.
 - Lógica nueva → pruebas en `DrawPadTests` con los dobles de `Doubles/`.
 - Pantallas o flujos nuevos → prueba en `DrawPadUITests` (arrancan con
-  `-uiTesting`: base de datos vacía en memoria).
+  `-uiTesting`: base de datos vacía en memoria), en la clase de su tema
+  (heredan de `DrawPadUITestCase`).
 
 ## Proyecto de Xcode
 
@@ -56,10 +57,11 @@ Documentación en `docs/`; decisiones en `docs/adr/`.
 
 ## Comprobar un cambio
 
-Push a la rama y mirar el workflow **Compilar IPA**
-(`.github/workflows/build.yml`). Tiene dos trabajos en paralelo: **Pruebas**
-corre las unitarias y de interfaz en un simulador de iPad (unos 25 minutos)
-en cada push y pull request; **IPA** compila y publica
+Abrir el PR (o Run workflow sobre la rama) y mirar el workflow **Compilar
+IPA** (`.github/workflows/build.yml`); las ramas `feature/` no corren por
+push (ver `docs/adr/0025-pruebas-mas-rapidas.md`). Tiene dos trabajos en
+paralelo: **Pruebas** corre las unitarias y de interfaz en un simulador de
+iPad (unos 30 minutos); **IPA** compila y publica
 `DrawPad-unsigned.ipa` (unos 3) **solo al fusionar en `develop` o `main`**, o
 con Run workflow sobre una rama (ver `docs/adr/0023-ipa-solo-al-fusionar.md`).
 Si falla, el error está en el log del paso correspondiente.
