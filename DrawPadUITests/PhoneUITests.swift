@@ -36,11 +36,7 @@ final class PhoneUITests: XCTestCase {
     }
 
     func testANotebookCanBeRenamedAndGetANewCoverButNotADrawnOne() {
-        let card = app.buttons["Cuaderno 1"]
-        XCTAssertTrue(card.waitForExistence(timeout: 5))
-
-        card.press(forDuration: 1.2)
-        XCTAssertTrue(app.buttons["Exportar"].waitForExistence(timeout: 5))
+        app.openContextMenu(on: app.buttons["Cuaderno 1"], showing: "Exportar")
         XCTAssertTrue(app.buttons["Renombrar"].exists)
         let cover = app.buttons["Cambiar portada"]
         XCTAssertTrue(cover.exists)
@@ -240,6 +236,9 @@ final class PhoneUITests: XCTestCase {
         // Es texto en las hojas de dibujo y un botón (menú) en las Markdown.
         let title = app.navigationBars.descendants(matching: .any)
             .matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
-        XCTAssertTrue(title.waitForExistence(timeout: 5), "El título no muestra \"\(text)\"", file: file, line: line)
+        if title.waitForExistence(timeout: 5) { return }
+        // Deja en el log lo que había en pantalla, para saber qué pasó.
+        print("Árbol de elementos sin \"\(text)\":\n\(app.debugDescription)")
+        XCTFail("El título no muestra \"\(text)\"", file: file, line: line)
     }
 }

@@ -123,11 +123,7 @@ final class CanvasUITests: XCTestCase {
         openNewNotebook()
         goBackToGallery()
 
-        let card = app.buttons["Cuaderno 1"]
-        XCTAssertTrue(card.waitForExistence(timeout: 5))
-        card.press(forDuration: 1.2)
-        let export = app.buttons["Exportar"]
-        XCTAssertTrue(export.waitForExistence(timeout: 5))
+        let export = app.openContextMenu(on: app.buttons["Cuaderno 1"], showing: "Exportar")
         export.tap()
 
         XCTAssertFalse(app.alerts["Algo salió mal"].waitForExistence(timeout: 3))
@@ -555,12 +551,7 @@ final class CanvasUITests: XCTestCase {
 
     /// Mantiene pulsada la tarjeta de un cuaderno y elige "Cambiar portada".
     private func openCoverEditor(of notebook: String) {
-        let card = app.buttons[notebook]
-        XCTAssertTrue(card.waitForExistence(timeout: 5))
-        card.press(forDuration: 1.2)
-        let action = app.buttons["Cambiar portada"]
-        XCTAssertTrue(action.waitForExistence(timeout: 5))
-        action.tap()
+        app.openContextMenu(on: app.buttons[notebook], showing: "Cambiar portada").tap()
         XCTAssertTrue(app.buttons["Guardar"].waitForExistence(timeout: 5))
     }
 
