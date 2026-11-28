@@ -31,6 +31,7 @@ entienda **por qué** el código es como es.
 | [0022](0022-diagramas-en-iphone.md) | Diagramas en el iPhone, sin trazos | Aceptada |
 | [0023](0023-ipa-solo-al-fusionar.md) | El `.ipa` solo al fusionar en `develop` o `main` | Aceptada |
 | [0024](0024-cuadernos-en-iphone.md) | Crear y arreglar cuadernos en el iPhone | Aceptada |
+| [0025](0025-pruebas-mas-rapidas.md) | Pruebas más rápidas: sin ejecuciones repetidas y en paralelo | Aceptada |
 
 ## Cómo añadir un ADR
 

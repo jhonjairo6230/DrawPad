@@ -20,13 +20,15 @@ flowchart LR
 ## 2. Qué hace el workflow
 
 Archivo: [`.github/workflows/build.yml`](../.github/workflows/build.yml).
-Se ejecuta en cada `push` a las ramas de Git Flow, en cada pull request y a
-mano (pestaña **Actions → Compilar IPA → Run workflow**).
+Se ejecuta en cada pull request, en cada `push` a `develop`, `main`,
+`release/`, `hotfix/` y `backport/`, y a mano (pestaña **Actions → Compilar
+IPA → Run workflow**). Las ramas `feature/` no corren por `push`: lo hace su
+pull request ([ADR 0025](adr/0025-pruebas-mas-rapidas.md)).
 
 Tiene **dos trabajos que corren a la vez**, cada uno en su propio Mac:
 
-- **Pruebas** (unos 25 minutos): unitarias y de interfaz en un simulador.
-  Siempre.
+- **Pruebas** (unos 20 minutos): unitarias y de interfaz, repartidas entre
+  **dos simuladores** a la vez. Siempre.
 - **IPA** (unos 3 minutos): compila y publica el `.ipa`. **Solo al fusionar
   en `develop` o `main`**, o con Run workflow sobre cualquier rama. En las
   ramas `feature/` y en los pull requests aparece como omitido
@@ -57,7 +59,7 @@ sequenceDiagram
         else error de compilación
             M1-->>GH: IPA en rojo, no hay .ipa
         end
-    and trabajo Pruebas (unos 25 min)
+    and trabajo Pruebas (unos 20 min, en dos simuladores)
         GH->>M2: arranca
         M2->>M2: checkout y xcodegen generate
         M2->>Sim: arranca el simulador y espera a que esté listo

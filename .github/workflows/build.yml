@@ -2,8 +2,10 @@
 # Explicación paso a paso: docs/compilacion-e-instalacion.md
 #
 # Dos trabajos en paralelo:
-#   - tests: pruebas unitarias y de interfaz en un simulador (unos 25 minutos).
-#            En cada push y en cada pull request.
+#   - tests: pruebas unitarias y de interfaz, repartidas entre dos simuladores
+#            (ver docs/adr/0025-pruebas-mas-rapidas.md). En cada pull request,
+#            en cada push a develop, main, release/, hotfix/ y backport/, y a mano.
+#            Las ramas feature/ no corren por push: lo hace su pull request.
 #   - ipa:   compila y publica el .ipa (unos 3 minutos). Solo al fusionar en
 #            develop o main, o a mano (Run workflow) desde cualquier rama
 #            (ver docs/adr/0023-ipa-solo-al-fusionar.md).
@@ -15,7 +17,8 @@ on:
     branches:
       - main
       - develop
-      - "feature/**"
+      # Sin "feature/**": la misma rama ya corre por su pull request, y
+      # correrla dos veces solo alarga la cola de Mac (ADR 0025).
       - "release/**"
       - "hotfix/**"
       - "backport/**"
@@ -106,6 +109,8 @@ jobs:
             -scheme DrawPad \
             -destination "id=$UDID" \
             -derivedDataPath build/tests \
+            -parallel-testing-enabled YES \
+            -parallel-testing-worker-count 2 \
             CODE_SIGNING_ALLOWED=NO
 
       - name: Informes de cierre de la app (si las pruebas fallan)

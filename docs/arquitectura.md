@@ -256,8 +256,14 @@ DrawPadTests/
     └── StrokeSmootherTests.swift
 
 DrawPadUITests/
-├── CanvasUITests.swift             Toca la app real en el simulador
-└── PhoneUITests.swift              Modo iPhone (Markdown y diagramas, sin trazos), con -phoneMode
+├── DrawPadUITestCase.swift         Base: arranca la app y utilidades comunes
+├── NotebookUITests.swift           Galería, portada y exportar
+├── PageUITests.swift               Hojas (dibujo y Markdown) y compartir
+├── CanvasUITests.swift             Lienzo: dedo, deshacer, papel, suavizar, zoom
+├── TextAndImageUITests.swift       Cuadros de texto e imágenes pegadas
+├── DiagramUITests.swift            Figuras, conexiones y Mermaid
+├── PhoneUITests.swift              Modo iPhone (cuadernos, Markdown y diagramas, sin trazos), con -phoneMode
+└── XCUIApplication+ContextMenu.swift  Pulsación larga con un reintento
 ```
 
 > **Sobre los nombres:** en la interfaz se habla de **cuadernos** y **hojas**.
@@ -1413,7 +1419,7 @@ la interfaz va en el hilo principal). El temporizador de autoguardado es una
 | ViewModel de la galería | `Presentation/GalleryViewModelTests.swift` | Biblioteca en memoria. |
 | ViewModel del cuaderno | `Presentation/NotebookViewModelTests.swift` | Biblioteca en memoria y hojas abiertas falsas. |
 
-| Pantallas reales | `DrawPadUITests/CanvasUITests.swift` | Lanza la app en el simulador (con `-uiTesting`: base de datos vacía en memoria), crea cuadernos y hojas, navega y toca el lienzo con el "dedo". |
+| Pantallas reales | `DrawPadUITests/*UITests.swift` (una clase por tema, en paralelo) | Lanza la app en el simulador (con `-uiTesting`: base de datos vacía en memoria), crea cuadernos y hojas, navega y toca el lienzo con el "dedo". |
 
 `PencilKitCanvas`, `PhotoLibraryImageExporter` y las vistas no tienen pruebas
 unitarias: son adaptadores finos sobre frameworks de Apple. Las pruebas de
