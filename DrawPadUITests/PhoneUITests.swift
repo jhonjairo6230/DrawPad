@@ -36,11 +36,7 @@ final class PhoneUITests: XCTestCase {
     }
 
     func testANotebookCanBeRenamedAndGetANewCoverButNotADrawnOne() {
-        let card = app.buttons["Cuaderno 1"]
-        XCTAssertTrue(card.waitForExistence(timeout: 5))
-
-        card.press(forDuration: 1.2)
-        XCTAssertTrue(app.buttons["Exportar"].waitForExistence(timeout: 5))
+        app.openContextMenu(on: app.buttons["Cuaderno 1"], showing: "Exportar")
         XCTAssertTrue(app.buttons["Renombrar"].exists)
         let cover = app.buttons["Cambiar portada"]
         XCTAssertTrue(cover.exists)
